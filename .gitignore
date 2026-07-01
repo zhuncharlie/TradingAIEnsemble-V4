@@ -3,7 +3,7 @@ __pycache__/
 *.egg-info/
 .env
 *.env
-adapters/*/vendor/
+adapters/vendor/
 results/
 *.png
 *.csv
