@@ -157,3 +157,107 @@ autonomously. Newest entries at the bottom.
   sklearn/pandas) doesn't have the same "old trust_remote_code vs bleeding
   edge transformers" problem since none of it depends on a custom dynamic
   model class. Smoke test completes in ~10s (no LLM, no GPU needed).
+
+## 2026-07-02 — Comparison visualization layer (analysis/ + ui/)
+
+User confirmed via AskUserQuestion (after I flagged an intervening message
+as having injection-like characteristics — nonexistent `analysis/` module
+reference, "all 3 adapters are green" phrased like a status report back to
+me, "do not ask me questions" stacked under an external "IMPORTANT...you
+MUST" wrapper) that the expanded task list was genuinely theirs. Proceeded
+on that basis.
+
+- **`analysis/` is not an adapter, so Iron Rule #4 doesn't apply to it**:
+  "Do not read or import other adapters" (CLAUDE.md) restricts adapter
+  files from importing each other. `analysis/` is the cross-adapter
+  comparison layer the whole project exists to enable ("see how different
+  frameworks answer it — consensus vs. divergence, side by side" — project
+  description). It's the one place in the repo meant to know about all
+  adapters at once. It does not import adapter *code* directly either way —
+  see next point.
+- **Adapters run as subprocesses, one per conda env, not imported**: the
+  three adapters have mutually incompatible pinned dependencies (FinGPT
+  needs transformers==4.41.2 exactly; ai-hedge-fund needs a Rust-built
+  tiktoken via poetry; DeepAlpha needs conda-forge xgboost/lightgbm) and
+  cannot coexist in one Python process. `analysis/_run_one.py` is a thin
+  CLI (reuses `CONTRACT.test_harness.load_adapter`, not custom loading
+  logic) invoked via `conda run` from `analysis/collect_results.py`, one
+  subprocess per (adapter, ticker) pair, writing
+  `results/{task_id}/{adapter}__{ticker}.json`.
+- **Ticker set / date**: AAPL, NVDA, TSLA, BTC-USD, SPY as specified. Used
+  "today" (2026-07-02) as the query date for all adapters, and a real
+  3-month yfinance price history (`analysis/fetch_price_history.py`) for
+  the same 5 tickers as the returns-chart backdrop.
+- **ai_hedge_fund has no crypto or ETF coverage**: `ai_hedge_fund__BTC-USD`
+  and `ai_hedge_fund__SPY` both returned a degenerate fallback (Q1 HOLD,
+  confidence=1.0, reasoning="No valid trade available", ~2s latency vs
+  ~14s for a real LLM-backed decision) — its data source
+  (financialdatasets.ai) apparently only covers individual equities, not
+  BTC-USD or the SPY ETF. `load_results()` in `build_visualizations.py`
+  detects this generically (matches on the exact reasoning string + fast
+  latency, not a hardcoded ticker list) and treats those cells as N/A
+  rather than plotting a fake confidence=1.0 signal.
+- **fingpt has no native Q1**: it only answers Q2 (sentiment). For the
+  divergence heatmap and the returns-chart position sizing, its action is
+  *derived* from `sentiment_score` (>0.2 → BUY, <-0.2 → SELL, else HOLD)
+  and `|sentiment_score|` stands in for a confidence proxy. Both charts
+  label this explicitly (subtitle + hover text) so it isn't mistaken for a
+  native decision.
+- **Cumulative returns chart is a simplified, NOT walk-forward, backtest**:
+  each adapter's single point-in-time Q1 action (from the one collection
+  run above) is held as a *static* position (+1 long / -1 short / 0 flat)
+  across the entire 3-month price window, equal-weighted across the 5
+  tickers, and compared to SPY buy-and-hold. This is NOT "what the adapter
+  would have told you each day for 3 months" — it's "what if you'd taken
+  today's signal and held it for 3 months." A true walk-forward backtest
+  would need ~90 daily re-queries per adapter per ticker; ai_hedge_fund
+  makes a real paid LLM call per query and fingpt reloads a 6B-parameter
+  model per call, so that was not practical here. Stated explicitly in the
+  chart title/subtitle and in `build_cumulative_returns()`'s docstring, not
+  just here, so the paper doesn't need to be the only place this caveat
+  lives.
+- **Chart output location and `.gitignore`**: the repo's `.gitignore` had
+  blanket `*.png` and `*.csv` rules (for adapter scratch output), which
+  would have silently dropped the paper-ready chart PNGs. Added a scoped
+  exception (`!plots/*.png`, `!plots/*.html`) rather than removing the
+  blanket rule, so adapter-generated CSV/PNG scratch files elsewhere stay
+  ignored. `results/` (raw JSON + price_history.csv) stays fully
+  gitignored and is not committed — regenerable via `collect_results.py` +
+  `fetch_price_history.py`.
+- **kaleido/Chrome for static PNG export**: `plotly`'s `write_image()`
+  needs a headless Chrome (kaleido v1+). `plotly_get_chrome` downloaded one,
+  but it crashed on start with `error while loading shared libraries:
+  libnspr4.so: cannot open shared object file` — this sandbox's system
+  Chrome dependencies (NSS/NSPR) aren't installed and there's no
+  passwordless sudo/apt access. Fixed by installing `nss`/`nspr` via
+  conda-forge into the same env and exporting
+  `LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"` before running the
+  chart builder, so the dynamic linker finds them. This env var must be set
+  whenever `analysis/build_visualizations.py` is run for real (not just
+  imported for its functions, e.g. from `ui/app.py`, which only calls
+  `fig.write_html`-equivalent via `st.plotly_chart` and never touches
+  kaleido, so it doesn't need this).
+- **Bug found and fixed**: `analysis/_run_one.py`'s
+  `Path.write_text(result.model_dump_json(...))` used the platform default
+  encoding, which resolved to ASCII in the conda-run subprocess environment
+  — crashed with `UnicodeEncodeError` the moment a real yfinance headline
+  contained a Unicode smart quote (’, U+2019), affecting fingpt/AAPL and
+  fingpt/BTC-USD on the first collection pass. Fixed by passing
+  `encoding="utf-8"` explicitly to both `write_text()` calls (success and
+  error-payload paths), then re-ran just the two affected (adapter,
+  ticker) pairs rather than the whole 15-run batch.
+- **Streamlit dependency build issue**: same root cause as xgboost/lightgbm
+  earlier — `streamlit`'s `pyarrow` dependency has no prebuilt pip wheel for
+  this platform/Python 3.11 combo and needs Rust (`libcst`) to build from
+  source. Installed `pyarrow` via conda-forge first (prebuilt binary), then
+  `pip install streamlit` succeeded using that.
+- **`ui/app.py` verification**: `streamlit run` served an apparent HTTP 500
+  on first test — turned out to be an artifact of my own test harness, not
+  the app: this sandbox sets `HTTP_PROXY`/`HTTPS_PROXY=127.0.0.1:8080`
+  globally with no `NO_PROXY`, so my `urllib` health-check requests to
+  `127.0.0.1:<streamlit-port>` were being routed through that proxy, which
+  couldn't reach the ephemeral port and returned its own "Connection error"
+  body dressed up as a 500. Setting `NO_PROXY=127.0.0.1,localhost` for the
+  test request confirmed a real `HTTP 200`. `ui/app.py` imports its chart
+  functions from `analysis/build_visualizations.py` rather than duplicating
+  the chart logic, per instruction.

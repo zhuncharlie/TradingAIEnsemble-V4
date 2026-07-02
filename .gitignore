@@ -7,3 +7,6 @@ adapters/vendor/
 results/
 *.png
 *.csv
+# Comparison-layer chart outputs are paper deliverables, not scratch output.
+!plots/*.png
+!plots/*.html
