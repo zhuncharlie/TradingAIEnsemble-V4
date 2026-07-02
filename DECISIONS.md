@@ -114,3 +114,46 @@ autonomously. Newest entries at the bottom.
   legacy downloader, across multiple restarts today). Practical implication:
   every restart of a model download effectively starts from 0 bytes in this
   environment — avoid restarting once a stable download is underway.
+
+## 2026-07-02 — Session C (DeepAlpha adapter)
+
+- **Repo candidate rejected**: `irissees/EnsembleTrading` matched the
+  brief's description closest (XGBoost+LightGBM+CatBoost ensemble, overnight
+  stock return prediction) but requires live Robinhood account credentials
+  (`r.login(username=..., password=...)`) via an unofficial reverse-
+  engineered brokerage API just to fetch training data. Not wiring real
+  brokerage login credentials into an automated adapter without explicit
+  user authorization — real-money account exposure, ToS risk for an
+  unofficial API. Moved to a different candidate using a standard public
+  data source instead.
+- **Repo choice**: no real "DeepAlpha" repo exists (as the brief expected).
+  Searched GitHub for XGBoost/LightGBM/CatBoost ensembles on technical
+  factors for forward stock-return prediction. Best exact-keyword match
+  (`irissees/EnsembleTrading`) rejected — requires live Robinhood account
+  credentials via an unofficial API just to fetch data (see entry above).
+  Settled on `LeoRigasaki/stock-market-prediction-engine`: proper `src/`
+  package (not notebook-only), XGBoost+LightGBM ensemble, 73 engineered
+  technical features, walk-forward validation, yfinance-only data (no
+  brokerage creds), transparent/honest methodology docs, clean security
+  scan. Full rationale in the adapter's own header docstring.
+- **Pretrained models not available**: upstream's real production pipeline
+  trains on a bulk Kaggle-sourced dataset (needs `KAGGLE_USERNAME`/
+  `KAGGLE_KEY`, not available here) across ~15 "Day N" stages, then serves
+  from saved `.joblib` artifacts that are gitignored (not in the repo).
+  Minimum viable substitution: adapter calls upstream's own
+  `RealTimePredictionEngine.engineer_realtime_features()` on real yfinance
+  history for the single requested ticker, then trains upstream's own
+  `AdvancedMLFramework.create_xgboost_model()`/`create_lightgbm_model()`
+  (their hyperparameters, Optuna search skipped for speed) on that ticker's
+  own 3-year history, combined via upstream's own `SimpleEnsemble`. Real
+  training + real inference on real data, just scoped per-ticker instead of
+  upstream's full multi-ticker batch pipeline.
+- **xgboost/lightgbm install**: no prebuilt pip wheel for this platform/
+  Python 3.11 combo; source build needs `cmake` (not installed). Installed
+  both via `conda-forge` instead (precompiled binaries) — no dependency
+  drama this time, unlike FinGPT's saga.
+- **Harness result**: 21/21 checks passed on the first real run (no
+  compatibility issues, unlike FinGPT) — this stack (xgboost/lightgbm/
+  sklearn/pandas) doesn't have the same "old trust_remote_code vs bleeding
+  edge transformers" problem since none of it depends on a custom dynamic
+  model class. Smoke test completes in ~10s (no LLM, no GPU needed).
