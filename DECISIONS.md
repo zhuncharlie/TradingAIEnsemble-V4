@@ -402,3 +402,65 @@ merged here after both completed and committed independently.
   vs. a single harness call's 600s budget). Reduced to a real
   buy-and-hold-YES backtest over one real Kalshi market's full public daily
   candlestick history — real prices, standard arithmetic, no fabrication.
+
+## 2026-07-04 — Wave 2, half B: FinRL-X adapter — commit `cf3dc9f`, 22/22 harness pass
+
+- **"FinRL-X" is a paper/project name, not a repo name** — it ships under
+  `AI4Finance-Foundation/FinRL-Trading` (README literally opens "FinRL-X: An
+  AI-Native Modular Infrastructure for Quantitative Trading"). Confirmed via
+  the AI4Finance-Foundation org listing (3.4k stars, v1.0.0, 317 commits,
+  Apache-2.0 — real, active, not vaporware) and by reading the actual source
+  (not just the README): `ml_bucket_selection.py`'s `run_bucket()` is a real
+  6-model ensemble competition; `market_regime.py` is a real regime
+  detector; both call real upstream FinRL `DRLAgent`/`StockPortfolioEnv`.
+  Also checked the rest of the AI4Finance family (FinRL-Meta, FinRL_Podracer,
+  ElegantRL, FinRL_Crypto) per the brief's hint — none of those matched;
+  FinRL-Trading was the first and only strong candidate and matched closely
+  enough that no further search was needed.
+- **Security screening clean**: no eval/exec/shell=True, no unrelated
+  subtree. Credential-requiring code (Alpaca live-trading, WRDS, FMP)
+  exists but is confined to modules this adapter never imports — no
+  brokerage account or real money anywhere in the code path actually used.
+- **Avoided a paid data dependency entirely**: upstream's own ML
+  stock-selection pipeline expects a pre-populated SQLite database of
+  22,909 quarterly fundamental records that upstream's own tooling builds
+  via FMP's paid-tier API — not checked into the repo, not reproducible
+  without a paid key. Substituted a live-yfinance-computed fundamentals
+  panel (9 of upstream's 28 feature columns, same names/semantics) passed
+  through upstream's own unmodified `run_bucket()` — the ranking logic
+  itself is 100% real upstream code.
+- **Real, sandbox-specific SIGSEGV found and root-caused**: upstream's
+  `build_models()` hardcodes `n_jobs=-1` on several sklearn ensembles. In
+  this sandbox (52 visible cores), that makes `StackingRegressor.fit()`'s
+  nested cross-validation fork worker processes that each try to run an
+  OpenMP-parallel estimator — every worker segfaults, reproduced under both
+  `loky` and `threading` joblib backends, independent of
+  `OMP_NUM_THREADS`/`LOKY_START_METHOD` tuning. Root-caused by fitting each
+  estimator individually and bisecting; `loky.cpu_count()` (what `-1`
+  resolves against) tracks `os.sched_getaffinity(0)` on Linux. Fixed by
+  temporarily restricting CPU affinity to one core for the duration of the
+  `run_bucket()` call only (making `n_jobs=-1` resolve to 1, taking joblib's
+  sequential in-process fast path) — an environment-level workaround inside
+  the adapter's own process, not a vendor patch. Confirmed identical
+  modeling results, ~3s, zero crashes after the fix.
+- **`lightgbm` deliberately not installed**: upstream's own `build_models()`
+  already wraps that import in `try/except ImportError` and drops it from
+  the model roster gracefully — omitting it exercises a supported upstream
+  code path rather than working around a missing dependency.
+- **Reused this session's existing `adapters/vendor/FinRL` clone +
+  `patches/FinRL.diff`**: FinRL-Trading's own DRL code imports the separate
+  `finrl` package (not declared in its own requirements.txt) and hits the
+  identical eager-import problem `finrl_adapter.py` already patched earlier
+  this session — same public repo cloned to the same local path, not a new
+  patch and not cross-adapter code coupling (vendor/ stays gitignored
+  either way).
+- **Q4 DRL training reuses `finrl_adapter.py`'s already-validated reduced
+  budget** (`TOTAL_TIMESTEPS=3000`, `COV_LOOKBACK_DAYS=60`) rather than
+  upstream's own `rl_model.py` helpers, whose hardcoded timestep counts
+  (50000-80000, no override) would blow past harness timeouts several times
+  over.
+- **Q4 regime**: real upstream `detect_slow_regime()` fed real weekly
+  `^GSPC`/`^VIX` closes; its `RISK_ON/NEUTRAL/RISK_OFF` states map to
+  CONTRACT's `Regime.BULL/SIDEWAYS/BEAR`, and its own `effective_cash_floor`
+  output is blended with the DRL policy's cash allocation so the regime
+  genuinely modulates the final weights, not just a label.
