@@ -512,3 +512,58 @@ merged here after both completed and committed independently.
   silently degrading. No such error actually occurred this session —
   `load_dotenv()` was deliberately double-checked given the earlier
   false-alarm bug in a different adapter's session.
+
+## 2026-07-04 — Wave 3, half B: ATLAS adapter — commit `105dfcb`, 20/20 harness pass
+
+- **"ATLAS" is an extremely common project name** (physics experiments,
+  cloud infra, unrelated ML frameworks) — the search deliberately did not
+  stop at the first repo literally named ATLAS.
+- **Rejected `chrisworsey55/atlas-gic`** despite being real (1999 stars)
+  and using near-identical target vocabulary ("Darwinian selection",
+  "meta-weighting" via a "JANUS" layer) — reading its actual source showed
+  it evolves **LLM agent system-prompts** via git-commit/revert, not
+  alpha-factor formulas, and it's "now running live with real capital"
+  requiring an Alpaca brokerage account. Two independent disqualifiers at
+  once: wrong content *and* live-money/brokerage exposure. Demonstrates
+  that GitHub-API existence verification is necessary but not sufficient —
+  content-match and security screening both still have to happen even
+  after a repo is confirmed real.
+- **Rejected `QuantaAlpha/QuantaAlpha`** (the strongest runner-up: real,
+  1.2k stars, arXiv-backed, DeepSeek-compatible) after reading
+  `evolving_framework.py` directly and finding it's a single-subject,
+  trajectory-based iterative-refinement loop, not population-based —
+  no fitness-ranked population, no selection/discard step. "Evolutionary"
+  in marketing copy can mean either real genetic-algorithm population
+  selection or "iteratively refines itself," and these are different
+  algorithms — check for an actual `population` + `select`/`discard` step
+  before treating them as interchangeable.
+- Also rejected `The-Swarm-Corporation/ATLAS` (real-time risk monitor,
+  wrong domain), `Morgansy/Genetic-Alpha` (real single-population GP, no
+  multi-queue structure), `KangOxford/AutoFactor` (PDFs only, no code), and
+  noted AutoAlpha (Tsinghua paper) has no public implementation.
+- **Settled on `Yitong-Guo/Genetic-Algorithm-for-quantitative-alpha-factors-mining`**:
+  real DEAP-based genetic programming (`selNSGA2` Pareto selection +
+  `HallOfFame`) over a bundled 236-token crypto-perpetuals historical panel.
+  Confirmed not just real but *functioning* by actually executing
+  `GPProcess.run()`, not just reading it. Its own code splits the
+  population into sequential "Batch 1/2/3/4" sub-populations evolved
+  independently then combined via non-dominated sorting — the closest
+  literal analogue to "multi-queue" found across every candidate, though
+  honestly documented as not literally "meta-weighting" (it's Pareto-front
+  selection + a validation-set filter, not a weighted average) rather than
+  rounded up to a perfect match.
+- **Cleanest security profile of any adapter this session**: no eval/exec/
+  shell=True/subprocess, zero credential/broker/API-key patterns anywhere,
+  and needs no external data source, account, or API key of any kind — its
+  entire input is the repo's own bundled historical CSV panel, no live feed.
+- **No LLM calls at all** (pure genetic-programming/statistics) — no API
+  key needed, no cost-control concerns.
+- **Scope reductions**: GA budget scaled from upstream's own example
+  (200/10/6 population/batch/generation) down to 40/10/2 to fit harness
+  timeouts, still running upstream's real unmodified `GPProcess.run()`;
+  ticker universe mismatch (equities vs. the project's real crypto-token
+  panel) handled by falling back to a fixed representative token with an
+  explicit note in `supporting_evidence`, same reinterpretation pattern
+  `finrl_x_adapter.py` used for its own universe mismatch; point-in-time
+  train/val/test windows derived from the requested date, clamped to the
+  bundled dataset's real historical coverage.
