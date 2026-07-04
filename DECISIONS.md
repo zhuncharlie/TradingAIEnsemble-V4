@@ -464,3 +464,51 @@ merged here after both completed and committed independently.
   CONTRACT's `Regime.BULL/SIDEWAYS/BEAR`, and its own `effective_cash_floor`
   output is blended with the DRL policy's cash allocation so the regime
   genuinely modulates the final weights, not just a label.
+
+## 2026-07-04 — Wave 3, half A: NoFx adapter — commit `3d8f0f3`, 19/19 harness pass
+
+- **Literal "NoFx" (`NoFxAiOS/nofx`) is real (12.5k stars) but disqualified
+  on two independent grounds**: (1) its setup requires connecting live
+  funded exchange credentials (Binance/Bybit/OKX/etc.) with no documented
+  paper-trading/analysis-only mode — same disqualifying pattern as
+  DeepAlpha's Robinhood-credential rejection; (2) its AI layer is
+  hard-routed through a proprietary paid gateway with no way to plug in the
+  existing DeepSeek key, and it's a Go binary + web terminal, not a
+  callable Python library — no faithful thin wrapper is possible regardless
+  of the credentials issue.
+- **Substituted `0xemmkty/QuantMuse`** (2,707 stars, MIT, verified real
+  and not a content-farm account — checked specifically because Prediction
+  Arena's session found exactly that pattern once already) after also
+  rejecting a too-thin candidate (`Ronitt272/LLM-Enhanced-Trading`, just a
+  FinGPT+SMA-crossover glue script) and ruling out re-wrapping FinGPT
+  itself (already has an adapter; CLAUDE.md disallows a duplicate).
+  QuantMuse's own `LLMIntegration.assess_risk()` genuinely fuses real LLM
+  sentiment scoring with real RSI/MACD/Bollinger/momentum factors into one
+  risk verdict — verified by reading the source, not just README claims.
+- **Security screening**: no live brokerage credentials or real money in
+  any of the three modules imported; upstream's `python-binance` dependency
+  (used only by unrelated live-data fetchers elsewhere in the repo) isn't
+  even installed in this adapter's env, and the harness still passes —
+  proof the import path used is clean. A stray `test.exe`/`test.cpp` in the
+  repo root was checked and confirmed to be a trivial, harmless compiler
+  smoke-test artifact, not a hidden payload.
+- **Patch (`patches/QuantMuse.diff`)**: a two-line change making
+  `SentimentAnalyzer`'s hardcoded `model="gpt-3.5-turbo"` configurable, so
+  DeepSeek could be plugged in — smaller and more honest than reimplementing
+  the sentiment prompt in adapter code to avoid touching upstream.
+- **DeepSeek model name verified empirically, not assumed from memory**:
+  a real failed test call against a wrong model name returned an error
+  naming the two actually-supported strings (`deepseek-v4-pro`/
+  `deepseek-v4-flash`) — same "don't trust a remembered/assumed string,
+  verify against the live system" caution as the hallucinated-GitHub-URL
+  lesson from Prediction Arena's session, generalized to model names too.
+- **Cost-control finding**: upstream's own sentiment/fusion calls catch
+  every exception internally and silently fall back to a degraded default
+  rather than raising — which would have masked a real auth/balance
+  failure as an innocuous "neutral sentiment" data point. Worked around by
+  attaching a temporary logging handler around the real calls and scanning
+  for auth/quota-shaped error substrings, raising a clear
+  "DeepSeek API balance may be exhausted" error if found instead of
+  silently degrading. No such error actually occurred this session —
+  `load_dotenv()` was deliberately double-checked given the earlier
+  false-alarm bug in a different adapter's session.
