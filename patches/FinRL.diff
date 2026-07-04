@@ -1,0 +1,26 @@
+diff --git a/finrl/__init__.py b/finrl/__init__.py
+index 1ffc81e..0898f7f 100644
+--- a/finrl/__init__.py
++++ b/finrl/__init__.py
+@@ -1,5 +1,18 @@
++# PATCH (see patches/FinRL.diff for rationale): the unpatched version of
++# this file eagerly imports finrl.test/finrl.trade/finrl.train at package
++# import time. finrl.trade pulls in AlpacaPaperTrading -> alpaca_trade_api
++# (live brokerage SDK) and finrl.train/finrl.test pull in DataProcessor ->
++# WrdsProcessor (requires a paid WRDS academic database subscription just
++# to import). None of that is used by adapters/finrl_adapter.py, which
++# calls FeatureEngineer/YahooDownloader/StockPortfolioEnv/DRLAgent
++# directly. Deferred so `import finrl` (and any submodule import that
++# doesn't need test/trade/train) no longer requires those optional
++# brokerage/data-vendor SDKs to be installed.
+ from __future__ import annotations
+ 
+-from finrl.test import test
+-from finrl.trade import trade
+-from finrl.train import train
++try:
++    from finrl.test import test
++    from finrl.trade import trade
++    from finrl.train import train
++except ImportError:
++    pass
