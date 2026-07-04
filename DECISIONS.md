@@ -344,3 +344,61 @@ merged here after both completed and committed independently.
   (ndarray has no `.values`); fixed by routing the Q4 training frame through
   upstream's own `data_split()` instead, matching what the Q5 path already
   did correctly.
+
+## 2026-07-04 — Wave 2, half A: Prediction Arena adapter — commit `22de7ef`, 22/22 harness pass
+
+- **The literal "Prediction Arena" is a real project with no public code.**
+  It's arXiv 2604.07355 + a live site (predictionarena.ai) — six frontier
+  models trading real capital on Kalshi/Polymarket over 57 days. Fetched the
+  arXiv HTML directly and confirmed no code-availability statement or GitHub
+  link exists anywhere in the paper.
+- **A web-search summary hallucinated a specific GitHub citation**
+  (`github.com/foresight-arena/analysis`) for this paper's "released"
+  code. Checked directly via the GitHub REST API: that repo returns 404. The
+  `foresight-arena` org is real but is a different, unrelated project
+  (on-chain prediction competition on Polygon). Concrete example of why a
+  prose web-search summary must be checked against a primary source
+  (GitHub/arXiv API) before being trusted, not just this project's own
+  memory-of-training-data risk.
+- **A second candidate, `spfunctions/prediction-market-model-benchmark`,
+  was rejected as a likely content-farm placeholder**: real repo (not
+  hallucinated), description matches the brief almost verbatim, but the
+  owning account was created 2026-03-14 and already owns 35 repos, this
+  specific repo has 0 stars, and every source directory is empty
+  (skeleton-only). Even a real, confirmed-to-exist repo can still be an
+  unreliable source — GitHub-API existence alone isn't sufficient
+  verification, actual implementation content matters too.
+- **Settled on `Metaculus/forecasting-tools`** (73 stars, MIT, actively
+  maintained) as the closest real, safe substitute — uses its own
+  unmodified LLM-forecasting-bot engine (prompts/parsing) paired with real,
+  public Kalshi market data fetched directly by the adapter. Metaculus's own
+  API now requires a token even for reads (403 without one) and is never
+  contacted at all by this adapter; only Kalshi's genuinely keyless public
+  market-data endpoints are used.
+- **Real-money security screening (the extra-caution item this brief
+  called out)**: confirmed live that Kalshi's and Polymarket's public
+  market-data endpoints return real data with zero authentication — no API
+  key, no account, no funded wallet. Only `GET` requests are issued
+  anywhere in the adapter; no order-placement, portfolio, or account
+  endpoint is ever called. No funded brokerage/exchange account, private
+  key, or wallet credential of any kind is used, read, or required.
+- **Environment**: same compiled-dependency-needs-conda-forge pattern as
+  DeepAlpha (`tiktoken`/`libcst`/`pyarrow` had no glibc-2.27-compatible
+  prebuilt wheel here) — fixed via `conda install -c conda-forge libcst
+  pyarrow` + `pip install "tiktoken<0.12"`. Also vendor-cloned the repo
+  because PyPI's latest release (0.2.92) lacks a bot class that exists on
+  GitHub's `main` branch, and inserted the vendor path ahead of
+  site-packages — a version-selection shim, not a patch (no upstream file
+  modified), so no `patches/forecasting-tools.diff` was needed.
+- **Reused `DEEPSEEK_API_KEY`** via litellm's native `deepseek/` provider
+  string. One real `AuthenticationError` was hit during validation and
+  initially looked exactly like "balance may be exhausted" — turned out to
+  be a real bug in the adapter itself (missing `load_dotenv()` call), not
+  an account/balance problem; confirmed via `env | grep DEEPSEEK` showing
+  the key genuinely absent from the process before the fix. No actual
+  balance/quota issue was ever encountered.
+- **Q5 scope reduction**: a genuine 57-day live real-money comparison is
+  infeasible (funded accounts disallowed by security policy; 57 real days
+  vs. a single harness call's 600s budget). Reduced to a real
+  buy-and-hold-YES backtest over one real Kalshi market's full public daily
+  candlestick history — real prices, standard arithmetic, no fabrication.
