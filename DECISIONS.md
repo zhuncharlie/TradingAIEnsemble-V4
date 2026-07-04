@@ -261,3 +261,86 @@ on that basis.
   test request confirmed a real `HTTP 200`. `ui/app.py` imports its chart
   functions from `analysis/build_visualizations.py` rather than duplicating
   the chart logic, per instruction.
+
+## 2026-07-03/04 — Wave 1: TradingAgents + FinRL adapters (parallel subagents)
+
+Built by two parallel subagents (per user request to fan out adapter work
+in pairs, verified against the blueprint image's resource-profile pairing:
+LLM-API-bound + local-training-bound). Each wrote its own
+`DECISIONS_<name>.md` to avoid concurrent-edit collisions on this file;
+merged here after both completed and committed independently.
+
+### TradingAgents (Q1, Q2) — commit `d751630`, 24/24 harness pass
+
+- **Repo confirmed real**: `TauricResearch/TradingAgents` (~90k stars,
+  created 2024-12-28) — matches CLAUDE.md's registered target exactly.
+  README/code confirmed the bull/bear debate + risk team + Portfolio
+  Manager architecture the blueprint described, and that its "social"
+  analyst literally pulls Yahoo Finance news + StockTwits + Reddit.
+- **Security screening clean**: no unrelated subtree (the finogrid/-style
+  pattern this project now checks every new adapter for), no brokerage
+  credentials, no real money — only an LLM API key needed.
+- **Reused `DEEPSEEK_API_KEY`**: TradingAgents has a *native* `"deepseek"`
+  provider (not a generic OpenAI-compatible passthrough), so no new secret
+  was needed. `deep_think_llm="deepseek-v4-pro"` for Research
+  Manager/Portfolio Manager, `quick_think_llm="deepseek-v4-flash"` for
+  analysts/researchers/trader/risk debators.
+- **First adapter to populate `bull_case`/`bear_case`** — every other
+  adapter leaves these `None`; sourced directly from the real bull/bear
+  researcher debate transcripts in graph state.
+- **Cost control**: one real `TradingAgentsGraph.propagate()` run (~9-10
+  real LLM calls, ~250s) is cached per `(ticker, date)` and serves both
+  `q1_decision()` and `q2_sentiment()` — confirmed empirically that the
+  harness's later Q1/Q2/`run()` calls all logged 0.0s, i.e. the expensive
+  debate only ran once per harness pass, not up to 4 times.
+- **Field mapping notes**: 5-tier `PortfolioRating` collapses to CONTRACT's
+  3-way `Action`; confidence has no native numeric field so it's bucketed
+  by rating-tier distance from Hold (0.85/0.65/0.5); `sentiment_score` is
+  regex-parsed from a rendered markdown report (the raw Pydantic object
+  isn't retained in graph state) and linearly rescaled from upstream's 0-10
+  scale to CONTRACT's -1..+1; `risk_level` and `sources` are similarly
+  derived from real upstream fields/behavior, not reimplemented analysis.
+
+### FinRL (Q4, Q5) — commit `085b6fb`, 23/23 harness pass
+
+- **Repo confirmed real**: `AI4Finance-Foundation/FinRL` — CLAUDE.md's own
+  registered target, no selection ambiguity. Confirmed via WebSearch/
+  WebFetch (no `gh` CLI in this sandbox) that it's a real DRL framework
+  (PPO/A2C/DDPG/TD3/SAC via Stable-Baselines3) with a portfolio-allocation
+  environment and free Yahoo Finance data support.
+- **Security screening**: credential-requiring code exists only in
+  alternate, unused data processors (JoinQuant, Sinopac/Shioaji, Alpaca,
+  WRDS) — this adapter's only data path is `YahooDownloader`/yfinance,
+  free and public. No brokerage account, no real money.
+- **Patch required — `patches/FinRL.diff`**: `finrl/__init__.py` eagerly
+  imports `finrl.trade`/`finrl.train`/`finrl.test` at package-import time,
+  which transitively requires live-brokerage `alpaca`/`alpaca_trade_api`
+  SDKs and the paid-subscription `wrds` package just to `import finrl` at
+  all — never mind use them. Wrapped those three imports in
+  `try/except ImportError`, verified (via a temporary import-blocker) that
+  every module this adapter actually uses (`FeatureEngineer`,
+  `YahooDownloader`, `StockPortfolioEnv`, `DRLAgent`) still imports cleanly
+  without any live-brokerage/paid-vendor SDKs. Same "dead-weight eager
+  import in an otherwise-fine upstream repo" pattern as a legitimate patch
+  target, not upstream logic being changed.
+- **`yfinance` pinned to `0.2.66`** (not left at latest 1.x): FinRL's own
+  `YahooDownloader.fetch_data()` calls `yf.download(..., proxy=proxy)` — a
+  kwarg `yfinance>=1.0` removed entirely. Same "pin to the vintage the
+  vendor code was written against" lesson as FinGPT's transformers/peft/
+  accelerate pin.
+- **No pretrained weights, by design**: FinRL's own repo/tutorials ship no
+  checkpoints — training is always expected to be done by the user. Trains
+  **live**, real `stable_baselines3.A2C` via upstream's own `DRLAgent`,
+  `TOTAL_TIMESTEPS=3000` (vs. tens/hundreds of thousands at paper scale),
+  `COV_LOOKBACK_DAYS=60` (vs. tutorial's 252) — whole Q4+Q5 pipeline for 3
+  tickers runs in ~50.6s inside `smoke_test()`, comfortably inside budget.
+  Same "train live, scoped down" pattern as `deepalpha_adapter.py`.
+- **Two real training bugs found and fixed**: (1) `pd.DateOffset(years=1.5)`
+  raises `ValueError` (pandas doesn't support fractional-year offsets) —
+  switched to whole-day lookback (`HISTORY_DAYS=550`); (2)
+  `StockPortfolioEnv` expects upstream's own `data_split()` date-factorized
+  indexing convention (one shared integer index per date across all
+  tickers) — a plain `reset_index()` broke `self.data["cov_list"].values[0]`
+  (ndarray has no `.values`); fixed by routing the Q4 training frame through
+  upstream's own `data_split()` instead, matching what the Q5 path already
+  did correctly.
