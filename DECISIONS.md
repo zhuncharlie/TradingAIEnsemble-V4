@@ -856,3 +856,83 @@ research loop**, not a single call and not population-based search.
   generated factor and real forward returns — schema-translation
   arithmetic, not a reimplementation of RD-Agent's research method
   (upstream's own real accept/reject verdict is reported separately).
+
+## 2026-07-05 — Q3 methodology expansion, Wave 7 (final): Qlib adapter — commit `cf2e9eb`, 20/20 harness pass
+
+Fifth and final new Q3 mechanism this expansion — the deliberate
+**non-search** counterpoint to the other four (atlas=GP, finclaw=GA,
+alphagen=RL, rdagent=LLM-agent loop): a **curated factor library + ML
+pipeline**. Qlib's own fixed, pre-defined Alpha158 factor set (158 real
+named technical expressions — nothing invented or evolved) run through
+Qlib's own real `LGBModel` (gradient-boosted trees) training/prediction.
+
+- **Repo confirmed real** (45,700 stars, MIT, pushed 2026-04-22, latest tag
+  v0.9.7) via GitHub API — its own description cross-references
+  `microsoft/RD-Agent`, an independent corroboration against this
+  session's already-verified RD-Agent upstream.
+- **Deliberately avoided the ancient-qlib-pin trap `alphagen_adapter.py`'s
+  session found**: that session found a *different* project's
+  `requirements.txt` pinned a stale `qlib==0.0.2.dev20` dev-build tag and
+  correctly avoided installing qlib at all (it was incidental there). Here
+  qlib IS the target, so this adapter installs the real, current
+  `pyqlib==0.9.7` per qlib's own current README — never the stale tag some
+  other project happened to depend on.
+- **Mechanism confirmed by reading source and actually running it**:
+  `Alpha158.get_feature_config()` builds 158 real named technical
+  expressions (confirmed by printing real fitted-dataset column names, not
+  the paper's table); `LGBModel.fit()`/`.predict()` are a real thin wrapper
+  around `lightgbm.train()`, confirmed via real changing training-loss
+  numbers and per-ticker predictions across different runs. No genetic
+  population, no RL policy/reward, no LLM call anywhere in this adapter's
+  path — distinct from all four other Q3 adapters by construction.
+- **Security**: clean. No eval/exec/shell=True/subprocess in modules used.
+  Only credential-shaped grep hit is an unused, optional local Redis cache
+  password field this adapter never configures. No unrelated merged
+  subtree. Never imports Qlib's own live-trading/execution modules
+  (`qlib/backtest/`, `qlib/rl/`) — only data-handler/dataset/GBDT-model
+  modules and an offline CSV-conversion script.
+- **Found and fixed a genuinely deeper repo-root scratch-leak than usual**:
+  Qlib's mlflow-based experiment tracking defaults to a `Path.cwd()`-based
+  URI. Unlike RD-Agent's leak (fixed by simple env-var redirection), an
+  explicit absolute-path override here was **empirically confirmed
+  insufficient** — this sandbox's repo is mounted at two paths that resolve
+  to the same inode (a symlink/bind-mount duplication), and something in
+  mlflow's URI-to-path resolution re-joins the already-absolute target onto
+  `os.getcwd()` again, reproducibly materializing a bogus nested directory
+  at the real repo root regardless of the override. **Fix**: confinement
+  instead of prevention — `os.chdir()` into the adapter's own already-
+  gitignored scratch directory for the duration of the qlib calls (inside
+  try/finally), so the same artifact still occurs but stays fully contained
+  there. **Generalizable lesson**: on a filesystem with symlinked/
+  bind-mounted path duplication, don't assume an absolute-path override
+  neutralizes a `Path.cwd()`-relative default — verify empirically with
+  `git status`/`find -newer` after a real run, and if a leak persists,
+  confine via `os.chdir()` into disposable already-ignored territory rather
+  than chasing the exact downstream path-join logic.
+- **Second, unrelated dependency finding**: PyPI's `lightgbm` 4.6.0 only
+  ships wheels for glibc≥2.28; this sandbox's glibc 2.27 triggered a
+  from-source build that failed on missing OpenMP. `conda install
+  -c conda-forge lightgbm` resolved both the wheel gap and the missing
+  system OpenMP at once (conda-forge bundles its own runtime) — same
+  "try conda-forge first" pattern this session has used repeatedly for
+  xgboost/pyarrow/libcst/tiktoken.
+- **`scripts/dump_bin.py` genuinely needed the GitHub source, not just the
+  PyPI wheel** (that script isn't packaged in the wheel at all) — real,
+  substantial, unmodified upstream conversion code, not skipped or
+  reimplemented. One real gotcha: it crashes on a literal string column
+  unless `exclude_fields="symbol"` is passed — fixed via that documented,
+  first-class constructor kwarg, not a patch.
+- **Scope reductions**: CSI300/baostock universe replaced with a fixed
+  8-ticker US large-cap pool (Qlib's own data API natively accepts a plain
+  instrument list); ~527-day point-in-time window (90-day rolling-feature
+  warm-up + 300-day train/60-day valid/75-day test); LightGBM budget cut
+  to 60 boosting rounds/8 leaves vs. upstream's own CSI300-scale benchmark
+  config — real, unmodified `LGBModel` code, ~15-20s total wall-clock.
+  `direction`/`strength` derived via cross-sectional percentile rank of the
+  real predicted score (same convention atlas/alphagen use, since Qlib's
+  model doesn't natively expose a 3-way label); `expected_return` reported
+  verbatim since upstream's own label is already a forward-return ratio.
+
+**Fourteenth and final adapter of this Q3 methodology expansion.** Combined
+with the twelve adapters from the earlier blueprint build-out, the project
+now has 14 real, harness-verified adapters.
