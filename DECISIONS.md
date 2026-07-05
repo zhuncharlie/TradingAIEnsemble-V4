@@ -567,3 +567,56 @@ merged here after both completed and committed independently.
   `finrl_x_adapter.py` used for its own universe mismatch; point-in-time
   train/val/test windows derived from the requested date, clamped to the
   bundled dataset's real historical coverage.
+
+## 2026-07-04 — Wave 4, half A: Vibe-Trading adapter — commit `a3a8f2a`, 25/25 harness pass, all 3 questions (Q3+Q4+Q5)
+
+- **Confirmed `HKUDS/Vibe-Trading`** (17.7k stars, actively maintained,
+  real long-running research org) as the correct real repo after checking
+  five lookalike candidates via the GitHub API directly (not trusting
+  search snippets): two were fork/malware-tagline squats on the real
+  project's name, one was a genuine fork (not independent), two were real
+  but smaller/unrelated single-author tools. Verified by reading and
+  actually *running* the source (not just the README): `CompositeEngine`
+  is real and genuinely auto-routes multi-market ticker lists to a shared
+  capital pool across per-market sub-engines; the NL-strategy-generation
+  machinery is a real skill-guide-driven LLM call, not marketing copy.
+- **Security screening**: repo has a real live-order-execution layer
+  (`agent/src/live/`) but this adapter's code path never imports it — only
+  the backtest/paper-simulation layer and the LLM factory are used. No
+  brokerage account, no real money, anywhere this adapter's code actually
+  runs. Data sources used are yfinance and OKX's public no-auth REST API
+  only; premium/broker-login loaders in the same repo are never reached.
+- **Found a real bug in upstream's own shipped reference example**:
+  `cross-market-strategy/example_signal_engine.py` — the exact file
+  upstream ships as the CompositeEngine usage example — fails upstream's
+  own runtime AST security validator (a top-level `re.compile()` call
+  isn't literal-safe by the validator's own rules). Confirmed by actually
+  running it, not just reading it. Fixed by adapting the example to call
+  upstream's own already-imported market-detection function instead of
+  re-deriving a second, unsafe regex table — this is the adapter's own
+  input file, not a vendor patch (the vendored clone is untouched).
+- **Handled real LLM nondeterminism**: DeepSeek's generated `SignalEngine`
+  code occasionally violates upstream's own class-validation rule (a
+  required constructor arg with no default). Fixed with an explicit
+  constraint in the prompt + in-process pre-validation before spending a
+  real backtest call + exactly one retry feeding the real validator's error
+  back to the model — confirmed stable (25/25) across two consecutive full
+  harness runs after the fix.
+- **Deliberately did not drive the full autonomous `AgentLoop`**: upstream's
+  real multi-turn ReAct loop is genuine working code but has an unbounded
+  LLM turn count that doesn't fit the harness's fixed timeouts or this
+  session's bounded-real-LLM-calls convention. Calls the same underlying
+  primitives (`build_llm()`, the skill guide, the AST validator, the
+  backtest runner) directly instead — same class of scope reduction every
+  other adapter this session applied to its own upstream's heaviest path.
+- **Cross-market anchor for Q4**: CONTRACT's own sample tickers are all
+  single-market US equities, which would never actually exercise
+  `CompositeEngine` (the exact Q4 feature the brief calls out). The adapter
+  appends a fixed `BTC-USDT` anchor whenever the requested tickers don't
+  already span multiple real upstream-detected markets, disclosed in
+  `Q4Portfolio.rationale` whenever it fires.
+- **Environment**: `tiktoken` had the same no-prebuilt-wheel problem
+  `ai_hedge_fund_adapter.py` hit earlier this session — fixed the same way
+  via `conda install -c conda-forge tiktoken`. A first `git clone` attempt
+  was killed by a tool timeout mid-transfer and left a corrupted git index;
+  re-cloned as a backgrounded process instead of foreground.
