@@ -677,3 +677,62 @@ merged here after both completed and committed independently.
   `date`. This adapter fetches yfinance history itself windowed to end at
   the requested date, saved via upstream's own real CSV-writing helper
   (not reimplemented) in the schema upstream's loader expects.
+
+## 2026-07-04/05 — Wave 5 (final): AgenticTrading adapter — commit `eda0655`, 19/19 harness pass
+
+- **Confirmed genuinely non-duplicate before anything else**: the real
+  question for this adapter wasn't name-matching but whether it added a
+  materially different *evaluation methodology* from the five existing Q5
+  adapters (finrl/finrl_x train a single RL policy, atlas is
+  genetic-programming factor mining, finclaw is a classical GA over a
+  factor-weight genome, vibe_trading drives one LLM `SignalEngine`) — none
+  of those run a fixed roster of independent strategies through one shared
+  ranking harness. `Open-Finance-Lab/AgenticTrading`'s own
+  `strategies/registry.py` + `service.py::_rank_entries` genuinely is that:
+  one contest window, one initial capital, one combined
+  return-rank/Sharpe-rank scoring function across multiple strategies.
+- **Repo confirmed real** (315 stars, actively pushed through the literal
+  present) via direct GitHub API check, not the search snippet — two other
+  credible real runner-ups were found and verified the same way
+  (`ulab-uiuc/live-trade-bench`, `HKUSTDial/DeepFund`) but this one matched
+  the target's literal name and implemented all three named feature legs
+  most completely.
+- **A README caveat turned out to be narrower than it looked**: "Leaderboard
+  backed by real multi-agent runs (replace mock data)" in the README's
+  roadmap section could read as "the whole leaderboard is canned." Reading
+  the actual service/strategy code showed this caveat only applies to the
+  *LLM-model* leaderboard entries (precomputed offline, guarded by a real
+  integrity check that refuses to publish a silently-degraded entry) — the
+  four deterministic baseline strategies this adapter wraps are genuinely
+  computed live every call, confirmed by actually executing that exact call
+  chain against real market data. Lesson: trace a README caveat to the
+  exact code path it's attached to before deciding it disqualifies the
+  whole repo.
+- **Security**: no live brokerage/exchange credentials or real money in the
+  path used. Upstream defaults its baseline data source to Alpaca's
+  *paper*-trading API (never funded, but still a signup requirement) —
+  substituted with `yfinance` instead, since upstream's own strategy classes
+  take already-fetched bars as a plain injected argument (the same
+  swap-the-data-source pattern upstream's own `market_index.py` already
+  uses internally). Two upstream import-time footguns (a hard `sys.exit(1)`
+  if Alpaca env vars are absent; a SQLite migration against the committed
+  database) worked around with inert placeholder env vars and a redirected
+  scratch DB path — neither touches vendor source or the actual (network-
+  free / DB-free) call path this adapter uses.
+- **Scope reduction — `llm_agent` strategy excluded, not faked**: upstream's
+  LLM client factory is Anthropic-SDK-response-shaped only; this session's
+  only available key (`DEEPSEEK_API_KEY`) is OpenAI-compatible-shaped.
+  Wiring it in safely would require reimplementing upstream's response
+  parsing for a different SDK shape — crosses from "wrap" into
+  "reimplement." Excluded honestly (no LLM calls anywhere in this adapter,
+  no cost/balance concerns) rather than forcing a patch or monkeypatch.
+  The four deterministic strategies already fully exercise the
+  "standardized leaderboard" feature the brief called out.
+- **Scope reductions**: point-in-time window clamping (yfinance's ~730-day
+  intraday horizon doesn't reach CONTRACT's 2024 sample dates from this
+  sandbox's real 2026 clock — confirmed via an actual failed fetch, not
+  assumed, then clamped to the nearest real available window and disclosed
+  in `test_period`); universe capped to 5 tickers, window to 30 days, for
+  harness timeout budget.
+- Twelfth adapter built this session — matches the blueprint image's
+  original count of 12 named projects exactly.
