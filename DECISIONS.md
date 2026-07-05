@@ -620,3 +620,60 @@ merged here after both completed and committed independently.
   via `conda install -c conda-forge tiktoken`. A first `git clone` attempt
   was killed by a tool timeout mid-transfer and left a corrupted git index;
   re-cloned as a backgrounded process instead of foreground.
+
+## 2026-07-04 — Wave 4, half B: FinClaw adapter — commit `a70cd77`, 20/20 harness pass
+
+- **The literal GitHub repo (`NeuZhou/finclaw`) had been repurposed into a
+  zero-code marketing page** for a paid "StratEvo Pro" product — confirmed
+  via the GitHub API (redirects to `NeuZhou/stratevo`, exactly 4 commits,
+  first one literally "Initial commit: FinClaw product showcase," contents
+  are just a README + 2 PNGs, zero Python source). The most extreme version
+  of the "buzzwords not matching actual code" trap found this session —
+  here there's no code at all to mismatch, only marketing copy reusing the
+  exact search-target vocabulary.
+- **However, the same project's PyPI page still hosts real, functioning
+  source** one release earlier (`finclaw-ai==5.6.1`, uploaded a week before
+  the GitHub pivot) — a real, substantial (88,606 lines, AGPL-3.0,
+  CI/codecov-badged) package with a genuine generational genetic algorithm
+  (`AutoEvolver`/`StrategyDNA`, Polynomial Mutation) and real walk-forward
+  out-of-sample validation. Installed and actually *ran* it (`finclaw evolve
+  --market us`, real yfinance data) rather than trusting the README —
+  confirmed genuine generational fitness progress across runs, not a canned
+  number. `upstream_repo` points to the PyPI page, not the now-vaporware
+  GitHub repo, with the GitHub situation disclosed rather than hidden.
+- **The package's own marketed "484 factors" figure doesn't match its own
+  executed code**: the README's category table doesn't even sum to itself,
+  and the actual CLI-wired engine has 41 real factor weights (confirmed by
+  introspecting the real `StrategyDNA` dataclass), not 484. Documented this
+  honestly and used the verified real number rather than parroting the
+  marketing claim.
+- **Confirmed mechanistically distinct from `atlas_adapter.py`** (not a
+  duplicate-upstream problem): atlas wraps tree-based Genetic
+  Programming (DEAP formula-tree synthesis via NSGA-II, discovering new
+  factor *formulas*); this wraps a classical real-coded Genetic Algorithm
+  over a fixed 74-field weight-vector genome (evolving how much to trust
+  and combine an existing fixed factor set, not inventing new formulas) —
+  different algorithm family, different author/license/fitness function.
+  Surveyed the wider GA-alpha-factor GitHub space too (6 other real repos)
+  and confirmed all of those are tree-based/GP synthesis like atlas's
+  upstream, not a distinct second candidate.
+- **Security**: zero eval/exec/os.system/credential/broker hits in any
+  module this adapter imports. Upstream's `evolve()` does internally call
+  `eval(formula, sandbox)` for a handful of fixed, hardcoded seed-factor
+  formula strings, but `sandbox` is a restricted globals dict (numpy/math
+  functions + OHLCV arrays only, no `__builtins__`/`os`/network) — same
+  risk class as DEAP's/gplearn's own compiled-expression evaluation used
+  elsewhere this session, not arbitrary code execution. A separate,
+  `OPENAI_API_KEY`-gated LLM factor-discovery path exists in the package
+  but is never called by this adapter. No live brokerage/exchange
+  credentials or funded capital anywhere in the path used — real
+  live-trading modules exist in the package but aren't imported here.
+- **Scope reduction**: GA budget scaled from upstream's own CLI defaults
+  (population=30, generations=100, max_stocks=500) to population=24,
+  generations=30, 9-stock universe — real, unmodified `AutoEvolver.evolve()`,
+  ~75-100s wall-clock, comfortably inside harness timeouts.
+- **Point-in-time fix**: upstream's own data downloader always ends at
+  "now," which would leak future data relative to a historical requested
+  `date`. This adapter fetches yfinance history itself windowed to end at
+  the requested date, saved via upstream's own real CSV-writing helper
+  (not reimplemented) in the schema upstream's loader expects.
