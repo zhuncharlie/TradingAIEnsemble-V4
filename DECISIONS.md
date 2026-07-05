@@ -787,3 +787,72 @@ GA over a weight-vector genome). This is the RL-based fourth mechanism.
   train/test split with no lookahead. Verified the disclosed-fallback path
   directly (invalid ticker correctly triggers and discloses a fallback
   universe).
+
+## 2026-07-05 — Q3 methodology expansion, Wave 6 half B: RD-Agent adapter — commit `544a404`, 21/21 harness pass
+
+Third new Q3 mechanism this expansion, and the fifth Q3 methodology overall
+(alongside atlas's GP, finclaw's GA, deepalpha's gradient-boosted feature
+importance, finrl_x's ML ranking ensemble, vibe_trading's single-call NL
+generation, and alphagen's RL search) — this one is a genuine **LLM-agent
+research loop**, not a single call and not population-based search.
+
+- **Repo confirmed real** (`microsoft/RD-Agent`, 13,779 stars, MIT, active
+  through 2026-06-15) — no lookalike-name ambiguity, the literal name was
+  correct on the first try (unlike ATLAS/FinClaw's sessions).
+- **Mechanism confirmed genuinely LLM-agent-loop-driven by tracing and
+  actually running the real call graph**, not just reading it: a real
+  `hypothesis_gen.gen()` (LLM call, proposes a NL hypothesis) →
+  `hypothesis2experiment.convert()` (LLM call, turns it into a concrete
+  factor task) → `QlibFactorCoSTEER.develop()` (LLM writes real `factor.py`
+  → real local execution against real data → real LLM code-critic → real
+  LLM-as-judge accept/reject verdict), with rejection feedback genuinely
+  carried into the next round's prompt. Verified with real runs producing
+  both a real rejection ("index level order is reversed... use
+  `$close * $factor`") and a real subsequent acceptance across separate
+  development runs — an unambiguous multi-call, multi-stage agent loop.
+- **Security**: the only `shell=True` hit is upstream's own intended
+  mechanism (executing its just-LLM-generated `factor.py`) — same risk
+  class as vibe_trading's generated-SignalEngine subprocess and
+  atlas/finclaw's compiled-expression `eval()`. Zero broker/credential/
+  real-money patterns anywhere in the code path used. The one part of
+  upstream that would need heavier infrastructure (a Docker-based Qlib
+  backtest runner) is never invoked at all.
+- **Found and fixed a real repo-root scratch-directory leak (3 independent
+  causes, not 1)**: upstream has three separate `Path.cwd()`-based
+  defaults (workspace path, log/trace path, pickle-cache path) as
+  pydantic-settings singletons built at first import. Early development
+  only overrode one via env var, so the other two still leaked `log/` and
+  `pickle_cache/` into the repo root. Found all three by grepping for
+  `Path.cwd()` across upstream's config modules, then set all three env
+  vars (to paths under `adapters/vendor/RD-Agent/git_ignore_folder/`)
+  before any `rdagent.*` import. Leaked directories deleted; a top-level
+  `.gitignore` safety net was also added in case of future leaks.
+- **A real, unrelated OpenAI dependency was found and correctly diagnosed
+  as a false alarm, not a DeepSeek balance issue**: upstream's own
+  knowledge-base self-generation step hardcodes an OpenAI embedding model
+  regardless of chat backend, raising a real "Missing credentials...
+  OPENAI_API_KEY" error on first full-loop run. Traced to that specific
+  unrelated feature (not a DeepSeek auth/balance problem) before disabling
+  it — same "double-check before concluding it's a real balance issue"
+  discipline this session applied to a different adapter's earlier false
+  alarm (a missing `load_dotenv()` call).
+- **Model name verified empirically**: tested `deepseek/deepseek-chat`,
+  `deepseek/deepseek-v4-flash`, and `deepseek/deepseek-v4-pro` directly;
+  all three actually work (an initial low-`max_tokens` test misleadingly
+  made two of them look broken — empty content was a token-budget
+  artifact of the test script, not a real model-name failure, caught by
+  re-testing with a larger budget before concluding anything).
+- **Scope reductions**: bounded to one hypothesis, one factor task, at
+  most 2 real CoSTEER implement/evaluate rounds (`max_loop=1` was tried
+  first and found to raise a real `CoderError` whenever round 1 was
+  legitimately rejected — `max_loop=2` gives the loop one genuine chance
+  to use its own real rejection feedback to correct itself, the actual
+  "iterate" step). Non-convergence after 2 rounds degrades honestly to a
+  disclosed NEUTRAL/zero-strength signal carrying the real rejection
+  feedback as evidence — never crashes or fabricates an accept. Real
+  yfinance data substituted for Qlib's Docker-built China-A-share bundle,
+  reshaped into upstream's own exact expected schema. Direction/strength
+  computed via the adapter's own correlation statistic between the real
+  generated factor and real forward returns — schema-translation
+  arithmetic, not a reimplementation of RD-Agent's research method
+  (upstream's own real accept/reject verdict is reported separately).
