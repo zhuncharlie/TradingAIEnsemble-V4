@@ -736,3 +736,54 @@ merged here after both completed and committed independently.
   harness timeout budget.
 - Twelfth adapter built this session — matches the blueprint image's
   original count of 12 named projects exactly.
+
+## 2026-07-05 — Q3 methodology expansion, Wave 6 half A: AlphaGen adapter — commit `e00b225`, 20/20 harness pass
+
+User explicitly requested expanding Q3 (alpha signal) with the most
+cutting-edge real projects available, to maximize methodological diversity
+across the adapters answering that question (previously: atlas = DEAP
+genetic-programming formula-tree synthesis, finclaw = classical real-coded
+GA over a weight-vector genome). This is the RL-based fourth mechanism.
+
+- **Repo confirmed real via GitHub-API redirect-following, not a lone
+  search snippet**: "AlphaGen" (KDD 2023 paper) pointed at
+  `github.com/RL-MLDM/alphagen`, which 301-redirects to
+  `ICT-FinD-Lab/alphagen` (same repo ID 510600247, continuous history since
+  2022, 1141 stars) — a genuine org transfer, not a dead link, confirmed by
+  following the redirect and cross-checking against an independent source
+  (a paper-author's blog post + Papers-with-Code). **New generalizable
+  lesson**: a 301 (moved) and a 404 (gone/fabricated) look similar in a
+  naive check but mean opposite things — always follow the redirect to its
+  actual target before concluding a repo doesn't exist.
+- **Mechanism confirmed genuinely RL by reading (and running) the actual
+  training script**, not README vocabulary: `sb3_contrib.ppo_mask.
+  MaskablePPO` trains against a real `gymnasium.Env` whose action space is
+  one token per operator/feature/constant in an alpha-expression grammar,
+  reward = marginal IC improvement on completing a valid expression. The
+  same repo also ships real, functioning GP and Deep-Symbolic-Optimization
+  code (`gp.py`/`dso.py`), but the README itself labels these "Baselines"
+  the RL method is compared against — this adapter never imports them.
+  **Lesson**: when a repo distinguishes a "main method" from "baselines,"
+  confirm by checking which modules the adapter code path actually
+  imports, not by file presence alone — projects routinely ship multiple
+  mechanisms side by side for comparison.
+- **Avoided the `qlib==0.0.2.dev20`/`baostock` dependency chain entirely**
+  without touching any vendor file: upstream's own `StockData` class only
+  queries Qlib inside a branch that's skipped whenever pre-loaded data is
+  supplied directly (upstream's own documented "adapt to external
+  pipelines" path). This adapter subclasses it to feed real yfinance OHLCV
+  instead, never triggering the Qlib import at all.
+- **Security**: clean. `eval()`/`exec()` hits exist in the repo but only in
+  the unused GP/DSO baseline scripts. An optional `openai`-backed LLM
+  extension exists but this adapter's code path never reaches it — no LLM
+  key used or needed (consistent with this being a pure RL-search system).
+  No live brokerage/exchange account or real money anywhere in the path
+  used.
+- **Scope reductions**: RL timesteps cut from upstream's 200k-350k to
+  4000 (~60s wall-clock, same category of reduction as finrl_adapter.py/
+  finrl_x_adapter.py); universe swapped from Qlib's CSI300 to a fixed
+  10-ticker US large-cap pool; VWAP approximated as typical price
+  (no true intraday VWAP available from yfinance); point-in-time
+  train/test split with no lookahead. Verified the disclosed-fallback path
+  directly (invalid ticker correctly triggers and discloses a fallback
+  universe).

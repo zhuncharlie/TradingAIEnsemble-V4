@@ -10,3 +10,8 @@ results/
 # Comparison-layer chart outputs are paper deliverables, not scratch output.
 !plots/*.png
 !plots/*.html
+# RD-Agent's own runtime workspace/cache when run from repo root (its own
+# default naming — see adapters/rdagent_adapter.py header once it exists).
+/git_ignore_folder/
+/log/
+/pickle_cache/
