@@ -1,0 +1,16 @@
+adapter,file,class_name,upstream_repo,requires_env,questions_declared,questions_implemented,n_result_records,n_error_records
+agentictrading,adapters/agentictrading_adapter.py,AgentictradingAdapter,https://github.com/Open-Finance-Lab/AgenticTrading,agentictrading_real,Q5,Q5,1,0
+ai_hedge_fund,adapters/ai_hedge_fund_adapter.py,AiHedgeFundAdapter,https://github.com/virattt/ai-hedge-fund,ai_hedge_fund_real,Q1,Q1,15,0
+alphagen,adapters/alphagen_adapter.py,AlphagenAdapter,https://github.com/ICT-FinD-Lab/alphagen,alphagen_real,Q3,Q3,10,0
+atlas,adapters/atlas_adapter.py,AtlasAdapter,https://github.com/Yitong-Guo/Genetic-Algorithm-for-quantitative-alpha-factors-mining,atlas_real,Q3,Q3,17,0
+deepalpha,adapters/deepalpha_adapter.py,DeepAlphaAdapter,https://github.com/LeoRigasaki/stock-market-prediction-engine,deepalpha_real,"Q1,Q3","Q1,Q3",75,0
+finclaw,adapters/finclaw_adapter.py,FinclawAdapter,https://pypi.org/project/finclaw-ai/,finclaw_real,Q3,Q3,10,0
+fingpt,adapters/fingpt_adapter.py,FinGPTAdapter,https://github.com/AI4Finance-Foundation/FinGPT,fingpt_real,Q2,Q2,15,0
+finrl,adapters/finrl_adapter.py,FinRLAdapter,https://github.com/AI4Finance-Foundation/FinRL,finrl_real,"Q4,Q5","Q4,Q5",12,0
+finrl_x,adapters/finrl_x_adapter.py,FinRLXAdapter,https://github.com/AI4Finance-Foundation/FinRL-Trading,finrl_x_real,"Q3,Q4","Q3,Q4",11,0
+nofx,adapters/nofx_adapter.py,NofxAdapter,https://github.com/0xemmkty/QuantMuse,nofx_real,Q2,Q2,10,0
+prediction_arena,adapters/prediction_arena_adapter.py,PredictionArenaAdapter,https://github.com/Metaculus/forecasting-tools,prediction_arena_real,"Q2,Q5","Q2,Q5",11,0
+qlib,adapters/qlib_adapter.py,QlibAdapter,https://github.com/microsoft/qlib,qlib_real,Q3,Q3,35,0
+rdagent,adapters/rdagent_adapter.py,RDAgentAdapter,https://github.com/microsoft/RD-Agent,rdagent_real,Q3,Q3,10,0
+tradingagents,adapters/tradingagents_adapter.py,TradingAgentsAdapter,https://github.com/TauricResearch/TradingAgents,tradingagents_real,"Q1,Q2","Q1,Q2",20,0
+vibe_trading,adapters/vibe_trading_adapter.py,VibeTradingAdapter,https://github.com/HKUDS/Vibe-Trading,vibe_trading_real,"Q3,Q4,Q5","Q3,Q4,Q5",12,0

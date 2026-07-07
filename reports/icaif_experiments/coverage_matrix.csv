@@ -1,0 +1,16 @@
+adapter,Q1,Q2,Q3,Q4,Q5
+agentictrading,,,,,declared+implemented+observed
+ai_hedge_fund,declared+implemented+observed,,,,
+alphagen,,,declared+implemented+observed,,
+atlas,,,declared+implemented+observed,,
+deepalpha,declared+implemented+observed,,declared+implemented+observed,,
+finclaw,,,declared+implemented+observed,,
+fingpt,,declared+implemented+observed,,,
+finrl,,,,declared+implemented+observed,declared+implemented+observed
+finrl_x,,,declared+implemented+observed,declared+implemented+observed,
+nofx,,declared+implemented+observed,,,
+prediction_arena,,declared+implemented+observed,,,declared+implemented+observed
+qlib,,,declared+implemented+observed,,
+rdagent,,,declared+implemented+observed,,
+tradingagents,declared+implemented+observed,declared+implemented+observed,,,
+vibe_trading,,,declared+implemented+observed,declared+implemented+observed,declared+implemented+observed

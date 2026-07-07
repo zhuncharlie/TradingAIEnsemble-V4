@@ -1,0 +1,6 @@
+question,expected_from_prior_notes,actual_declared_count,matches
+Q1,4,3,False
+Q2,4,4,True
+Q3,8,8,True
+Q4,3,3,True
+Q5,4,4,True

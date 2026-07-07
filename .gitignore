@@ -10,8 +10,16 @@ results/
 # Comparison-layer chart outputs are paper deliverables, not scratch output.
 !plots/*.png
 !plots/*.html
+# ICAIF experiment-suite outputs (figures/tables) are paper deliverables too.
+!reports/icaif_experiments/*.png
+!reports/icaif_experiments/*.csv
 # RD-Agent's own runtime workspace/cache when run from repo root (its own
 # default naming — see adapters/rdagent_adapter.py header once it exists).
 /git_ignore_folder/
 /log/
 /pickle_cache/
+# ARIS skills (project-local symlink install) — machine-specific, points
+# outside this repo to ~/aris_repo. Re-installable via
+# `bash ~/aris_repo/tools/install_aris.sh .`, see CLAUDE.md's ARIS block.
+.claude/skills/
+.aris/

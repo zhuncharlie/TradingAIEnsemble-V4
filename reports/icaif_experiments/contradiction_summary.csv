@@ -1,0 +1,6 @@
+flag,count,limitation
+ACTION_ALPHA_DIRECTION_CONFLICT,27,"exact (ticker, date) join across Q1/Q3 — no approximation."
+BUY_WITH_HIGH_RISK,15,"exact (ticker, date) join across Q1/Q2 — no approximation."
+HIGH_CONFIDENCE_POOR_CALIBRATION,39,"uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that."
+HIGH_WEIGHT_HIGH_DRAWDOWN,5,Q4Portfolio and Q5Backtest are joined on task_id only (neither carries both ticker and date). 'high weight on ticker X' and 'severe drawdown' may come from unrelated adapters/strategies in the same run.
+LONG_WITH_WEAK_VALIDATION,43,"Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period."

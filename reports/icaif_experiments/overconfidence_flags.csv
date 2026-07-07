@@ -1,0 +1,3 @@
+adapter,question,horizon,avg_confidence,actual_hit_rate,sample_count
+deepalpha,Q1,1,0.9679622767968945,0.5333333333333333,30.0
+deepalpha,Q1,5,0.969902605681315,0.32,25.0

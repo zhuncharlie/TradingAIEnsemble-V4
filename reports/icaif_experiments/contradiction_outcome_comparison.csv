@@ -1,0 +1,3 @@
+group,n_samples,hit_rate,avg_forward_return,insufficient_data
+flagged,278,0.3345323741007194,-0.00298867211747524,False
+unflagged,0,,,True

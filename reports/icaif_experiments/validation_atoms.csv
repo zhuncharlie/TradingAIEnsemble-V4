@@ -1,0 +1,10 @@
+adapter,ticker,date,task_id,validation_atoms
+agentictrading,,,observation_batch_day1__2026-07-06,"q5_present,validation_status:weak,has_equity_curve"
+finrl,,,observation_batch_day1__2026-07-06,"q5_present,validation_status:weak,has_equity_curve"
+prediction_arena,,,observation_batch_day1__2026-07-06,"q5_present,validation_status:fail,has_equity_curve"
+vibe_trading,,,observation_batch_day1__2026-07-06,"q5_present,validation_status:weak,has_equity_curve"
+finrl,,,observation_batch_day1_historical_extension__2026-05-15,"q5_present,validation_status:strong,has_equity_curve"
+finrl,,,observation_batch_day1_historical_extension__2026-05-21,"q5_present,validation_status:strong,has_equity_curve"
+finrl,,,observation_batch_day1_historical_extension__2026-05-27,"q5_present,validation_status:strong,has_equity_curve"
+finrl,,,observation_batch_day1_historical_extension__2026-06-02,"q5_present,validation_status:strong,has_equity_curve"
+finrl,,,observation_batch_day1_historical_extension__2026-06-08,"q5_present,validation_status:weak,has_equity_curve"

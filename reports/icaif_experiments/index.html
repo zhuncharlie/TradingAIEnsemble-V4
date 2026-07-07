@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICAIF Experiment Suite — 5个实验总结报告</title>
+<style>
+  :root {
+    --bg: #fafafa; --card: #ffffff; --ink: #1a1a1a; --muted: #666;
+    --accent: #2563eb; --good: #16a34a; --bad: #dc2626; --warn: #d97706;
+    --border: #e5e7eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--ink); margin: 0; line-height: 1.65;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white;
+    padding: 48px 24px 32px; text-align: center;
+  }
+  header h1 { margin: 0 0 8px; font-size: 28px; }
+  header p { margin: 4px 0; opacity: 0.9; font-size: 15px; }
+  nav {
+    position: sticky; top: 0; background: white; border-bottom: 1px solid var(--border);
+    padding: 10px 0; z-index: 10; overflow-x: auto; white-space: nowrap;
+  }
+  nav a {
+    color: var(--accent); text-decoration: none; margin: 0 14px; font-size: 14px; font-weight: 600;
+  }
+  nav a:hover { text-decoration: underline; }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+  .summary-bar {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px; margin: 24px 0 40px;
+  }
+  .stat {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; text-align: center;
+  }
+  .stat .num { font-size: 26px; font-weight: 700; color: var(--accent); }
+  .stat .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  section.exp {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px 30px; margin-bottom: 28px; scroll-margin-top: 60px;
+  }
+  section.exp h2 {
+    margin-top: 0; font-size: 21px; display: flex; align-items: center; gap: 10px;
+  }
+  .badge {
+    display: inline-block; background: var(--accent); color: white; font-size: 12px;
+    font-weight: 700; padding: 3px 10px; border-radius: 20px;
+  }
+  h3 { font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em;
+       margin: 22px 0 8px; }
+  p { font-size: 15px; }
+  .callout {
+    background: #f0f7ff; border-left: 4px solid var(--accent); padding: 12px 16px;
+    border-radius: 6px; margin: 14px 0; font-size: 14.5px;
+  }
+  .callout.warn { background: #fff8ec; border-left-color: var(--warn); }
+  .callout.bad { background: #fef2f2; border-left-color: var(--bad); }
+  .callout.good { background: #f0fdf4; border-left-color: var(--good); }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; }
+  th { background: #f3f4f6; }
+  code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  .figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 16px 0; }
+  .figs figure { margin: 0; }
+  .figs img { width: 100%; border: 1px solid var(--border); border-radius: 8px; }
+  .figs figcaption { font-size: 12.5px; color: var(--muted); margin-top: 6px; text-align: center; }
+  .conclusion { font-weight: 600; }
+  .toc-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white;
+    font-size: 14px; flex-shrink: 0;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; }
+  a.file-link { font-family: monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Trading-AI-Ensemble — ICAIF Experiment Suite</h1>
+  <p>15个真实开源trading AI项目 · 292条真实观测数据 · 5个分析实验</p>
+  <p style="opacity:0.75; font-size:13px;">生成时间: 2026-07-07 · 数据来自 observation_batch_day1 + historical_extension</p>
+</header>
+
+<nav>
+  <a href="#overview">概览</a>
+  <a href="#exp1">实验1: 能力覆盖审计</a>
+  <a href="#exp2">实验2: 次要字段价值</a>
+  <a href="#exp3">实验3: 信心校准</a>
+  <a href="#exp4">实验4: 跨Agent矛盾检测</a>
+  <a href="#exp5">实验5: 融合方式对比</a>
+  <a href="#synthesis">综合结论</a>
+  <a href="#limitations">局限与下一步</a>
+</nav>
+
+<main>
+
+<section id="overview" class="exp">
+  <h2>整体是怎么来的</h2>
+  <p>这15个adapter,每一个都是对一个真实开源trading AI项目(LLM agent、强化学习、遗传算法、因子挖掘等不同范式)的薄封装,统一翻译成
+  <code>Q1(买卖决策)</code>、<code>Q2(市场情绪/风险)</code>、<code>Q3(alpha信号)</code>、<code>Q4(组合配置)</code>、<code>Q5(回测验证)</code>
+  这5种标准输出schema。先做了一次轻量可跑性体检(22/22探测成功),再跑了一批真实观测(今天的快照 + 5个历史交易日,覆盖10只股票+12资产组合),
+  最后在这292条真实数据上跑了下面5个分析实验——全程没有编造过任何数字,没有做过实盘交易。</p>
+  <div class="summary-bar">
+    <div class="stat"><div class="num">15</div><div class="label">真实adapter</div></div>
+    <div class="stat"><div class="num">292</div><div class="label">真实观测记录</div></div>
+    <div class="stat"><div class="num">129</div><div class="label">发现的矛盾案例</div></div>
+    <div class="stat"><div class="num">5</div><div class="label">分析实验</div></div>
+  </div>
+</section>
+
+<section id="exp1" class="exp">
+  <h2><span class="toc-num">1</span> Adapter Coverage Audit <span class="badge">能力覆盖审计</span></h2>
+
+  <h3>怎么做的</h3>
+  <p>对每个adapter,交叉核对三样东西是否一致:代码里<b>声称</b>能回答哪些问题(<code>questions_answered</code>类属性)、
+  代码里<b>真的写了</b>处理逻辑的问题(静态扫描源码,不执行)、硬盘上<code>results/</code>目录里<b>真的产出过</b>结果的问题。
+  三者不一致的地方全部列出来,不隐藏。</p>
+
+  <h3>为了回答什么</h3>
+  <p>15个adapter实际能力和它们自己的声明是否对得上?Q1-Q5这套统一schema,是不是真的能装下这15个五花八门的项目?</p>
+
+  <div class="figs">
+    <figure><img src="fig_17_q1q5_adapter_coverage.png"><figcaption>每个问题类型有多少adapter产出过真实数据</figcaption></figure>
+    <figure><img src="fig_01_adapter_q_coverage_heatmap.png"><figcaption>15×5能力矩阵:声称/实现/产出三层对照</figcaption></figure>
+  </div>
+
+  <h3>结果</h3>
+  <table>
+    <tr><th>问题</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th></tr>
+    <tr><th>覆盖adapter数</th><td>3</td><td>4</td><td><b>8</b></td><td>3</td><td>4</td></tr>
+  </table>
+  <div class="callout warn">此前口头说的"Q1有4个adapter"经核实<b>是错的</b>,真实是3个(ai_hedge_fund/deepalpha/tradingagents)——这正是"不要手工估数字,让代码去验证"的一个真实例子。</div>
+
+  <h3 class="conclusion">结论</h3>
+  <p>15个adapter<b>结构上100%都能装进Q1-Q5</b>,没有一个能力"无处安放"——但覆盖极不均匀,Q3(找信号)是Q1/Q4的2.7倍,
+  暴露出这批开源项目本身偏重"因子挖掘"这个赛道。另外还发现两处schema"装得进但装不满"的问题:
+  <code>bull_case</code>/<code>bear_case</code>字段几乎没人用,<code>Q4Portfolio</code>缺ticker字段、<code>Q5Backtest</code>连date都没有,
+  导致后面实验4里37%的矛盾案例只能做"尽力而为"对齐。</p>
+</section>
+
+<section id="exp2" class="exp">
+  <h2><span class="toc-num">2</span> Secondary-Field Value <span class="badge">次要字段价值</span></h2>
+
+  <h3>怎么做的</h3>
+  <p>把每个问题的字段拆成"标题字段"(如action=BUY/SELL)和"次要字段"(如理由、证据、风险等级),统计次要字段实际填充率;
+  再用一个12类关键词词典(momentum/valuation/sentiment/risk等)把reasoning、drivers、supporting_evidence这类自由文本粗略打上标签。</p>
+
+  <h3>为了回答什么</h3>
+  <p>如果只看BUY/SELL这种标题字段做对比,会丢掉多少真实存在的信息?</p>
+
+  <div class="figs">
+    <figure><img src="fig_18_headline_compression_loss.png"><figcaption>左:64%的BUY决策背后藏着风险警示;右:22个次要字段各自的填充率</figcaption></figure>
+    <figure><img src="fig_05_evidence_cluster_map.png"><figcaption>各adapter的证据文本主题分布</figcaption></figure>
+  </div>
+
+  <h3>结果</h3>
+  <ul>
+    <li><code>reasoning</code>/<code>drivers</code>/<code>supporting_evidence</code>三个字段<b>100%</b>被填写</li>
+    <li><code>bull_case</code>/<code>bear_case</code>只有<b>15.4%</b>被填写,基本是摆设</li>
+    <li>11次唯一的BUY决策里,<b>7次(64%)</b>背后藏着另一个adapter给出的高风险判断——纯headline对比完全看不到</li>
+    <li>22个次要字段里,<b>真正被下游规则/融合/校准逻辑用上的只有8个</b>,其余14个只统计过覆盖率,没参与任何判断</li>
+  </ul>
+
+  <h3 class="conclusion">结论</h3>
+  <p>压缩成headline确实会丢信息,但丢失不是均匀的——<b>更隐蔽的丢失是"语义"而不是"内容"</b>:9个adapter的confidence/strength字段
+  用的是完全不同的计算公式,只看数字会误以为它们可比,其实不然(详见实验3)。</p>
+</section>
+
+<section id="exp3" class="exp">
+  <h2><span class="toc-num">3</span> Confidence Calibration <span class="badge">信心校准</span></h2>
+
+  <h3>怎么做的</h3>
+  <p>用yfinance拉取真实历史价格,给每条"说BUY/SELL/LONG/SHORT"的记录算出1天/5天/20天后的真实涨跌,
+  和adapter自报的confidence/strength分桶比对,"信心-实际命中率"的差就是校准误差。</p>
+
+  <h3>为了回答什么</h3>
+  <p>adapter说"我有97%把握"的时候,是不是真的97%次都对?这些confidence/strength数字到底是怎么算出来的?</p>
+
+  <div class="figs">
+    <figure><img src="fig_06_reliability_diagram_q1.png"><figcaption>Q1信心 vs 实际命中率(理想情况应贴合对角线)</figcaption></figure>
+    <figure><img src="fig_08_calibration_error_by_adapter.png"><figcaption>各adapter的平均校准误差</figcaption></figure>
+    <figure><img src="fig_16_calibration_sample_size_distribution.png"><figcaption>校准分桶样本量分布——28/39个桶样本量&lt;10,偏噪声</figcaption></figure>
+  </div>
+
+  <h3>结果</h3>
+  <table>
+    <tr><th>adapter</th><th>字段计算原理(挖出来的,不是文档里写的)</th><th>典型表现</th></tr>
+    <tr><td>deepalpha (Q1)</td><td>两个模型(XGBoost+LightGBM)预测得像不像</td><td>信心0.97,5天命中率仅<b>32%</b>(全表最差)</td></tr>
+    <tr><td>qlib (Q3)</td><td>今天这只票的因子值排名有多极端</td><td>满信心档(1.0)命中率仅<b>25%</b></td></tr>
+    <tr><td>tradingagents (Q1)</td><td>写死的映射表(buy→0.85),不是真算出来的</td><td>暂无可打分样本</td></tr>
+  </table>
+  <div class="callout bad">9个有confidence/strength字段的adapter,背后是7种完全不同的计算逻辑,<b>没有一个是真正意义上"校准过的概率"</b>——deepalpha量的是"模型间一致性",qlib量的是"排名极端度",都不等于"预测准确性"。</div>
+
+  <h3 class="conclusion">结论</h3>
+  <p>自报信心系统性地不可信,而且这不是adapter"说谎",是这些数字从设计上就没打算回答"我对不对"这个问题。样本量目前还偏小(72%的分桶&lt;10个样本),结论方向可信但精度有限。</p>
+</section>
+
+<section id="exp4" class="exp">
+  <h2><span class="toc-num">4</span> Cross-Agent Contradiction Detection <span class="badge">跨Agent矛盾检测</span></h2>
+
+  <h3>怎么做的</h3>
+  <p>8条规则(由你在最初任务里逐字指定,不是我们反推或引用文献得出的),在同一(股票,日期)上比对不同adapter的输出,
+  命中即记一条案例。Q1/Q2/Q3三者都带ticker+date可以精确对齐;Q4/Q5缺这些字段,只能按同一次比较批次(task_id)"尽力而为"对齐。</p>
+
+  <h3>为了回答什么</h3>
+  <p>不同adapter对同一件事的判断,到底有多少是互相打架的?</p>
+
+  <div class="figs">
+    <figure><img src="fig_09_contradiction_counts.png"><figcaption>8条规则各自命中的案例数</figcaption></figure>
+    <figure><img src="fig_15_adapter_involvement_frequency.png"><figcaption>哪些adapter最常卷入矛盾</figcaption></figure>
+    <figure><img src="fig_14_alignment_precision_split.png"><figcaption>精确对齐 vs 尽力而为对齐的案例占比</figcaption></figure>
+    <figure><img src="fig_19_headline_vs_interwoven_detection.png"><figcaption>纯headline对比 vs 交织次要字段:0 vs 129</figcaption></figure>
+  </div>
+
+  <h3>结果</h3>
+  <table>
+    <tr><th>规则</th><th>案例数</th></tr>
+    <tr><td>LONG_WITH_WEAK_VALIDATION(看多但回测验证薄弱)</td><td>43</td></tr>
+    <tr><td>HIGH_CONFIDENCE_POOR_CALIBRATION(高信心却历史不准)</td><td>39(<b>100%来自deepalpha</b>)</td></tr>
+    <tr><td>ACTION_ALPHA_DIRECTION_CONFLICT(买卖判断vs信号方向冲突)</td><td>27(其中4条是deepalpha自己跟自己矛盾)</td></tr>
+    <tr><td>BUY_WITH_HIGH_RISK(买入却被判高风险)</td><td>15</td></tr>
+    <tr><td>HIGH_WEIGHT_HIGH_DRAWDOWN(高仓位伴随严重回撤)</td><td>5</td></tr>
+  </table>
+  <div class="callout">深挖发现deepalpha的"自我矛盾"根因:它的Q1和Q3各自独立重新训练模型,<b>没有固定随机种子</b>,同一只票同一天两次训练,预测方向完全可能翻转——是代码问题,不是"两套推理逻辑良性分歧"。</div>
+
+  <h3 class="conclusion">结论</h3>
+  <p>129条真实矛盾案例,不是偶发个案。纯粹比对BUY/SELL这种标题标签,永远发现不了这些矛盾(见上面0 vs 129那张图)——必须交织次要字段才行。</p>
+</section>
+
+<section id="exp5" class="exp">
+  <h2><span class="toc-num">5</span> Fusion Ablation <span class="badge">融合方式对比</span></h2>
+
+  <h3>怎么做的</h3>
+  <p>同一批(股票,日期)信号,分别用①简单投票 ②按信心加权投票 ③综合考虑风险/验证/矛盾/证据一致性的interwoven加权投票,
+  合成一个最终决策,再用真实历史收益率给三种方法打分。</p>
+
+  <h3>为了回答什么</h3>
+  <p>更复杂、"更聪明"的融合方法,是不是真的比简单投票更准?</p>
+
+  <div class="figs">
+    <figure><img src="fig_11_fusion_ablation_metrics.png"><figcaption>三种方法的真实收益率指标对比</figcaption></figure>
+    <figure><img src="fig_13_final_decision_waterfall_example.png"><figcaption>interwoven打分的逐步拆解示例</figcaption></figure>
+  </div>
+
+  <h3>结果</h3>
+  <table>
+    <tr><th>方法</th><th>命中率</th></tr>
+    <tr><td>majority_vote(简单投票)</td><td><b>61%</b></td></tr>
+    <tr><td>confidence_weighted_vote(信心加权)</td><td>57%</td></tr>
+    <tr><td>interwoven_calibrated_fusion(综合考虑)</td><td>57%(和加权投票完全相同)</td></tr>
+  </table>
+  <div class="callout bad">反直觉结果:更复杂的方法反而更差。根因精确定位——某个adapter(qlib)经常把信心打满但历史上常错,在"加权平均"机制下,它能凭一票满权重就压过其他adapter原本正确的判断,而简单投票不会被这样"一票否决"。</div>
+
+  <h3 class="conclusion">结论</h3>
+  <p>目前"越复杂越好"的假设不成立,但根因已经具体定位到代码层面:interwoven目前<b>没有把adapter自己的历史校准表现折算进投票权重</b>——这是明确、可执行的下一步修复项,不是玄学。</p>
+</section>
+
+<section id="synthesis" class="exp">
+  <h2>综合三个核心问题</h2>
+  <table>
+    <tr><th>问题</th><th>能否回答</th><th>要点</th></tr>
+    <tr><td>15个真实adapter能否被Q1-Q5统一覆盖?</td><td class="conclusion" style="color:var(--good)">能</td><td>结构上100%覆盖,但分布严重不均(Q3=8 vs Q1/Q4=3各)</td></tr>
+    <tr><td>压缩成headline会丢失什么?</td><td class="conclusion" style="color:var(--good)">能,且已量化</td><td>64%的BUY决策藏着风险警示;更危险的是"语义"层面的丢失(同名字段测量完全不同的东西)</td></tr>
+    <tr><td>交织次要字段能否发现headline看不到的冲突/风险/过度自信?</td><td class="conclusion" style="color:var(--good)">能,证据最强</td><td>129条真实矛盾案例,纯headline对比结构上不可能发现任何一条</td></tr>
+  </table>
+</section>
+
+<section id="limitations" class="exp">
+  <h2>局限与下一步</h2>
+  <ul>
+    <li>校准/融合实验样本量仍偏小(28/39个校准分桶&lt;10样本,融合只在40个组上评估)——需要更多历史批次</li>
+    <li>Q4/Q5缺ticker/date字段,37%的矛盾案例是"尽力而为"对齐,不是精确对齐</li>
+    <li>interwoven融合还没接入"校准可靠度加权",这是让实验5核心论点站得住的关键待办</li>
+    <li>还没有任何论文正文——现在是扎实的实验基础设施+真实发现,写作(intro/related work/discussion)完全空白</li>
+  </ul>
+  <p>完整数据见本目录下所有<code>*.csv</code>,详细问答记录见 <a class="file-link" href="EXPERIMENT_QA_NOTES.md">EXPERIMENT_QA_NOTES.md</a> 和 <a class="file-link" href="PAPER_FINDINGS.md">PAPER_FINDINGS.md</a>。</p>
+</section>
+
+</main>
+
+<footer>trading-ai-ensemble · ICAIF Experiment Suite · 本报告所有数字均可在同目录CSV文件中复现</footer>
+
+</body>
+</html>
