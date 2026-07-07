@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.03422522385238142,
+  "supporting_evidence": [
+    "close_max_20 (importance=0.0900)",
+    "ema_50 (importance=0.0518)",
+    "ema_20 (importance=0.0425)"
+  ],
+  "expected_horizon": "5d",
+  "expected_return": -0.0017112611926190712,
+  "adapter": "deepalpha",
+  "ticker": "QQQ",
+  "date": "2026-05-15",
+  "cost_usd": 0.0,
+  "latency_sec": 11.301034927368164
+}

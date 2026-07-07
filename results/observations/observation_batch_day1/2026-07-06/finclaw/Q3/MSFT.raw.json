@@ -1,0 +1,20 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.05339752620755398,
+  "supporting_evidence": [
+    "Real score_stock() = 4.73/10 for 'MSFT' as of the last point-in-time trading day on/before 2026-07-06, from the real evolved winning StrategyDNA (fitness=63.84).",
+    "Top evolved factor weight: w_revenue_yoy = 0.1577",
+    "Top evolved factor weight: w_revenue_qoq = 0.1384",
+    "Top evolved factor weight: w_cashflow = 0.0892",
+    "Walk-forward OOS: 4/4 windows profitable, annual_return=47.4%, sharpe=2.81, win_rate=61.0%, trades=73 (real upstream walk-forward metrics, not reimplemented).",
+    "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code \u2014 NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...')."
+  ],
+  "expected_horizon": "4d",
+  "expected_return": 0.47352200000000005,
+  "adapter": "finclaw",
+  "ticker": "MSFT",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 87.42139911651611
+}

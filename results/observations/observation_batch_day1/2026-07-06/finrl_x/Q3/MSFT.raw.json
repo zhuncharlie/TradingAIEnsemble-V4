@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.24137931034482762,
+  "supporting_evidence": [
+    "cur_ratio (importance=0.157, model=Stacking)",
+    "operating_margin (importance=0.143, model=Stacking)",
+    "pb (importance=0.125, model=Stacking)"
+  ],
+  "expected_horizon": "1q",
+  "expected_return": 0.0381016747864618,
+  "adapter": "finrl_x",
+  "ticker": "MSFT",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 54.297367334365845
+}

@@ -1,0 +1,13 @@
+{
+  "action": "SELL",
+  "confidence": 0.9930532015892839,
+  "reasoning": "XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on QQQ's own 3y yfinance history \u2014 no pretrained Kaggle-sourced artifacts were available) predicts a 5-day forward return of -0.4029%, against a transaction-cost-based signal threshold of 0.1500%. Model agreement (1 - normalised prediction dispersion) is 0.99.",
+  "bull_case": null,
+  "bear_case": null,
+  "time_horizon": "5d",
+  "adapter": "deepalpha",
+  "ticker": "QQQ",
+  "date": "2026-06-02",
+  "cost_usd": 0.0,
+  "latency_sec": 9.204334259033203
+}

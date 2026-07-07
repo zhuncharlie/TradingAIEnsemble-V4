@@ -1,0 +1,22 @@
+{
+  "sentiment_score": 0.5071428571428571,
+  "risk_level": "MEDIUM",
+  "drivers": [
+    "Tech stocks live: SpaceX stock gets its next catalyst, Samsung earnings on deck (positive, score=0.25)",
+    "Coatue Hedge Fund Jumps 24.5% This Year on AI Rally (positive, score=0.85)",
+    "Exchange-Traded Funds Higher, US Equities Mixed After Midday (positive, score=0.25)",
+    "Fusion risk factor: Concentration risk: 100% allocation to a single asset (QQQ) magnifies exposure to sector-specific and market volatility.",
+    "Fusion risk factor: Technical divergence: MACD is below its signal line with a negative histogram, indicating short-term bearish momentum despite upward price trend.",
+    "Fusion risk factor: Momentum deceleration: While 20d and 60d momentum are positive, the 60d momentum acceleration is positive but the RSI is neutral, suggesting possible trend exhaustion."
+  ],
+  "sources": [
+    "Yahoo Finance news + price history (yfinance)",
+    "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+    "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+  ],
+  "adapter": "nofx",
+  "ticker": "QQQ",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 31.020331382751465
+}

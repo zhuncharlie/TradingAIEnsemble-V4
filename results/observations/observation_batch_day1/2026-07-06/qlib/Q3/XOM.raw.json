@@ -1,0 +1,22 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 1.0,
+  "supporting_evidence": [
+    "'XOM' real LGBModel-predicted score -0.07098 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 8/8 (0% percentile) across the real 8-ticker universe on 2026-07-06.",
+    "Real Alpha158 factor 'RSQR10': LightGBM importance=3",
+    "Real Alpha158 factor 'HIGH0': LightGBM importance=2",
+    "Real Alpha158 factor 'CORR60': LightGBM importance=2",
+    "Real Alpha158 factor 'CORD5': LightGBM importance=2",
+    "Real Alpha158 factor 'BETA30': LightGBM importance=2",
+    "Real raw Alpha158 factor values for 'XOM' on 2026-07-06: KMID=0.0045, KLEN=0.0100, ROC5=0.9955, ROC20=1.1085, ROC60=1.1313, MA5=0.9964, MA20=1.0311, STD20=0.0402",
+    "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-04-25, 2026-02-19], validated on [2026-02-20, 2026-04-21], best/early-stopped iteration=3 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."
+  ],
+  "expected_horizon": "2d",
+  "expected_return": -0.07097821115056108,
+  "adapter": "qlib",
+  "ticker": "XOM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 15.80468487739563
+}

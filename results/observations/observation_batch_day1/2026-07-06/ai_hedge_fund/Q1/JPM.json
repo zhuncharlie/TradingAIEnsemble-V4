@@ -1,0 +1,24 @@
+{
+  "adapter": "ai_hedge_fund",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": {
+    "action": "HOLD",
+    "confidence": 1.0,
+    "reasoning": "No valid trade available",
+    "bull_case": null,
+    "bear_case": null,
+    "time_horizon": "1d",
+    "adapter": "ai_hedge_fund",
+    "ticker": "JPM",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 2.7761034965515137
+  },
+  "q2": null,
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=JPM"
+}

@@ -1,0 +1,19 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.08474209960745059,
+  "supporting_evidence": [
+    "RD-Agent real LLM-proposed research hypothesis: Simple, classic factors like momentum, volatility, volume ratio, price trend, and price range can capture different aspects of market behavior and provide predictive power for future returns.",
+    "Reason: Starting with fundamental and easy-to-compute factors allows for quick validation and builds a baseline factor library. Momentum captures trend effects, volatility reflects risk, volume indicates trading activity, moving average shows trend strength, and price range measures intraday volatility. These factors are widely used in quantitative finance and are likely to be effective in explaining cross-sectional returns.",
+    "Real LLM-formulated factor 'Momentum_20d': [Momentum Factor] Momentum factor calculated as the cumulative return over the past 20 trading days. [formulation: \\text{Momentum}_{t} = \\frac{P_{t}}{P_{t-20}} - 1]",
+    "Real CoSTEER implement+evaluate verdict: final_decision=True -- The implementation executed successfully, matches the factor description, and produced a correctly formatted output.",
+    "This adapter's own translation: correlation of the real factor values with JPM's real 5-day forward return = -0.0847 (used to derive direction/strength, not upstream's own evaluation)."
+  ],
+  "expected_horizon": "5d",
+  "expected_return": null,
+  "adapter": "rdagent",
+  "ticker": "JPM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0029813,
+  "latency_sec": 65.33154511451721
+}

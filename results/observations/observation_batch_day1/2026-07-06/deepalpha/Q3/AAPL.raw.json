@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.08160483757405407,
+  "supporting_evidence": [
+    "bb_middle (importance=0.0523)",
+    "sma_50 (importance=0.0466)",
+    "cmf (importance=0.0447)"
+  ],
+  "expected_horizon": "5d",
+  "expected_return": -0.0040802418787027036,
+  "adapter": "deepalpha",
+  "ticker": "AAPL",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 9.81350588798523
+}

@@ -1,0 +1,17 @@
+{
+  "weights": {
+    "GLD": 0.11626434326171875,
+    "JPM": 0.22163338959217072,
+    "NVDA": 0.2950148284435272,
+    "QQQ": 0.10852988064289093,
+    "SPY": 0.2585575580596924
+  },
+  "cash_ratio": 0.0,
+  "rationale": "Weights are the final-day allocation from a real A2C policy (upstream FinRL's own DRLAgent wrapping stable_baselines3.A2C), trained live for 3000 timesteps on NVDA, SPY, QQQ, JPM, GLD's real yfinance history from 2024-11-17 to 2026-05-21 (upstream's own StockPortfolioEnv reward = portfolio value, upstream's own softmax weight normalization \u2014 no pretrained checkpoint was available or used). Trailing 30-day equal-weight realized return +7.16% \u2192 heuristic regime label BULL.",
+  "regime": "BULL",
+  "rebalance_freq": "DAILY",
+  "adapter": "finrl",
+  "date": "2026-05-21",
+  "cost_usd": 0.0,
+  "latency_sec": 53.8982138633728
+}

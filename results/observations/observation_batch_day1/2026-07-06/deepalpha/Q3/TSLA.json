@@ -1,0 +1,28 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.8391535243995635,
+    "supporting_evidence": [
+      "ema_200 (importance=0.0923)",
+      "ema_5 (importance=0.0543)",
+      "close_max_20 (importance=0.0449)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": -0.041957676219978174,
+    "adapter": "deepalpha",
+    "ticker": "TSLA",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 13.407167673110962
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=TSLA"
+}

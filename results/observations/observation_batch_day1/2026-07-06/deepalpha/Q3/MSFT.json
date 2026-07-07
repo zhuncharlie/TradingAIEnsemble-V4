@@ -1,0 +1,28 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "LONG",
+    "strength": 0.1551685601090139,
+    "supporting_evidence": [
+      "close_min_20 (importance=0.0930)",
+      "close_max_10 (importance=0.0612)",
+      "close_min_10 (importance=0.0527)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": 0.007758428005450695,
+    "adapter": "deepalpha",
+    "ticker": "MSFT",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 14.288374900817871
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=MSFT"
+}

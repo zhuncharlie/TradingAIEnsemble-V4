@@ -1,0 +1,21 @@
+{
+  "sentiment_score": 0.15999999999999998,
+  "risk_level": "LOW",
+  "drivers": [
+    "Overall Sentiment:** **Mildly Bullish** (Score: 5.8/10)",
+    "Confidence:** Medium",
+    "AAPL Sentiment Report (2026-06-29 to 2026-07-06)",
+    "1. Source-by-Source Breakdown",
+    "News Headlines (Yahoo Finance \u2014 Institutional Framing)"
+  ],
+  "sources": [
+    "Yahoo Finance news",
+    "StockTwits",
+    "Reddit"
+  ],
+  "adapter": "tradingagents",
+  "ticker": "AAPL",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 279.98177433013916
+}

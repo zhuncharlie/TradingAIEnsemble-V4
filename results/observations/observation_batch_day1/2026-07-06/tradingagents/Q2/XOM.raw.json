@@ -1,0 +1,21 @@
+{
+  "sentiment_score": 0.040000000000000036,
+  "risk_level": "LOW",
+  "drivers": [
+    "Overall Sentiment:** **Mixed** (Score: 5.2/10)",
+    "Confidence:** Medium",
+    "Sentiment Report for XOM (ExxonMobil Holdings Corporation)",
+    "Period**: 2026-06-29 to 2026-07-06 | **Report Date**: 2026-07-06",
+    "1. Source-by-Source Breakdown"
+  ],
+  "sources": [
+    "Yahoo Finance news",
+    "StockTwits",
+    "Reddit"
+  ],
+  "adapter": "tradingagents",
+  "ticker": "XOM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 256.0998020172119
+}

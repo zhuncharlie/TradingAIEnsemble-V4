@@ -1,0 +1,28 @@
+{
+  "adapter": "fingpt",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": -0.2,
+    "risk_level": "HIGH",
+    "drivers": [
+      "The S&P 500 Looks Pricey at 22x Earnings. On Cash Flow, It’s a Terrifying 32x. (negative)",
+      "Pre-Markets Muted Ahead of (Expected) Quiet Week (neutral)",
+      "Exchange-Traded Funds Higher, Equity Futures Mixed Pre-Bell Monday as Chip Stocks Rebound (neutral)"
+    ],
+    "sources": [
+      "Yahoo Finance news (yfinance)"
+    ],
+    "adapter": "fingpt",
+    "ticker": "SPY",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 84.87306761741638
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=SPY"
+}

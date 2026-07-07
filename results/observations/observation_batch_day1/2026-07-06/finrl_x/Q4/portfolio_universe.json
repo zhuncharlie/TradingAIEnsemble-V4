@@ -1,0 +1,31 @@
+{
+  "adapter": "finrl_x",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": null,
+  "q4": {
+    "weights": {
+      "ADI": 0.17515325546264648,
+      "AMD": 0.08574634790420532,
+      "CSCO": 0.15308967232704163,
+      "INTC": 0.08574634790420532,
+      "INTU": 0.09568891674280167,
+      "LRCX": 0.23308275640010834,
+      "META": 0.08574634790420532,
+      "PANW": 0.08574634790420532
+    },
+    "cash_ratio": 7.450580596923828e-9,
+    "rationale": "Portfolio is upstream FinRL-Trading's own top-25% ML-selected subset of a 30-name scoped NASDAQ universe (PANW, INTC, INTU, LRCX, ADI, AMD, META, CSCO), allocated by a real A2C policy (upstream FinRL's own DRLAgent wrapping stable_baselines3.A2C, trained live for 3000 timesteps on real yfinance history through 2026-07-06). Upstream's own slow-regime detector (adaptive_rotation.market_regime, real weekly ^GSPC/^VIX data) reports 'risk_on' (risk_score=0), contributing a 0% cash floor overlay on top of the DRL policy's own 0.0% cash allocation. None of the caller-requested tickers were in the ML-selected top-25% set this cycle; the full ML-selected set is used instead (see adapters/finrl_x_adapter.py header, 'Q4 universe').",
+    "regime": "BULL",
+    "rebalance_freq": "DAILY",
+    "adapter": "finrl_x",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 116.03560256958008
+  },
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=portfolio_universe"
+}

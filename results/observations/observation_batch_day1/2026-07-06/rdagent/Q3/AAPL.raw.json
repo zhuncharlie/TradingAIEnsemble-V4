@@ -1,0 +1,19 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.23398241764691344,
+  "supporting_evidence": [
+    "RD-Agent real LLM-proposed research hypothesis: Simple momentum, volatility, and volume-based factors derived from daily price and volume data will provide predictive power for future returns due to market inefficiencies and investor behavior patterns.",
+    "Reason: Starting with basic factors is advisable as they are easy to compute, interpret, and have established theoretical backing. Momentum captures trend persistence, volatility reflects risk, and volume turnover indicates liquidity and trading activity. These factors cover different dimensions of market data and are commonly used in quantitative strategies, making them a solid foundation for initial experiments.",
+    "Real LLM-formulated factor 'Momentum10': [Momentum Factor] Simple 10-day momentum: percentage change in closing price over the last 10 trading days. [formulation: R_{10} = \\frac{P_t}{P_{t-10}} - 1]",
+    "Real CoSTEER implement+evaluate verdict: final_decision=True -- The factor was implemented correctly, execution succeeded, and the output format is valid.",
+    "This adapter's own translation: correlation of the real factor values with AAPL's real 5-day forward return = -0.2340 (used to derive direction/strength, not upstream's own evaluation)."
+  ],
+  "expected_horizon": "5d",
+  "expected_return": null,
+  "adapter": "rdagent",
+  "ticker": "AAPL",
+  "date": "2026-07-06",
+  "cost_usd": 0.0019338200000000002,
+  "latency_sec": 46.8758111000061
+}

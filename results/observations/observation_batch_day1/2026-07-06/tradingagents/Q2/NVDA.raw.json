@@ -1,0 +1,21 @@
+{
+  "sentiment_score": 0.3,
+  "risk_level": "MEDIUM",
+  "drivers": [
+    "Overall Sentiment:** **Mildly Bullish** (Score: 6.5/10)",
+    "Confidence:** Medium",
+    "Sentiment Report: NVDA \u2014 2026-06-29 to 2026-07-06",
+    "1. Source-by-Source Breakdown",
+    "A. News Headlines (Yahoo Finance) \u2014 Institutional Framing"
+  ],
+  "sources": [
+    "Yahoo Finance news",
+    "StockTwits",
+    "Reddit"
+  ],
+  "adapter": "tradingagents",
+  "ticker": "NVDA",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 276.61620259284973
+}

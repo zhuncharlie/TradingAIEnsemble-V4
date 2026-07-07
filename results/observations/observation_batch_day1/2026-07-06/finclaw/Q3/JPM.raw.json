@@ -1,0 +1,20 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.04870594846482117,
+  "supporting_evidence": [
+    "Real score_stock() = 5.24/10 for 'JPM' as of the last point-in-time trading day on/before 2026-07-06, from the real evolved winning StrategyDNA (fitness=28.48).",
+    "Top evolved factor weight: w_adx = 0.1031",
+    "Top evolved factor weight: w_kdj = 0.0951",
+    "Top evolved factor weight: w_cci = 0.0921",
+    "Walk-forward OOS: 4/4 windows profitable, annual_return=12.5%, sharpe=3.01, win_rate=54.2%, trades=130 (real upstream walk-forward metrics, not reimplemented).",
+    "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code \u2014 NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...')."
+  ],
+  "expected_horizon": "2d",
+  "expected_return": 0.124954,
+  "adapter": "finclaw",
+  "ticker": "JPM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 99.61142802238464
+}

@@ -1,0 +1,17 @@
+{
+  "sentiment_score": -0.6,
+  "risk_level": "HIGH",
+  "drivers": [
+    "Microsoft to cut 3,200 jobs amid Xbox restructuring. 'Our business ... is not healthy.' (negative)",
+    "Microsoft plans to cut 3,200 jobs from its Xbox division (negative)",
+    "Microsoft cuts 4,800 jobs as it revamps Xbox (negative)"
+  ],
+  "sources": [
+    "Yahoo Finance news (yfinance)"
+  ],
+  "adapter": "fingpt",
+  "ticker": "MSFT",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 78.33028936386108
+}

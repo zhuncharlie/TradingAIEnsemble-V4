@@ -1,0 +1,28 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1_historical_extension__2026-05-21",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.0261980019849825,
+    "supporting_evidence": [
+      "close_max_20 (importance=0.0706)",
+      "ema_20 (importance=0.0515)",
+      "vwap (importance=0.0458)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": -0.001309900099249125,
+    "adapter": "deepalpha",
+    "ticker": "QQQ",
+    "date": "2026-05-21",
+    "cost_usd": 0.0,
+    "latency_sec": 11.051333665847778
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=QQQ"
+}

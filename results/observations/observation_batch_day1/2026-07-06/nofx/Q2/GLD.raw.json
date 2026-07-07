@@ -1,0 +1,22 @@
+{
+  "sentiment_score": 0.6076086956521739,
+  "risk_level": "EXTREME",
+  "drivers": [
+    "Update: Gold Rises to a Two-Week High on Easing Inflation Concerns (positive, score=0.80)",
+    "Weak June Jobs Data Likely to Boost These ETF Areas (neutral, score=0.00)",
+    "Gold Rises to a Two-Week High on Easing Inflation Concerns (positive, score=0.75)",
+    "Fusion risk factor: Concentration risk: 100% allocation to a single asset (GLD) exposes the portfolio to idiosyncratic gold price movements.",
+    "Fusion risk factor: Technical downtrend: price significantly below 20-day ( -0.11% ), 50-day ( -5.85% ), and 200-day ( -6.96% ) moving averages, indicating bearish momentum.",
+    "Fusion risk factor: Negative medium-term momentum: 60-day momentum is -12.87% with negative acceleration, suggesting persistent selling pressure."
+  ],
+  "sources": [
+    "Yahoo Finance news + price history (yfinance)",
+    "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+    "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+  ],
+  "adapter": "nofx",
+  "ticker": "GLD",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 32.06696438789368
+}

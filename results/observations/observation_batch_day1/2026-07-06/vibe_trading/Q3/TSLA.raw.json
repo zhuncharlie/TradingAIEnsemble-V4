@@ -1,0 +1,16 @@
+{
+  "signal_type": "MOMENTUM",
+  "direction": "NEUTRAL",
+  "strength": 0.0,
+  "supporting_evidence": [
+    "DeepSeek-generated SignalEngine (upstream's real strategy-generate skill + build_llm(), single live call) implementing: Go long TSLA when its 10-day moving average crosses above its 50-day moving average, flat otherwise (trend-following momentum crossover).",
+    "Real backtest over 2025-12-18/2026-07-06: sharpe=-0.170, trades=1, total_return=-0.0320"
+  ],
+  "expected_horizon": "1w",
+  "expected_return": null,
+  "adapter": "vibe_trading",
+  "ticker": "TSLA",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 32.23983645439148
+}

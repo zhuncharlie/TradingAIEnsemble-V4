@@ -1,0 +1,19 @@
+{
+  "sentiment_score": -0.6519230769230769,
+  "risk_level": "MEDIUM",
+  "drivers": [
+    "Microsoft to cut 3,200 jobs amid Xbox restructuring. 'Our business ... is not healthy.' (negative, score=-0.75)",
+    "Microsoft plans to cut 3,200 jobs from its Xbox division (negative, score=-0.60)",
+    "Stock Market Today: Dow Up As This AI Stock Tests Entry; Microsoft Drops Amid Job Cutbacks (Live Coverage) (negative, score=-0.60)"
+  ],
+  "sources": [
+    "Yahoo Finance news + price history (yfinance)",
+    "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+    "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+  ],
+  "adapter": "nofx",
+  "ticker": "MSFT",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 31.001213550567627
+}

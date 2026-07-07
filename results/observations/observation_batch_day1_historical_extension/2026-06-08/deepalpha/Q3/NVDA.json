@@ -1,0 +1,28 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1_historical_extension__2026-06-08",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.3639631053715184,
+    "supporting_evidence": [
+      "ema_20 (importance=0.0871)",
+      "close_max_20 (importance=0.0855)",
+      "vwap (importance=0.0481)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": -0.01819815526857592,
+    "adapter": "deepalpha",
+    "ticker": "NVDA",
+    "date": "2026-06-08",
+    "cost_usd": 0.0,
+    "latency_sec": 13.187735319137573
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=NVDA"
+}

@@ -1,0 +1,28 @@
+{
+  "adapter": "finrl",
+  "task_id": "observation_batch_day1_historical_extension__2026-05-15",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": null,
+  "q4": {
+    "weights": {
+      "GLD": 0.25229185819625854,
+      "JPM": 0.12713798880577087,
+      "NVDA": 0.12713798880577087,
+      "QQQ": 0.22209855914115906,
+      "SPY": 0.27133360505104065
+    },
+    "cash_ratio": 0.0,
+    "rationale": "Weights are the final-day allocation from a real A2C policy (upstream FinRL's own DRLAgent wrapping stable_baselines3.A2C), trained live for 3000 timesteps on NVDA, SPY, QQQ, JPM, GLD's real yfinance history from 2024-11-11 to 2026-05-15 (upstream's own StockPortfolioEnv reward = portfolio value, upstream's own softmax weight normalization — no pretrained checkpoint was available or used). Trailing 30-day equal-weight realized return +11.57% → heuristic regime label BULL.",
+    "regime": "BULL",
+    "rebalance_freq": "DAILY",
+    "adapter": "finrl",
+    "date": "2026-05-15",
+    "cost_usd": 0.0,
+    "latency_sec": 55.28865122795105
+  },
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=portfolio_universe"
+}

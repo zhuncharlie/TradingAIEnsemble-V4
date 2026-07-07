@@ -1,0 +1,28 @@
+{
+  "adapter": "fingpt",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": 0.4,
+    "risk_level": "HIGH",
+    "drivers": [
+      "Tesla's Delivery Strength Forces Wall Street to Reassess (positive)",
+      "Rivian Stock Soars on Target Price Hike. There’s Just One Problem. (positive)",
+      "Big Bank Stocks Pop Ahead Of Earnings. Why Bullishness Is Growing. (positive)"
+    ],
+    "sources": [
+      "Yahoo Finance news (yfinance)"
+    ],
+    "adapter": "fingpt",
+    "ticker": "JPM",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 82.41098999977112
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=JPM"
+}

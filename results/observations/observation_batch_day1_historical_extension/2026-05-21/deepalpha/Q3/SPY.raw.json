@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.07222786451557957,
+  "supporting_evidence": [
+    "close_mean_10 (importance=0.1075)",
+    "close_max_20 (importance=0.0663)",
+    "ema_10 (importance=0.0441)"
+  ],
+  "expected_horizon": "5d",
+  "expected_return": -0.003611393225778979,
+  "adapter": "deepalpha",
+  "ticker": "SPY",
+  "date": "2026-05-21",
+  "cost_usd": 0.0,
+  "latency_sec": 11.772753238677979
+}

@@ -1,0 +1,13 @@
+{
+  "action": "HOLD",
+  "confidence": 1.0,
+  "reasoning": "No valid trade available",
+  "bull_case": null,
+  "bear_case": null,
+  "time_horizon": "1d",
+  "adapter": "ai_hedge_fund",
+  "ticker": "SPY",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 2.809028148651123
+}

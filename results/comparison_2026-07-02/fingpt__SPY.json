@@ -1,0 +1,28 @@
+{
+  "adapter": "fingpt",
+  "task_id": "comparison_2026-07-02",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": -0.6,
+    "risk_level": "HIGH",
+    "drivers": [
+      "S&P 500, Nasdaq End Lower As Investors Continue Rotation Out Of Tech And Chipmakers —  WMT, META, GM, KR, QCOM In Focus (negative)",
+      "ETF League Tables: SPDR Sheds $8.4B (negative)",
+      "The $95-a-Year Fee Nobody Notices: Why SPXL Underperforms Its Own Math (negative)"
+    ],
+    "sources": [
+      "Yahoo Finance news (yfinance)"
+    ],
+    "adapter": "fingpt",
+    "ticker": "SPY",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 79.23260045051575
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": ""
+}

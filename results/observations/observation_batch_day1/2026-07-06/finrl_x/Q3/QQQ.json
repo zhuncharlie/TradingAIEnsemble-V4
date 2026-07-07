@@ -1,0 +1,26 @@
+{
+  "adapter": "finrl_x",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "NEUTRAL",
+    "strength": 0.0,
+    "supporting_evidence": [
+      "QQQ is outside this adapter's scoped 30-name NASDAQ universe (see NASDAQ_UNIVERSE in adapters/finrl_x_adapter.py) — no ML factor ranking available for it."
+    ],
+    "expected_horizon": "1q",
+    "expected_return": null,
+    "adapter": "finrl_x",
+    "ticker": "QQQ",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 55.07617235183716
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=QQQ"
+}

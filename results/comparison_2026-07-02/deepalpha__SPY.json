@@ -1,0 +1,40 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "comparison_2026-07-02",
+  "adapter_version": "0.1.0",
+  "q1": {
+    "action": "HOLD",
+    "confidence": 0.9820967631596279,
+    "reasoning": "XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on SPY's own 3y yfinance history — no pretrained Kaggle-sourced artifacts were available) predicts a 5-day forward return of +0.0840%, against a transaction-cost-based signal threshold of 0.1500%. Model agreement (1 - normalised prediction dispersion) is 0.98.",
+    "bull_case": null,
+    "bear_case": null,
+    "time_horizon": "5d",
+    "adapter": "deepalpha",
+    "ticker": "SPY",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 11.665038108825684
+  },
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "LONG",
+    "strength": 0.01679972127170324,
+    "supporting_evidence": [
+      "close_max_5 (importance=0.0889)",
+      "bb_middle (importance=0.0802)",
+      "volume_mean_20 (importance=0.0631)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": 0.0008399860635851621,
+    "adapter": "deepalpha",
+    "ticker": "SPY",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 0.002177715301513672
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": ""
+}

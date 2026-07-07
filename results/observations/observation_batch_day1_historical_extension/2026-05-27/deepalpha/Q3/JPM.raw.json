@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.5550065157636078,
+  "supporting_evidence": [
+    "close_mean_10 (importance=0.1000)",
+    "close_min_10 (importance=0.0764)",
+    "ema_100 (importance=0.0386)"
+  ],
+  "expected_horizon": "5d",
+  "expected_return": -0.027750325788180395,
+  "adapter": "deepalpha",
+  "ticker": "JPM",
+  "date": "2026-05-27",
+  "cost_usd": 0.0,
+  "latency_sec": 11.887752056121826
+}

@@ -1,0 +1,18 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.0,
+  "supporting_evidence": [
+    "RD-Agent real LLM-proposed research hypothesis: Simple momentum, volatility, and volume-based factors are effective predictors of short-term returns due to market inefficiencies and investor behavior.",
+    "Reason: Momentum captures trend continuation, volatility reflects risk and potential reversals, and volume indicates liquidity and trader activity. These factors are computationally cheap, interpretable, and commonly used in practice.",
+    "Real LLM-formulated factor 'momentum_10d': [Momentum Factor] Simple cumulative return over the last 10 trading days. [formulation: $\\frac{P_t}{P_{t-10}} - 1$]",
+    "Real CoSTEER round did not converge on an accepted implementation within the bounded 2-round loop -- upstream's own real rejection feedback: All tasks are failed:\n- feedback01:\n  - execution: Execution succeeded without error.\nExpected output file found.\n  - return_checking: value feedback: value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe index order is incorrect. Expected MultiIndex levels: ('datetime', 'instrument'), but received ('instrument', 'datetime'). Please reorder the index so that datetime is the first level and instrument is the second level.\nThe generated dataframe is daily.\n\nshape feedback: None\n\nshape feedback: value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe index order is incorrect. Expected MultiIndex levels: ('datetime', 'instrument'), but received ('instrument', 'datetime'). Please reorder the index so that datetime is the first level and instrument is the second level.\nThe generated dataframe is daily.\n\nshape feedback: None\n  - code: critic 1: The output MultiIndex levels are in the order ('instrument', 'datetime') but the expected order is ('datetime', 'instrument'). The factor value dataframe should have 'datetime' as the first level and 'instrument' as the second level to match the required format. This can be fixed by reordering the index levels after computing the factor or before saving the result."
+  ],
+  "expected_horizon": "5d",
+  "expected_return": null,
+  "adapter": "rdagent",
+  "ticker": "XOM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0033467,
+  "latency_sec": 68.38523888587952
+}

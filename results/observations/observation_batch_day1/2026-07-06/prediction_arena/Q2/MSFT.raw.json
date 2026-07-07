@@ -1,0 +1,18 @@
+{
+  "sentiment_score": -0.5,
+  "risk_level": "LOW",
+  "drivers": [
+    "Real Kalshi market 'DOJ wins their anti-trust case against Apple?' (ticker APPLEUS-29DEC31 \u2014 no real Kalshi market matched 'MSFT'; using a fixed, verified real market as a representative fallback): live market-implied P(yes)=21.0% (mid of real yes_bid/yes_ask quotes)",
+    "Real DeepSeek forecast (via upstream forecasting-tools' NoResearchOneShotBot, zero-research single-shot prompt): P(yes)=25.0%",
+    "LLM rationale excerpt: ## R1: Forecaster 1 Reasoning\nThe market currently implies a 21% chance, but the case is still early in litigation. The DOJ\u2019s antitrust case against Apple (filed in March 2024) is a high-stakes challenge to Apple\u2019s ecosystem practices. Historically, major tech antitrust cases take years to reach fin"
+  ],
+  "sources": [
+    "Kalshi public API (api.elections.kalshi.com) \u2014 read-only, no account/auth used",
+    "Metaculus/forecasting-tools NoResearchOneShotBot + DeepSeek (deepseek-chat)"
+  ],
+  "adapter": "prediction_arena",
+  "ticker": "MSFT",
+  "date": "2026-07-06",
+  "cost_usd": 0.00030816800000000005,
+  "latency_sec": 25.995431661605835
+}

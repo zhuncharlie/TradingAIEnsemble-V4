@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "LONG",
+  "strength": 0.6891841404960493,
+  "supporting_evidence": [
+    "vwap (importance=0.0559)",
+    "sma_200 (importance=0.0505)",
+    "sma_100 (importance=0.0363)"
+  ],
+  "expected_horizon": "5d",
+  "expected_return": 0.034459207024802464,
+  "adapter": "deepalpha",
+  "ticker": "JNJ",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 12.921181678771973
+}

@@ -1,0 +1,20 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.14184197206540627,
+  "supporting_evidence": [
+    "Real score_stock() = 4.29/10 for 'XOM' as of the last point-in-time trading day on/before 2026-07-06, from the real evolved winning StrategyDNA (fitness=76.33).",
+    "Top evolved factor weight: w_atr = 0.2201",
+    "Top evolved factor weight: w_adx = 0.1035",
+    "Top evolved factor weight: w_roc = 0.0769",
+    "Walk-forward OOS: 3/4 windows profitable, annual_return=40.9%, sharpe=1.61, win_rate=61.0%, trades=47 (real upstream walk-forward metrics, not reimplemented).",
+    "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code \u2014 NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...')."
+  ],
+  "expected_horizon": "2d",
+  "expected_return": 0.40879,
+  "adapter": "finclaw",
+  "ticker": "XOM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 108.4327323436737
+}

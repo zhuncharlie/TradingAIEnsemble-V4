@@ -1,0 +1,28 @@
+{
+  "adapter": "fingpt",
+  "task_id": "comparison_2026-07-02",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": 0.2,
+    "risk_level": "MEDIUM",
+    "drivers": [
+      "2 reasons Citi slashed its bitcoin & ethereum price targets (negative)",
+      "Stock Market Today: Dow Rises Ahead Of Key Jobs Report; Tesla Deliveries Due (Live Coverage) (positive)",
+      "Former Binance CFO Lists 3 Catalysts That'll Send Bitcoin Into Bull Market — Number 1 Will Surprise You (positive)"
+    ],
+    "sources": [
+      "Yahoo Finance news (yfinance)"
+    ],
+    "adapter": "fingpt",
+    "ticker": "BTC-USD",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 78.88279294967651
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": ""
+}

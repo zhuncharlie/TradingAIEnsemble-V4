@@ -1,0 +1,17 @@
+{
+  "sentiment_score": 0.6,
+  "risk_level": "HIGH",
+  "drivers": [
+    "These Were the 3 Best-Performing \"Magnificent Seven\" Stocks of the First Half. Only 1 of Them Outperformed the S&P 500 (positive)",
+    "Broadcom shares jump after surprise five-year Apple chip deal (positive)",
+    "S&P 500, Nasdaq rise as chips recover, Broadcom gains on Apple deal (positive)"
+  ],
+  "sources": [
+    "Yahoo Finance news (yfinance)"
+  ],
+  "adapter": "fingpt",
+  "ticker": "AAPL",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 84.7373595237732
+}

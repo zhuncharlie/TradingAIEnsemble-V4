@@ -1,0 +1,13 @@
+{
+  "action": "SELL",
+  "confidence": 0.996196340108934,
+  "reasoning": "XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on GLD's own 3y yfinance history \u2014 no pretrained Kaggle-sourced artifacts were available) predicts a 5-day forward return of -1.8580%, against a transaction-cost-based signal threshold of 0.1500%. Model agreement (1 - normalised prediction dispersion) is 1.00.",
+  "bull_case": null,
+  "bear_case": null,
+  "time_horizon": "5d",
+  "adapter": "deepalpha",
+  "ticker": "GLD",
+  "date": "2026-05-15",
+  "cost_usd": 0.0,
+  "latency_sec": 10.951103925704956
+}

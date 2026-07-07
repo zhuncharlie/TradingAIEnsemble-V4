@@ -1,0 +1,33 @@
+{
+  "adapter": "nofx",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": 0.4609756097560975,
+    "risk_level": "HIGH",
+    "drivers": [
+      "3 Energy Stocks to Buy in July (positive, score=0.60)",
+      "Trump administration proposes 702 regulatory rollbacks in deregulatory push (positive, score=0.70)",
+      "Chevron vs. Exxon Mobil: Which Energy Stock Is a Better Buy in 2026? (neutral, score=0.00)",
+      "Fusion risk factor: Concentration risk: 100% allocation to a single stock (XOM) exposes portfolio to idiosyncratic downside.",
+      "Fusion risk factor: Bearish technical momentum: Price is below 20-day and 50-day moving averages, with negative and accelerating MACD and momentum indicators.",
+      "Fusion risk factor: Oversold but no reversal confirmation: RSI at 24.96 indicates oversold conditions, but momentum continues to weaken, suggesting potential for further decline."
+    ],
+    "sources": [
+      "Yahoo Finance news + price history (yfinance)",
+      "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+      "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+    ],
+    "adapter": "nofx",
+    "ticker": "XOM",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 30.681442737579346
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=XOM"
+}

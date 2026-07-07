@@ -1,0 +1,28 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.5321396824021186,
+    "supporting_evidence": [
+      "close_min_10 (importance=0.0951)",
+      "ema_100 (importance=0.0492)",
+      "bb_middle (importance=0.0406)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": -0.026606984120105932,
+    "adapter": "deepalpha",
+    "ticker": "JPM",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 12.81616497039795
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=JPM"
+}

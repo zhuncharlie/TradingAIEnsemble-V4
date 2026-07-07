@@ -1,0 +1,33 @@
+{
+  "adapter": "qlib",
+  "task_id": "observation_batch_day1_historical_extension__2026-06-02",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "LONG",
+    "strength": 0.7142857142857142,
+    "supporting_evidence": [
+      "'NVDA' real LGBModel-predicted score 0.00362 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 2/8 (86% percentile) across the real 8-ticker universe on 2026-06-02.",
+      "Real Alpha158 factor 'CORD5': LightGBM importance=3",
+      "Real Alpha158 factor 'RSQR20': LightGBM importance=3",
+      "Real Alpha158 factor 'CORD10': LightGBM importance=3",
+      "Real Alpha158 factor 'RESI30': LightGBM importance=2",
+      "Real Alpha158 factor 'KLOW': LightGBM importance=2",
+      "Real raw Alpha158 factor values for 'NVDA' on 2026-06-02: KMID=-0.0192, KLEN=0.0481, ROC5=0.9643, ROC20=0.8908, ROC60=0.7980, MA5=0.9740, MA20=0.9782, STD20=0.0369",
+      "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-22, 2026-01-16], validated on [2026-01-17, 2026-03-18], best/early-stopped iteration=5 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."
+    ],
+    "expected_horizon": "2d",
+    "expected_return": 0.003620929314177716,
+    "adapter": "qlib",
+    "ticker": "NVDA",
+    "date": "2026-06-02",
+    "cost_usd": 0.0,
+    "latency_sec": 15.52925419807434
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=NVDA"
+}

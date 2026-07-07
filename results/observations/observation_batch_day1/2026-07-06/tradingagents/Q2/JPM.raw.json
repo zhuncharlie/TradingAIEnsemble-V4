@@ -1,0 +1,21 @@
+{
+  "sentiment_score": 0.3,
+  "risk_level": "MEDIUM",
+  "drivers": [
+    "Overall Sentiment:** **Mildly Bullish** (Score: 6.5/10)",
+    "Sentiment Report for JPM \u2014 2026-06-29 to 2026-07-06",
+    "1. Source-by-Source Breakdown",
+    "News Headlines (Yahoo Finance) \u2014 Dominant Signal",
+    "The institutional news flow is decisively positive for JPM, driven by several powerful catalysts:"
+  ],
+  "sources": [
+    "Yahoo Finance news",
+    "StockTwits",
+    "Reddit"
+  ],
+  "adapter": "tradingagents",
+  "ticker": "JPM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 242.22780299186707
+}

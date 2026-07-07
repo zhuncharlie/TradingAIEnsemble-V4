@@ -1,0 +1,17 @@
+{
+  "sentiment_score": -0.2,
+  "risk_level": "HIGH",
+  "drivers": [
+    "3 Energy Stocks to Buy in July (positive)",
+    "Trump administration proposes 702 regulatory rollbacks in deregulatory push (negative)",
+    "Sable Offshore (SOC) Is Down 42.3% After Convertible Notes And Equity Sale To Rework Exxon Loan (negative)"
+  ],
+  "sources": [
+    "Yahoo Finance news (yfinance)"
+  ],
+  "adapter": "fingpt",
+  "ticker": "XOM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 72.8022301197052
+}

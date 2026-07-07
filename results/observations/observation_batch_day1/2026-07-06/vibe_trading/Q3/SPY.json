@@ -1,0 +1,27 @@
+{
+  "adapter": "vibe_trading",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "MOMENTUM",
+    "direction": "LONG",
+    "strength": 1.0,
+    "supporting_evidence": [
+      "DeepSeek-generated SignalEngine (upstream's real strategy-generate skill + build_llm(), single live call) implementing: Go long SPY when its 10-day moving average crosses above its 50-day moving average, flat otherwise (trend-following momentum crossover).",
+      "Real backtest over 2025-12-18/2026-07-06: sharpe=1.543, trades=1, total_return=0.0711"
+    ],
+    "expected_horizon": "1w",
+    "expected_return": null,
+    "adapter": "vibe_trading",
+    "ticker": "SPY",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 19.682875394821167
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=SPY"
+}

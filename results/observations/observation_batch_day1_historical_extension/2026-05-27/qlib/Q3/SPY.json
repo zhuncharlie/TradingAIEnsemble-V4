@@ -1,0 +1,33 @@
+{
+  "adapter": "qlib",
+  "task_id": "observation_batch_day1_historical_extension__2026-05-27",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "NEUTRAL",
+    "strength": 0.4285714285714286,
+    "supporting_evidence": [
+      "'SPY' real LGBModel-predicted score -0.00595 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 3/8 (71% percentile) across the real 8-ticker universe on 2026-05-27.",
+      "Real Alpha158 factor 'KLOW': LightGBM importance=8",
+      "Real Alpha158 factor 'RSQR10': LightGBM importance=7",
+      "Real Alpha158 factor 'VSTD5': LightGBM importance=7",
+      "Real Alpha158 factor 'CORD10': LightGBM importance=6",
+      "Real Alpha158 factor 'RESI5': LightGBM importance=5",
+      "Real raw Alpha158 factor values for 'SPY' on 2026-05-27: KMID=-0.0006, KLEN=0.0042, ROC5=0.9777, ROC20=0.9483, ROC60=0.9121, MA5=0.9942, MA20=0.9798, STD20=0.0151",
+      "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-16, 2026-01-10], validated on [2026-01-11, 2026-03-12], best/early-stopped iteration=24 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."
+    ],
+    "expected_horizon": "2d",
+    "expected_return": -0.005952133959194842,
+    "adapter": "qlib",
+    "ticker": "SPY",
+    "date": "2026-05-27",
+    "cost_usd": 0.0,
+    "latency_sec": 15.821802139282227
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=SPY"
+}

@@ -1,0 +1,22 @@
+{
+  "sentiment_score": -0.19242424242424241,
+  "risk_level": "HIGH",
+  "drivers": [
+    "Zuckerberg\u2019s Insane AI Spending Could Become a Windfall, If Meta Copies SpaceX\u2019s Playbook (positive, score=0.55)",
+    "Forget Nvidia: AMD Might Close the Gap Faster Than Anyone on Wall Street Expects (negative, score=-0.75)",
+    "Should You Buy Rivian While It's Below $20? (neutral, score=0.00)",
+    "Fusion risk factor: Extreme concentration: single position (NVDA) with 100% weight",
+    "Fusion risk factor: Bearish technical signals: RSI trending down (41.7), MACD below signal line and declining, price below both 20-day and 50-day moving averages",
+    "Fusion risk factor: Negative short-term momentum: 20-day momentum at -4.3% and accelerating down"
+  ],
+  "sources": [
+    "Yahoo Finance news + price history (yfinance)",
+    "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+    "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+  ],
+  "adapter": "nofx",
+  "ticker": "NVDA",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 33.035287380218506
+}

@@ -1,0 +1,31 @@
+{
+  "adapter": "finclaw",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.2885526066041101,
+    "supporting_evidence": [
+      "Real score_stock() = 3.56/10 for 'SPY' as of the last point-in-time trading day on/before 2026-07-06, from the real evolved winning StrategyDNA (fitness=90.70).",
+      "Top evolved factor weight: w_quantile_upper = 0.1056",
+      "Top evolved factor weight: w_pe = 0.0941",
+      "Top evolved factor weight: w_aroon = 0.0779",
+      "Walk-forward OOS: 3/4 windows profitable, annual_return=40.0%, sharpe=1.27, win_rate=47.1%, trades=65 (real upstream walk-forward metrics, not reimplemented).",
+      "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code — NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...')."
+    ],
+    "expected_horizon": "2d",
+    "expected_return": 0.40008299999999997,
+    "adapter": "finclaw",
+    "ticker": "SPY",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 98.7170238494873
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=SPY"
+}

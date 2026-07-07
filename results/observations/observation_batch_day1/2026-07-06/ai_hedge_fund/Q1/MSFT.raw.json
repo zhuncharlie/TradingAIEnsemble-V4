@@ -1,0 +1,13 @@
+{
+  "action": "HOLD",
+  "confidence": 0.17,
+  "reasoning": "Neutral signal, no position change.",
+  "bull_case": null,
+  "bear_case": null,
+  "time_horizon": "1d",
+  "adapter": "ai_hedge_fund",
+  "ticker": "MSFT",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 6.687994480133057
+}

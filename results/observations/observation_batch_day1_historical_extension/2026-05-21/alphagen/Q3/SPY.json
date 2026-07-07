@@ -1,0 +1,32 @@
+{
+  "adapter": "alphagen",
+  "task_id": "observation_batch_day1_historical_extension__2026-05-21",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "NEUTRAL",
+    "strength": 0.4285714285714286,
+    "supporting_evidence": [
+      "'SPY' real RL-discovered ensemble alpha value -0.2044 ranks 6/8 (29% percentile) across the real 8-ticker universe on 2026-05-21.",
+      "Discovered alpha #0: 'Add(Mul(-0.01,Add(Mul($low,0.01),30.0)),-0.5)' (weight=0.3430, single IC=0.1299)",
+      "Discovered alpha #1: 'Add(Add(Abs(Add(Mean(Greater(Mul($low,5.0),0.01),10d),2.0)),0.5),-2.0)' (weight=1.8210, single IC=-0.1261)",
+      "Discovered alpha #2: 'Div(1.0,Sub($high,Abs(Mul(-0.5,Abs(Log(Max($low,40d)))))))' (weight=0.9438, single IC=0.1595)",
+      "Discovered alpha #3: 'Add(Add(-5.0,Mul($high,$high)),-10.0)' (weight=-0.8097, single IC=-0.1205)",
+      "Discovered alpha #4: 'Add(Mul(-5.0,$volume),-10.0)' (weight=0.3782, single IC=-0.0663)",
+      "Real upstream MaskablePPO/AlphaEnv search: best ensemble IC=0.2573, 83 distinct expressions evaluated over 4000 RL timesteps (see adapter header, 'RL training budget', for why this is scoped down from upstream's own 200k-350k timestep experiments)."
+    ],
+    "expected_horizon": "20d",
+    "expected_return": 0.3833466142500907,
+    "adapter": "alphagen",
+    "ticker": "SPY",
+    "date": "2026-05-21",
+    "cost_usd": 0.0,
+    "latency_sec": 87.21058893203735
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=SPY"
+}

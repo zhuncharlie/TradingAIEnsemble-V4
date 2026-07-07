@@ -1,0 +1,25 @@
+{
+  "weights": {
+    "NVDA": 0.0,
+    "AAPL": 0.0,
+    "MSFT": 0.0,
+    "TSLA": 0.0,
+    "SPY": 0.0939045645706188,
+    "QQQ": 0.0701214110203031,
+    "JPM": 0.0939045645706188,
+    "XOM": 0.0,
+    "JNJ": 0.0842103129613973,
+    "TLT": 0.0939045645706188,
+    "GLD": 0.0,
+    "CASH": 0.0939045645706188,
+    "BTC-USDT": 0.0
+  },
+  "cash_ratio": 0.47005001773582444,
+  "rationale": "Real upstream CompositeEngine (github.com/HKUDS/Vibe-Trading) cross-market run over ['NVDA.US', 'AAPL.US', 'MSFT.US', 'TSLA.US', 'SPY.US', 'QQQ.US', 'JPM.US', 'XOM.US', 'JNJ.US', 'TLT.US', 'GLD.US', 'CASH.US', 'BTC-USDT'] using upstream's own vol-adjusted dual-moving-average example strategy (per-market MA windows, inverse-volatility position sizing). Final target weights read directly from upstream's own artifacts/positions.csv, clipped to long-only and renormalized to sum <= 1.0 for this schema's cash-neutral convention. A BTC-USDT anchor position was added because the requested tickers were single-market, so the real upstream CompositeEngine (not the single-market engine) is exercised.",
+  "regime": null,
+  "rebalance_freq": "DAILY",
+  "adapter": "vibe_trading",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 19.159217834472656
+}

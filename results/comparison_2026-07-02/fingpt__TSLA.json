@@ -1,0 +1,28 @@
+{
+  "adapter": "fingpt",
+  "task_id": "comparison_2026-07-02",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": 0.2,
+    "risk_level": "MEDIUM",
+    "drivers": [
+      "Why has Wall Street fallen out of love with the 'Magnificent Seven'? (negative)",
+      "AI Funds Were Unstoppable in the Second Quarter (positive)",
+      "Dow Jones Futures: Techs Rise With Tesla, Jobs Report Ahead; Meta Jumps On AI Move (positive)"
+    ],
+    "sources": [
+      "Yahoo Finance news (yfinance)"
+    ],
+    "adapter": "fingpt",
+    "ticker": "TSLA",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 79.97620701789856
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": ""
+}

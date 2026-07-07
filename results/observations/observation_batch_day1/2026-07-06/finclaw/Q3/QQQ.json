@@ -1,0 +1,31 @@
+{
+  "adapter": "finclaw",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.2940534902253691,
+    "supporting_evidence": [
+      "Real score_stock() = 3.53/10 for 'QQQ' as of the last point-in-time trading day on/before 2026-07-06, from the real evolved winning StrategyDNA (fitness=87.92).",
+      "Top evolved factor weight: w_cci = 0.0864",
+      "Top evolved factor weight: w_mean_reversion = 0.0822",
+      "Top evolved factor weight: w_momentum = 0.0769",
+      "Walk-forward OOS: 4/4 windows profitable, annual_return=57.5%, sharpe=3.40, win_rate=59.4%, trades=72 (real upstream walk-forward metrics, not reimplemented).",
+      "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code — NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...')."
+    ],
+    "expected_horizon": "2d",
+    "expected_return": 0.574805,
+    "adapter": "finclaw",
+    "ticker": "QQQ",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 105.86454892158508
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=QQQ"
+}

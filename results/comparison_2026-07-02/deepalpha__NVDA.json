@@ -1,0 +1,40 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "comparison_2026-07-02",
+  "adapter_version": "0.1.0",
+  "q1": {
+    "action": "BUY",
+    "confidence": 0.9468576572691825,
+    "reasoning": "XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on NVDA's own 3y yfinance history — no pretrained Kaggle-sourced artifacts were available) predicts a 5-day forward return of +0.4512%, against a transaction-cost-based signal threshold of 0.1500%. Model agreement (1 - normalised prediction dispersion) is 0.95.",
+    "bull_case": null,
+    "bear_case": null,
+    "time_horizon": "5d",
+    "adapter": "deepalpha",
+    "ticker": "NVDA",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 11.290919303894043
+  },
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "LONG",
+    "strength": 0.09024893122803627,
+    "supporting_evidence": [
+      "close_max_20 (importance=0.0789)",
+      "vwap (importance=0.0783)",
+      "ema_50 (importance=0.0470)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": 0.004512446561401814,
+    "adapter": "deepalpha",
+    "ticker": "NVDA",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 0.0025739669799804688
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": ""
+}

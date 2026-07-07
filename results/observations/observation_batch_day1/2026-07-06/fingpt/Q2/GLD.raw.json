@@ -1,0 +1,17 @@
+{
+  "sentiment_score": 0.8,
+  "risk_level": "LOW",
+  "drivers": [
+    "Update: Gold Rises to a Two-Week High on Easing Inflation Concerns (positive)",
+    "Weak June Jobs Data Likely to Boost These ETF Areas (positive)",
+    "Gold Rises to a Two-Week High on Easing Inflation Concerns (positive)"
+  ],
+  "sources": [
+    "Yahoo Finance news (yfinance)"
+  ],
+  "adapter": "fingpt",
+  "ticker": "GLD",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 82.2650032043457
+}

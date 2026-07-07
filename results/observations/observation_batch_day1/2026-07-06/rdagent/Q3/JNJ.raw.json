@@ -1,0 +1,18 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.0,
+  "supporting_evidence": [
+    "RD-Agent real LLM-proposed research hypothesis: Combining short-term momentum, medium-term volatility, volume trend, and daily reversal factors can capture diverse market patterns and improve return prediction.",
+    "Reason: Starting with simple, interpretable factors from different perspectives (trend, risk, liquidity, and mean-reversion) provides a robust foundation for quant investment. These factors are well-documented in academic literature and easy to compute from daily price and volume data.",
+    "Real LLM-formulated factor 'ShortTermMomentum5D': [Momentum Factor] Short-term momentum computed as the cumulative return over the past 5 trading days. Captures recent price trend. [formulation: \\frac{\\$close_{t}}{\\$close_{t-5}} - 1]",
+    "Real CoSTEER round did not converge on an accepted implementation within the bounded 2-round loop -- upstream's own real rejection feedback: All tasks are failed:\n- feedback01:\n  - execution: Execution succeeded without error.\nExpected output file found.\n  - return_checking: value feedback: value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe index order is reversed. Expected (datetime, instrument) but found (instrument, datetime). Please swap the index levels so that datetime comes first.\nThe generated dataframe is daily.\n\nshape feedback: None\n\nshape feedback: value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe index order is reversed. Expected (datetime, instrument) but found (instrument, datetime). Please swap the index levels so that datetime comes first.\nThe generated dataframe is daily.\n\nshape feedback: None\n  - code: critic 1: The output DataFrame's index order is `(instrument, datetime)` instead of the required `(datetime, instrument)`. This will cause issues when the result is consumed by the subsequent pipeline (e.g., Qlib expects datetime as the first index level). Swap the index levels before saving using `result = result.swaplevel()` or `result = result.reorder_levels(['datetime', 'instrument'])`."
+  ],
+  "expected_horizon": "5d",
+  "expected_return": null,
+  "adapter": "rdagent",
+  "ticker": "JNJ",
+  "date": "2026-07-06",
+  "cost_usd": 0.003269,
+  "latency_sec": 70.37992882728577
+}

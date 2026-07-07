@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.39341913561667524,
+  "supporting_evidence": [
+    "ema_20 (importance=0.0937)",
+    "close_max_20 (importance=0.0915)",
+    "vwap (importance=0.0745)"
+  ],
+  "expected_horizon": "5d",
+  "expected_return": -0.019670956780833762,
+  "adapter": "deepalpha",
+  "ticker": "NVDA",
+  "date": "2026-06-02",
+  "cost_usd": 0.0,
+  "latency_sec": 10.267871856689453
+}

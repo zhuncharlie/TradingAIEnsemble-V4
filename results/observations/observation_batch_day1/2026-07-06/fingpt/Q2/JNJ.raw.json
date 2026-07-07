@@ -1,0 +1,17 @@
+{
+  "sentiment_score": 0.4,
+  "risk_level": "HIGH",
+  "drivers": [
+    "Why Johnson & Johnson (JNJ) is a Great Dividend Stock Right Now (positive)",
+    "Johnson & Johnson, IBD Stock Of The Day, In Buy Zone Heading Into Earnings (positive)",
+    "Intuitive Surgical Stock Looks Weighed Down. Its After-Hours Growth Says Otherwise. (negative)"
+  ],
+  "sources": [
+    "Yahoo Finance news (yfinance)"
+  ],
+  "adapter": "fingpt",
+  "ticker": "JNJ",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 80.8414351940155
+}

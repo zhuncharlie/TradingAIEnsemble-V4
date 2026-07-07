@@ -1,0 +1,32 @@
+{
+  "adapter": "alphagen",
+  "task_id": "observation_batch_day1_historical_extension__2026-05-27",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "LONG",
+    "strength": 0.7142857142857142,
+    "supporting_evidence": [
+      "'NVDA' real RL-discovered ensemble alpha value 0.1488 ranks 2/8 (86% percentile) across the real 8-ticker universe on 2026-05-27.",
+      "Discovered alpha #0: 'Med(Sum(Sub(Std($high,20d),-5.0),1d),5d)' (weight=0.0995, single IC=-0.0471)",
+      "Discovered alpha #1: 'Sub(0.5,$volume)' (weight=-0.1598, single IC=-0.0640)",
+      "Discovered alpha #2: 'Add(Add(Std(Add($vwap,2.0),40d),-10.0),-0.01)' (weight=0.2107, single IC=-0.0342)",
+      "Discovered alpha #3: 'Log(Sub(Add(Med(Mul(Mul(Add(2.0,$vwap),5.0),2.0),1d),-0.5),-1.0))' (weight=-0.1183, single IC=-0.1316)",
+      "Discovered alpha #4: 'Mul(Sub($open,0.5),Add(Mul($open,Add(-30.0,$volume)),0.5))' (weight=-0.2286, single IC=-0.1020)",
+      "Real upstream MaskablePPO/AlphaEnv search: best ensemble IC=0.2250, 153 distinct expressions evaluated over 4000 RL timesteps (see adapter header, 'RL training budget', for why this is scoped down from upstream's own 200k-350k timestep experiments)."
+    ],
+    "expected_horizon": "20d",
+    "expected_return": 0.598326695553789,
+    "adapter": "alphagen",
+    "ticker": "NVDA",
+    "date": "2026-05-27",
+    "cost_usd": 0.0,
+    "latency_sec": 73.21762228012085
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=NVDA"
+}

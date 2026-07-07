@@ -1,0 +1,24 @@
+{
+  "adapter": "ai_hedge_fund",
+  "task_id": "comparison_2026-07-02",
+  "adapter_version": "0.1.0",
+  "q1": {
+    "action": "HOLD",
+    "confidence": 0.0,
+    "reasoning": "Neutral signal with zero confidence, no position.",
+    "bull_case": null,
+    "bear_case": null,
+    "time_horizon": "1d",
+    "adapter": "ai_hedge_fund",
+    "ticker": "AAPL",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 14.283291578292847
+  },
+  "q2": null,
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": ""
+}

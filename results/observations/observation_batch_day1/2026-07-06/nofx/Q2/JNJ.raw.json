@@ -1,0 +1,22 @@
+{
+  "sentiment_score": 0.6841463414634146,
+  "risk_level": "EXTREME",
+  "drivers": [
+    "The Income Ladder: What It Takes To Go From $250 To $5,000 A Month (neutral, score=0.00)",
+    "Why Johnson & Johnson (JNJ) is a Great Dividend Stock Right Now (positive, score=0.85)",
+    "Johnson & Johnson, IBD Stock Of The Day, In Buy Zone Heading Into Earnings (positive, score=0.75)",
+    "Fusion risk factor: Concentration risk: 100% allocation to a single stock (JNJ) exposes portfolio to idiosyncratic events.",
+    "Fusion risk factor: Technical overextension: Price near upper Bollinger Band (BB position 0.878) and RSI at 64.6, close to overbought territory, increasing pullback risk.",
+    "Fusion risk factor: Momentum divergence: Short-term momentum (20d) accelerating (+5.89%) but longer-term momentum (60d) decelerating (-7.89%), suggesting weakening trend sustainability."
+  ],
+  "sources": [
+    "Yahoo Finance news + price history (yfinance)",
+    "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+    "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+  ],
+  "adapter": "nofx",
+  "ticker": "JNJ",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 30.708089113235474
+}

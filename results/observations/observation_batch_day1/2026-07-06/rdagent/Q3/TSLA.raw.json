@@ -1,0 +1,19 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.01245803699356255,
+  "supporting_evidence": [
+    "RD-Agent real LLM-proposed research hypothesis: Testing simple price momentum, volatility, and volume-based factors to capture short-term price trends, risk, and trading activity.",
+    "Reason: As a first exploration, it's important to start with simple, easily interpretable factors that are commonly used in quantitative finance. Momentum factors capture recent price trends, volatility factors measure risk, and volume-based factors reflect trading activity. These factors can be computed directly from daily price and volume data and are expected to have predictive power for future returns.",
+    "Real LLM-formulated factor 'factor_momentum_20d': [Momentum Factor] The cumulative simple return over the past 20 trading days, capturing short-term price trends. [formulation: R_t = \\frac{P_t}{P_{t-20}} - 1]",
+    "Real CoSTEER implement+evaluate verdict: final_decision=True -- The implementation executed successfully, the output format is correct, and the factor value is computed as expected based on the given formulation. No issues found.",
+    "This adapter's own translation: correlation of the real factor values with TSLA's real 5-day forward return = 0.0125 (used to derive direction/strength, not upstream's own evaluation)."
+  ],
+  "expected_horizon": "5d",
+  "expected_return": null,
+  "adapter": "rdagent",
+  "ticker": "TSLA",
+  "date": "2026-07-06",
+  "cost_usd": 0.00321146,
+  "latency_sec": 89.09082961082458
+}

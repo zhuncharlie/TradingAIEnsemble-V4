@@ -1,0 +1,33 @@
+{
+  "adapter": "nofx",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": 0.8499999999999999,
+    "risk_level": "EXTREME",
+    "drivers": [
+      "Tesla Stock Climbs as Robotaxi Expansion Reaches Miami (positive, score=0.85)",
+      "SpaceX-Tesla Merger Could Create Nearly $4 Trillion Giant (positive, score=0.85)",
+      "Tesla's Delivery Strength Forces Wall Street to Reassess (positive, score=0.85)",
+      "Fusion risk factor: Concentration risk: 100% allocation to a single stock (TSLA) exposes portfolio to idiosyncratic volatility.",
+      "Fusion risk factor: Price below 200-day moving average (MA200) indicates potential longer-term bearish trend despite short-term momentum.",
+      "Fusion risk factor: Sentiment data based on a very small sample (n=3) reduces reliability of positive sentiment signal."
+    ],
+    "sources": [
+      "Yahoo Finance news + price history (yfinance)",
+      "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+      "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+    ],
+    "adapter": "nofx",
+    "ticker": "TSLA",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 28.493199348449707
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=TSLA"
+}

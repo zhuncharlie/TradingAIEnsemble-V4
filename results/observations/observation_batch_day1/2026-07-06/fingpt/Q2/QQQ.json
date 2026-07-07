@@ -1,0 +1,28 @@
+{
+  "adapter": "fingpt",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": 0.6,
+    "risk_level": "LOW",
+    "drivers": [
+      "Tech stocks live: SpaceX stock gets its next catalyst, Samsung earnings on deck (positive)",
+      "Coatue Hedge Fund Jumps 24.5% This Year on AI Rally (positive)",
+      "Like It Or Not, SpaceX Set To Land In Millions Of Investors' Portfolios (positive)"
+    ],
+    "sources": [
+      "Yahoo Finance news (yfinance)"
+    ],
+    "adapter": "fingpt",
+    "ticker": "QQQ",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 78.93776154518127
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=QQQ"
+}

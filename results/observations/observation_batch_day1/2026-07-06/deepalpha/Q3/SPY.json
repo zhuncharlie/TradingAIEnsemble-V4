@@ -1,0 +1,28 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.028397679593322015,
+    "supporting_evidence": [
+      "ema_50 (importance=0.0646)",
+      "volume_mean_20 (importance=0.0489)",
+      "bb_middle (importance=0.0441)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": -0.0014198839796661009,
+    "adapter": "deepalpha",
+    "ticker": "SPY",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 13.729318380355835
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=SPY"
+}

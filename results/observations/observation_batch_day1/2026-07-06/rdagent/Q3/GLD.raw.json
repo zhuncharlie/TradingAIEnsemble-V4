@@ -1,0 +1,18 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.0,
+  "supporting_evidence": [
+    "RD-Agent real LLM-proposed research hypothesis: Simple momentum, volatility, and volume-based factors derived from daily price and volume data can capture systematic risk premia and behavioral biases, providing predictive power for future returns.",
+    "Reason: Starting with basic, well-established factors (e.g., momentum, volatility, volume trend) from different perspectives (price, risk, liquidity) allows rapid testing and validation. These factors are computationally cheap, interpretable, and have strong theoretical backing in finance, making them ideal initial candidates to build a robust factor library.",
+    "Real LLM-formulated factor 'Momentum_20': [Momentum Factor] Cumulative return over the past 20 trading days, capturing short-term price trend. [formulation: Momentum_{t} = \\frac{Close_t}{Close_{t-20}} - 1]",
+    "Real CoSTEER round did not converge on an accepted implementation within the bounded 2-round loop -- upstream's own real rejection feedback: All tasks are failed:\n- feedback01:\n  - execution: Execution succeeded without error.\nExpected output file found.\n  - return_checking: value feedback: value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe MultiIndex levels should be ordered as ('datetime', 'instrument'), but the output shows ('instrument', 'datetime') with 'GLD' (instrument) first and then Timestamp (datetime). Please reorder the index so that datetime comes before instrument.\nThe generated dataframe is daily.\n\nshape feedback: None\n\nshape feedback: value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe MultiIndex levels should be ordered as ('datetime', 'instrument'), but the output shows ('instrument', 'datetime') with 'GLD' (instrument) first and then Timestamp (datetime). Please reorder the index so that datetime comes before instrument.\nThe generated dataframe is daily.\n\nshape feedback: None\n  - code: critic 1: The factor output has the MultiIndex levels in the order ('instrument', 'datetime'), but the specification requires the index to be ordered as ('datetime', 'instrument'). Please reorder the index levels accordingly, for example using `reorder_levels(['datetime', 'instrument'])` and then sort by datetime and instrument."
+  ],
+  "expected_horizon": "5d",
+  "expected_return": null,
+  "adapter": "rdagent",
+  "ticker": "GLD",
+  "date": "2026-07-06",
+  "cost_usd": 0.0032222399999999995,
+  "latency_sec": 78.10957622528076
+}

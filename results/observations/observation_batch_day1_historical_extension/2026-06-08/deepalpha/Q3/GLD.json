@@ -1,0 +1,28 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1_historical_extension__2026-06-08",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.32926296013662487,
+    "supporting_evidence": [
+      "ema_50 (importance=0.1012)",
+      "close_min_5 (importance=0.0848)",
+      "ema_10 (importance=0.0609)"
+    ],
+    "expected_horizon": "5d",
+    "expected_return": -0.016463148006831244,
+    "adapter": "deepalpha",
+    "ticker": "GLD",
+    "date": "2026-06-08",
+    "cost_usd": 0.0,
+    "latency_sec": 11.185473680496216
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=GLD"
+}

@@ -1,0 +1,13 @@
+{
+  "action": "HOLD",
+  "confidence": 0.0,
+  "reasoning": "Neutral signal, no edge",
+  "bull_case": null,
+  "bear_case": null,
+  "time_horizon": "1d",
+  "adapter": "ai_hedge_fund",
+  "ticker": "AAPL",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 5.68258261680603
+}

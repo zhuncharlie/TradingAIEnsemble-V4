@@ -1,0 +1,21 @@
+{
+  "sentiment_score": -0.24000000000000005,
+  "risk_level": "MEDIUM",
+  "drivers": [
+    "Overall Sentiment:** **Mildly Bearish** (Score: 3.8/10)",
+    "Confidence:** Medium",
+    "Sentiment Report for MSFT (2026-06-29 to 2026-07-06)",
+    "1. Source-by-Source Breakdown",
+    "A. News Headlines (Yahoo Finance) \u2014 Mildly Bearish"
+  ],
+  "sources": [
+    "Yahoo Finance news",
+    "StockTwits",
+    "Reddit"
+  ],
+  "adapter": "tradingagents",
+  "ticker": "MSFT",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 352.0293917655945
+}

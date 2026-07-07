@@ -1,0 +1,22 @@
+{
+  "sentiment_score": 0.07179487179487179,
+  "risk_level": "HIGH",
+  "drivers": [
+    "Tesla's Delivery Strength Forces Wall Street to Reassess (neutral, score=0.00)",
+    "Rivian Stock Soars on Target Price Hike. There\u2019s Just One Problem. (positive, score=0.20)",
+    "Which Small-Cap ETF Is the Better Buy: Vanguard's VB or JPMorgan's BBSC? (neutral, score=0.00)",
+    "Fusion risk factor: Concentrated position: 100% allocation in a single stock (JPM) exposes the portfolio to idiosyncratic risk.",
+    "Fusion risk factor: Technical overextension: RSI at 65.34 is approaching overbought levels, and price is near the upper Bollinger Band (0.799), suggesting potential mean reversion.",
+    "Fusion risk factor: Momentum dependency: strong upward momentum could reverse abruptly, especially with momentum acceleration decelerating slightly."
+  ],
+  "sources": [
+    "Yahoo Finance news + price history (yfinance)",
+    "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+    "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+  ],
+  "adapter": "nofx",
+  "ticker": "JPM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 33.04566812515259
+}

@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "SHORT",
+  "strength": 0.7241379310344828,
+  "supporting_evidence": [
+    "cur_ratio (importance=0.157, model=Stacking)",
+    "operating_margin (importance=0.142, model=Stacking)",
+    "pb (importance=0.123, model=Stacking)"
+  ],
+  "expected_horizon": "1q",
+  "expected_return": 0.02751023095179135,
+  "adapter": "finrl_x",
+  "ticker": "NVDA",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 55.13176655769348
+}

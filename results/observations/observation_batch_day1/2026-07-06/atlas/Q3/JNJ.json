@@ -1,0 +1,29 @@
+{
+  "adapter": "atlas",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "NEUTRAL",
+    "strength": 0.5906976744186045,
+    "supporting_evidence": [
+      "Requested ticker 'JNJ' is not one of the real tokens in this project's own bundled crypto-perpetuals panel; reporting the real evolved factor's signal for 'BTCUSDT' instead (see adapters/atlas_adapter.py header, 'Ticker-universe mismatch').",
+      "'BTCUSDT' real factor value 13.9179 ranks 45/216 (80% percentile) on 2024-08-14 for formula 'ts_weighted_mean_window_2(ts_sum_window_19(ts_stddev_window_20(ma_skew)), ma_modelBest)' (train fitness=0.2718).",
+      "Also accepted: 'ts_group_dec_zscore_cut_window_25_a_1__5_mode_1(kurt, ts_min_window_9(ma_kurt))' (train fitness=0.2422)",
+      "Also accepted: 'ts_min_window_11(ts_group_asc_zscore_cut_window_40_a_1__0_mode_2(ma_kurt, EmaWrong5))' (train fitness=0.2239)"
+    ],
+    "expected_horizon": "1d",
+    "expected_return": 0.21358228472002264,
+    "adapter": "atlas",
+    "ticker": "JNJ",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 69.71628475189209
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=JNJ"
+}

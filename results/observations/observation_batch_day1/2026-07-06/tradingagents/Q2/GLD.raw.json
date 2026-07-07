@@ -1,0 +1,21 @@
+{
+  "sentiment_score": 0.24000000000000005,
+  "risk_level": "MEDIUM",
+  "drivers": [
+    "Overall Sentiment:** **Mildly Bullish** (Score: 6.2/10)",
+    "Confidence:** Medium",
+    "Source-by-Source Breakdown",
+    "News Headlines (Yahoo Finance, past 7 days) \u2014 **Bullish leaning",
+    "The news flow over the evaluation period is distinctly constructive for gold. The dominant catalyst is the **weak June jobs report** (July 2 release), which triggered a clear re-rating of Fed expectations \u2014 \"Fed hike odds drop to 18%\" (GuruFocus) and multiple MT Newswires articles note gold climbing to two-week highs as Treasury yields retreated and the dollar weakened. Zacks ran two pieces highlighting gold ETFs as beneficiaries of cooling labour markets."
+  ],
+  "sources": [
+    "Yahoo Finance news",
+    "StockTwits",
+    "Reddit"
+  ],
+  "adapter": "tradingagents",
+  "ticker": "GLD",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 238.48876976966858
+}

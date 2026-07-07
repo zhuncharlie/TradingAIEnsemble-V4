@@ -1,0 +1,31 @@
+{
+  "adapter": "finclaw",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "NEUTRAL",
+    "strength": 0.044959911068675674,
+    "supporting_evidence": [
+      "Real score_stock() = 4.78/10 for 'GLD' as of the last point-in-time trading day on/before 2026-07-06, from the real evolved winning StrategyDNA (fitness=17.11).",
+      "Top evolved factor weight: w_obv = 0.1553",
+      "Top evolved factor weight: w_roe = 0.1246",
+      "Top evolved factor weight: w_peg = 0.0911",
+      "Walk-forward OOS: 4/4 windows profitable, annual_return=13.7%, sharpe=-1.92, win_rate=41.1%, trades=83 (real upstream walk-forward metrics, not reimplemented).",
+      "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code — NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...')."
+    ],
+    "expected_horizon": "2d",
+    "expected_return": 0.136636,
+    "adapter": "finclaw",
+    "ticker": "GLD",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 99.25087976455688
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=GLD"
+}

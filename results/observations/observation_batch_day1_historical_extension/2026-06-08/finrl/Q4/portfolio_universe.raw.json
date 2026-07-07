@@ -1,0 +1,17 @@
+{
+  "weights": {
+    "GLD": 0.12128045138834898,
+    "JPM": 0.3233770059784426,
+    "NVDA": 0.1189637455575821,
+    "QQQ": 0.1189637455575821,
+    "SPY": 0.3174150515180442
+  },
+  "cash_ratio": 0.0,
+  "rationale": "Weights are the final-day allocation from a real A2C policy (upstream FinRL's own DRLAgent wrapping stable_baselines3.A2C), trained live for 3000 timesteps on NVDA, SPY, QQQ, JPM, GLD's real yfinance history from 2024-12-05 to 2026-06-08 (upstream's own StockPortfolioEnv reward = portfolio value, upstream's own softmax weight normalization \u2014 no pretrained checkpoint was available or used). Trailing 30-day equal-weight realized return -0.03% \u2192 heuristic regime label SIDEWAYS.",
+  "regime": "SIDEWAYS",
+  "rebalance_freq": "DAILY",
+  "adapter": "finrl",
+  "date": "2026-06-08",
+  "cost_usd": 0.0,
+  "latency_sec": 53.71162724494934
+}

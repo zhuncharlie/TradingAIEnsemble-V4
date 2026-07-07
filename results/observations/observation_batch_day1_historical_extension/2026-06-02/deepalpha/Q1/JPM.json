@@ -1,0 +1,24 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1_historical_extension__2026-06-02",
+  "adapter_version": "0.1.0",
+  "q1": {
+    "action": "SELL",
+    "confidence": 0.8669026743443508,
+    "reasoning": "XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on JPM's own 3y yfinance history — no pretrained Kaggle-sourced artifacts were available) predicts a 5-day forward return of -2.7872%, against a transaction-cost-based signal threshold of 0.1500%. Model agreement (1 - normalised prediction dispersion) is 0.87.",
+    "bull_case": null,
+    "bear_case": null,
+    "time_horizon": "5d",
+    "adapter": "deepalpha",
+    "ticker": "JPM",
+    "date": "2026-06-02",
+    "cost_usd": 0.0,
+    "latency_sec": 13.4503493309021
+  },
+  "q2": null,
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=JPM"
+}

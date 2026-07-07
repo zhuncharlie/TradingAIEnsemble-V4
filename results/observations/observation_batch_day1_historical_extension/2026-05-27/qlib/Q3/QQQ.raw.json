@@ -1,0 +1,22 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.1428571428571429,
+  "supporting_evidence": [
+    "'QQQ' real LGBModel-predicted score -0.00431 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 5/8 (43% percentile) across the real 8-ticker universe on 2026-05-27.",
+    "Real Alpha158 factor 'CORD10': LightGBM importance=3",
+    "Real Alpha158 factor 'KLOW': LightGBM importance=2",
+    "Real Alpha158 factor 'BETA60': LightGBM importance=2",
+    "Real Alpha158 factor 'RSQR20': LightGBM importance=2",
+    "Real Alpha158 factor 'STD30': LightGBM importance=2",
+    "Real raw Alpha158 factor values for 'QQQ' on 2026-05-27: KMID=-0.0048, KLEN=0.0108, ROC5=0.9617, ROC20=0.9014, ROC60=0.8326, MA5=0.9884, MA20=0.9621, STD20=0.0278",
+    "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-16, 2026-01-10], validated on [2026-01-11, 2026-03-12], best/early-stopped iteration=3 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."
+  ],
+  "expected_horizon": "2d",
+  "expected_return": -0.004314019142090213,
+  "adapter": "qlib",
+  "ticker": "QQQ",
+  "date": "2026-05-27",
+  "cost_usd": 0.0,
+  "latency_sec": 16.66458010673523
+}

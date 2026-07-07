@@ -1,0 +1,28 @@
+{
+  "adapter": "fingpt",
+  "task_id": "comparison_2026-07-02",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": 0.4,
+    "risk_level": "LOW",
+    "drivers": [
+      "Amazon Reportedly Plans In-House Processors For Consumer Devices In Major Shift, Analyst Says (positive)",
+      "Bank Mergers Just Hit a 7-Year High. Here Are the Regional Banks Most Likely to Make a Deal. (positive)",
+      "What's next for AI and Big Tech in the second half of 2026? (neutral)"
+    ],
+    "sources": [
+      "Yahoo Finance news (yfinance)"
+    ],
+    "adapter": "fingpt",
+    "ticker": "NVDA",
+    "date": "2026-07-02",
+    "cost_usd": 0.0,
+    "latency_sec": 80.82552719116211
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": ""
+}

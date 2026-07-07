@@ -1,0 +1,21 @@
+{
+  "sentiment_score": 0.5599999999999999,
+  "risk_level": "HIGH",
+  "drivers": [
+    "Overall Sentiment:** **Bullish** (Score: 7.8/10)",
+    "Confidence:** Medium",
+    "Sentiment Report for JNJ (Johnson & Johnson) \u2014 2026-06-29 to 2026-07-06",
+    "1. Source-by-Source Breakdown",
+    "News Headlines (Yahoo Finance, past 7 days)"
+  ],
+  "sources": [
+    "Yahoo Finance news",
+    "StockTwits",
+    "Reddit"
+  ],
+  "adapter": "tradingagents",
+  "ticker": "JNJ",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 243.79988718032837
+}

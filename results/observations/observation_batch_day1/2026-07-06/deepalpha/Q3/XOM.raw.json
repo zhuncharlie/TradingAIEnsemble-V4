@@ -1,0 +1,17 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "LONG",
+  "strength": 0.02246077947577297,
+  "supporting_evidence": [
+    "close_max_5 (importance=0.1256)",
+    "close_min_5 (importance=0.0459)",
+    "month_cos (importance=0.0443)"
+  ],
+  "expected_horizon": "5d",
+  "expected_return": 0.0011230389737886485,
+  "adapter": "deepalpha",
+  "ticker": "XOM",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 10.700170755386353
+}

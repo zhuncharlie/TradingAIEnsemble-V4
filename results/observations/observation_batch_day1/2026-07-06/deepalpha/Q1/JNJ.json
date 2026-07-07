@@ -1,0 +1,24 @@
+{
+  "adapter": "deepalpha",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": {
+    "action": "BUY",
+    "confidence": 0.9110239992457131,
+    "reasoning": "XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on JNJ's own 3y yfinance history — no pretrained Kaggle-sourced artifacts were available) predicts a 5-day forward return of +3.4269%, against a transaction-cost-based signal threshold of 0.1500%. Model agreement (1 - normalised prediction dispersion) is 0.91.",
+    "bull_case": null,
+    "bear_case": null,
+    "time_horizon": "5d",
+    "adapter": "deepalpha",
+    "ticker": "JNJ",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 15.74999475479126
+  },
+  "q2": null,
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=JNJ"
+}

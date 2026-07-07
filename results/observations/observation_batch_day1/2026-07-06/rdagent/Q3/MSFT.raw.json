@@ -1,0 +1,18 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.0,
+  "supporting_evidence": [
+    "RD-Agent real LLM-proposed research hypothesis: Simple momentum, volatility, volume, and price-based factors derived from daily price and volume data will provide predictive signals for future returns, as they capture trend, risk, liquidity, and reversal patterns.",
+    "Reason: Starting with classic and computationally efficient factors allows rapid testing and validation. Momentum factors (e.g., 10-day return) exploit trend persistence; volatility factors (e.g., 5-day rolling standard deviation) capture risk premia; volume factors (e.g., relative volume) indicate liquidity and informed trading; price range factors (e.g., (high-low)/close) measure intraday volatility. These diverse perspectives are likely to yield initial strong predictive performance and serve as building blocks for more complex factors.",
+    "Real LLM-formulated factor '10-Day Momentum': [Momentum Factor] The total return over the last 10 trading days, measuring short-term trend persistence. [formulation: \\frac{P_{t} - P_{t-10}}{P_{t-10}}]",
+    "Real CoSTEER round did not converge on an accepted implementation within the bounded 2-round loop -- upstream's own real rejection feedback: All tasks are failed:\n- feedback01:\n  - execution: Execution succeeded without error.\nExpected output file found.\n  - return_checking: value feedback: value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe index levels are reversed. Expected order is ('datetime', 'instrument'), but the provided dataframe has ('instrument', 'datetime'). Please swap the index levels.\nThe generated dataframe is daily.\n\nshape feedback: None\n\nshape feedback: value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe index levels are reversed. Expected order is ('datetime', 'instrument'), but the provided dataframe has ('instrument', 'datetime'). Please swap the index levels.\nThe generated dataframe is daily.\n\nshape feedback: None\n  - code: critic 1: The output dataframe's index levels are in the order ('instrument', 'datetime'), but the required order is ('datetime', 'instrument'). This misalignment will cause issues when integrating with Qlib. Please reorder the index levels so that datetime is the first level."
+  ],
+  "expected_horizon": "5d",
+  "expected_return": null,
+  "adapter": "rdagent",
+  "ticker": "MSFT",
+  "date": "2026-07-06",
+  "cost_usd": 0.00330862,
+  "latency_sec": 84.545156955719
+}

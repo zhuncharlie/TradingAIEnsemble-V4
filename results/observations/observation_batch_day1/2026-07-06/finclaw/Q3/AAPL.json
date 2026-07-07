@@ -1,0 +1,31 @@
+{
+  "adapter": "finclaw",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "signal_type": "FACTOR",
+    "direction": "SHORT",
+    "strength": 0.39867810098628176,
+    "supporting_evidence": [
+      "Real score_stock() = 3.01/10 for 'AAPL' as of the last point-in-time trading day on/before 2026-07-06, from the real evolved winning StrategyDNA (fitness=35.56).",
+      "Top evolved factor weight: w_donchian = 0.1278",
+      "Top evolved factor weight: w_bollinger = 0.0870",
+      "Top evolved factor weight: w_ichimoku = 0.0780",
+      "Walk-forward OOS: 3/4 windows profitable, annual_return=17.6%, sharpe=1.14, win_rate=54.1%, trades=90 (real upstream walk-forward metrics, not reimplemented).",
+      "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code — NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...')."
+    ],
+    "expected_horizon": "2d",
+    "expected_return": 0.17619800000000002,
+    "adapter": "finclaw",
+    "ticker": "AAPL",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 96.41415882110596
+  },
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=AAPL"
+}

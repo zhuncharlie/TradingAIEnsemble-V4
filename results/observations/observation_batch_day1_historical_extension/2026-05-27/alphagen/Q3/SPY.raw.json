@@ -1,0 +1,21 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "LONG",
+  "strength": 1.0,
+  "supporting_evidence": [
+    "'SPY' real RL-discovered ensemble alpha value 0.6318 ranks 1/8 (100% percentile) across the real 8-ticker universe on 2026-05-27.",
+    "Discovered alpha #0: 'Div(1.0,Sub($high,Abs(Mul(-0.5,Abs(Log(Max($low,40d)))))))' (weight=0.9051, single IC=0.1618)",
+    "Discovered alpha #1: 'Sub(0.5,$volume)' (weight=0.5991, single IC=-0.0703)",
+    "Discovered alpha #2: 'Ref(EMA(Add(Mul($high,$high),-5.0),5d),5d)' (weight=-0.6791, single IC=-0.1156)",
+    "Discovered alpha #3: 'Add(-10.0,Abs($volume))' (weight=0.4029, single IC=0.0703)",
+    "Discovered alpha #4: 'Sub(Ref($vwap,10d),-5.0)' (weight=1.6842, single IC=-0.1219)",
+    "Real upstream MaskablePPO/AlphaEnv search: best ensemble IC=0.2640, 85 distinct expressions evaluated over 4000 RL timesteps (see adapter header, 'RL training budget', for why this is scoped down from upstream's own 200k-350k timestep experiments)."
+  ],
+  "expected_horizon": "20d",
+  "expected_return": 0.06838422992520711,
+  "adapter": "alphagen",
+  "ticker": "SPY",
+  "date": "2026-05-27",
+  "cost_usd": 0.0,
+  "latency_sec": 102.04487538337708
+}

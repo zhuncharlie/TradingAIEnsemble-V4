@@ -4,7 +4,6 @@ __pycache__/
 .env
 *.env
 adapters/vendor/
-results/
 *.png
 *.csv
 # Comparison-layer chart outputs are paper deliverables, not scratch output.
@@ -13,6 +12,10 @@ results/
 # ICAIF experiment-suite outputs (figures/tables) are paper deliverables too.
 !reports/icaif_experiments/*.png
 !reports/icaif_experiments/*.csv
+# Real observation data (adapter results) is a paper deliverable too — the
+# whole tree, not just the top level, so override *.png/*.csv for it.
+!results/**/*.png
+!results/**/*.csv
 # RD-Agent's own runtime workspace/cache when run from repo root (its own
 # default naming — see adapters/rdagent_adapter.py header once it exists).
 /git_ignore_folder/

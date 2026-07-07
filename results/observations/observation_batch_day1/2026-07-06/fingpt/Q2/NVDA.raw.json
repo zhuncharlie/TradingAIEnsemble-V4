@@ -1,0 +1,17 @@
+{
+  "sentiment_score": 0.2,
+  "risk_level": "HIGH",
+  "drivers": [
+    "Nvidia Kyber Rack Reportedly Delayed to 2028 (negative)",
+    "The S&P 500 Looks Pricey at 22x Earnings. On Cash Flow, It\u2019s a Terrifying 32x. (negative)",
+    "First Solar Climbs 5% on Bullish Wells Fargo Note, SolarEdge Jumps 8%, Canadian Solar Gains 7%, Enphase Rises 5% (positive)"
+  ],
+  "sources": [
+    "Yahoo Finance news (yfinance)"
+  ],
+  "adapter": "fingpt",
+  "ticker": "NVDA",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 80.88324499130249
+}

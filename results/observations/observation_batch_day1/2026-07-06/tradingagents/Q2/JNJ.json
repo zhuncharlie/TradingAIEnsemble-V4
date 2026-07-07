@@ -1,0 +1,32 @@
+{
+  "adapter": "tradingagents",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": 0.5599999999999999,
+    "risk_level": "HIGH",
+    "drivers": [
+      "Overall Sentiment:** **Bullish** (Score: 7.8/10)",
+      "Confidence:** Medium",
+      "Sentiment Report for JNJ (Johnson & Johnson) — 2026-06-29 to 2026-07-06",
+      "1. Source-by-Source Breakdown",
+      "News Headlines (Yahoo Finance, past 7 days)"
+    ],
+    "sources": [
+      "Yahoo Finance news",
+      "StockTwits",
+      "Reddit"
+    ],
+    "adapter": "tradingagents",
+    "ticker": "JNJ",
+    "date": "2026-07-06",
+    "cost_usd": 0.0,
+    "latency_sec": 243.79988718032837
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=JNJ"
+}

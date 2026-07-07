@@ -1,0 +1,18 @@
+{
+  "sentiment_score": -0.64,
+  "risk_level": "LOW",
+  "drivers": [
+    "Real Kalshi market 'DOJ wins their anti-trust case against Apple?' (ticker APPLEUS-29DEC31 \u2014 no real Kalshi market matched 'TSLA'; using a fixed, verified real market as a representative fallback): live market-implied P(yes)=21.0% (mid of real yes_bid/yes_ask quotes)",
+    "Real DeepSeek forecast (via upstream forecasting-tools' NoResearchOneShotBot, zero-research single-shot prompt): P(yes)=18.0%",
+    "LLM rationale excerpt: ## R1: Forecaster 1 Reasoning\nThe current market-implied probability is 21%, but this reflects a blend of public information, legal analysis, and market sentiment. The DOJ\u2019s antitrust case against Apple faces significant legal hurdles\u2014antitrust claims against major tech firms are often hard to prove"
+  ],
+  "sources": [
+    "Kalshi public API (api.elections.kalshi.com) \u2014 read-only, no account/auth used",
+    "Metaculus/forecasting-tools NoResearchOneShotBot + DeepSeek (deepseek-chat)"
+  ],
+  "adapter": "prediction_arena",
+  "ticker": "TSLA",
+  "date": "2026-07-06",
+  "cost_usd": 0.0003036880000000001,
+  "latency_sec": 26.399032592773438
+}

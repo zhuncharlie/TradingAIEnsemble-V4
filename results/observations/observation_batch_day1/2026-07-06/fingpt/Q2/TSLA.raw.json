@@ -1,0 +1,17 @@
+{
+  "sentiment_score": 1.0,
+  "risk_level": "LOW",
+  "drivers": [
+    "Tesla Stock Climbs as Robotaxi Expansion Reaches Miami (positive)",
+    "SpaceX-Tesla Merger Could Create Nearly $4 Trillion Giant (positive)",
+    "Tesla's Delivery Strength Forces Wall Street to Reassess (positive)"
+  ],
+  "sources": [
+    "Yahoo Finance news (yfinance)"
+  ],
+  "adapter": "fingpt",
+  "ticker": "TSLA",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 85.7418851852417
+}

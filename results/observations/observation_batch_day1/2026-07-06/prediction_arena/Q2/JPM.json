@@ -1,0 +1,29 @@
+{
+  "adapter": "prediction_arena",
+  "task_id": "observation_batch_day1__2026-07-06",
+  "adapter_version": "0.1.0",
+  "q1": null,
+  "q2": {
+    "sentiment_score": -0.76,
+    "risk_level": "LOW",
+    "drivers": [
+      "Real Kalshi market 'Who will be the next CEO of JP Morgan Chase?' (ticker KXNEWROLEJP-35DEC-MLA): live market-implied P(yes)=8.5% (mid of real yes_bid/yes_ask quotes)",
+      "Real DeepSeek forecast (via upstream forecasting-tools' NoResearchOneShotBot, zero-research single-shot prompt): P(yes)=12.0%",
+      "LLM rationale excerpt: ## R1: Forecaster 1 Reasoning\nMarianne Lake is currently the CEO of JPMorgan Chase’s consumer and community banking division and has long been seen as a potential successor to Jamie Dimon. However, Dimon has shown no clear signs of stepping down soon, and the board may consider other internal candid"
+    ],
+    "sources": [
+      "Kalshi public API (api.elections.kalshi.com) — read-only, no account/auth used",
+      "Metaculus/forecasting-tools NoResearchOneShotBot + DeepSeek (deepseek-chat)"
+    ],
+    "adapter": "prediction_arena",
+    "ticker": "JPM",
+    "date": "2026-07-06",
+    "cost_usd": 0.00032481119999999995,
+    "latency_sec": 24.79090404510498
+  },
+  "q3": null,
+  "q4": null,
+  "q5": null,
+  "native_output": {},
+  "adapter_notes": "observation_batch input_id=JPM"
+}

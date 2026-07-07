@@ -1,0 +1,22 @@
+{
+  "sentiment_score": 0.4732558139534884,
+  "risk_level": "HIGH",
+  "drivers": [
+    "These Were the 3 Best-Performing \"Magnificent Seven\" Stocks of the First Half. Only 1 of Them Outperformed the S&P 500 (negative, score=-0.20)",
+    "Broadcom shares jump after surprise five-year Apple chip deal (positive, score=0.60)",
+    "S&P 500, Nasdaq rise as chips recover, Broadcom gains on Apple deal (positive, score=0.75)",
+    "Fusion risk factor: Concentrated single-stock position (100% in AAPL)",
+    "Fusion risk factor: Price at upper Bollinger Band indicating overextension and potential mean reversion",
+    "Fusion risk factor: Short-term momentum decelerating (20-day momentum acceleration negative)"
+  ],
+  "sources": [
+    "Yahoo Finance news + price history (yfinance)",
+    "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+    "DeepSeek (deepseek-v4-flash) via QuantMuse SentimentAnalyzer (per-headline LLM sentiment) + LLMIntegration.assess_risk (LLM fusion of quant + sentiment -> risk verdict)"
+  ],
+  "adapter": "nofx",
+  "ticker": "AAPL",
+  "date": "2026-07-06",
+  "cost_usd": 0.0,
+  "latency_sec": 39.751554012298584
+}

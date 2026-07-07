@@ -1,0 +1,22 @@
+{
+  "signal_type": "FACTOR",
+  "direction": "NEUTRAL",
+  "strength": 0.1428571428571428,
+  "supporting_evidence": [
+    "'JPM' real LGBModel-predicted score 0.00440 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 4/8 (57% percentile) across the real 8-ticker universe on 2026-05-15.",
+    "Real Alpha158 factor 'RESI30': LightGBM importance=6",
+    "Real Alpha158 factor 'STD20': LightGBM importance=5",
+    "Real Alpha158 factor 'RSQR20': LightGBM importance=5",
+    "Real Alpha158 factor 'BETA5': LightGBM importance=5",
+    "Real Alpha158 factor 'RSQR5': LightGBM importance=4",
+    "Real raw Alpha158 factor values for 'JPM' on 2026-05-15: KMID=-0.0080, KLEN=0.0145, ROC5=1.0144, ROC20=1.0419, ROC60=1.0291, MA5=1.0093, MA20=1.0349, STD20=0.0190",
+    "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-04, 2025-12-29], validated on [2025-12-30, 2026-02-28], best/early-stopped iteration=16 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."
+  ],
+  "expected_horizon": "2d",
+  "expected_return": 0.004395269227386006,
+  "adapter": "qlib",
+  "ticker": "JPM",
+  "date": "2026-05-15",
+  "cost_usd": 0.0,
+  "latency_sec": 16.273838758468628
+}
