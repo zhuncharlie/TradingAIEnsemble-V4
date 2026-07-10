@@ -171,6 +171,12 @@ class ResultRecord:
     q3: Optional[dict]
     q4: Optional[dict]
     q5: Optional[dict]
+    # Alignment context — see analysis/icaif_alignment.py. Recovered from
+    # index.csv / task_id / filename, never from a CONTRACT/schemas.py
+    # field (that file stays read-only per explicit instruction this
+    # session). Lets Q4/Q5 records — which have no ticker, and Q5 has no
+    # date either — get a real, non-fabricated decision_date and universe.
+    ctx: Dict[str, Any] = field(default_factory=dict)
 
 
 def _extract_date(payload: dict) -> Optional[str]:
@@ -209,13 +215,17 @@ def discover_result_files(results_dir: Path) -> List[ResultRecord]:
     an all-None row (q1..q5 all None, since the raw dict has no "q1" key at
     its top level) even though it doesn't corrupt Q1-Q5 extraction itself.
     """
+    from analysis.icaif_alignment import load_index_csv_context, recover_context
+
     results_dir = Path(results_dir)
     records: List[ResultRecord] = []
     if not results_dir.exists():
         return records
 
+    index_ctx = load_index_csv_context(results_dir)
+
     for path in sorted(results_dir.rglob("*.json")):
-        if path.name.endswith(".raw.json"):
+        if path.name.endswith(".raw.json") or path.name == "index.csv":
             continue
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -225,21 +235,26 @@ def discover_result_files(results_dir: Path) -> List[ResultRecord]:
             continue
 
         if "error" in payload and "q1" not in payload:
+            task_id = payload.get("task_id", path.parent.name)
+            ctx = recover_context(path, payload, index_ctx)
             records.append(ResultRecord(
                 path=str(path),
-                task_id=payload.get("task_id", path.parent.name),
+                task_id=task_id,
                 adapter=payload["adapter"],
                 ticker=payload.get("ticker") or _extract_ticker({}, path),
                 date=payload.get("date"),
                 is_error=True,
                 error=payload["error"],
                 q1=None, q2=None, q3=None, q4=None, q5=None,
+                ctx=ctx,
             ))
             continue
 
+        task_id = payload.get("task_id", path.parent.name)
+        ctx = recover_context(path, payload, index_ctx)
         records.append(ResultRecord(
             path=str(path),
-            task_id=payload.get("task_id", path.parent.name),
+            task_id=task_id,
             adapter=payload["adapter"],
             ticker=_extract_ticker(payload, path),
             date=_extract_date(payload),
@@ -247,6 +262,7 @@ def discover_result_files(results_dir: Path) -> List[ResultRecord]:
             error=None,
             q1=payload.get("q1"), q2=payload.get("q2"), q3=payload.get("q3"),
             q4=payload.get("q4"), q5=payload.get("q5"),
+            ctx=ctx,
         ))
     return records
 
@@ -266,6 +282,7 @@ def records_to_dataframe(records: List[ResultRecord]) -> pd.DataFrame:
             "ticker": r.ticker, "date": r.date,
             "is_error": r.is_error, "error": r.error,
         }
+        row.update(r.ctx or {})
         for qname, payload in (("q1", r.q1), ("q2", r.q2), ("q3", r.q3),
                                 ("q4", r.q4), ("q5", r.q5)):
             row[f"{qname}_present"] = payload is not None

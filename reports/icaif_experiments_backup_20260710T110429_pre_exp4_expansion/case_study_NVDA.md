@@ -15,14 +15,12 @@
 - qlib supporting_evidence: ["'NVDA' real LGBModel-predicted score -0.05947 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 5/8 (43% percentile) across the real 8-ticker universe on 2026-05-15.", "Real Alpha158 factor 'RESI30': LightGBM importance=6", "Real Alpha158 factor 'STD20': LightGBM importance=5", "Real Alpha158 factor 'RSQR20': LightGBM importance=5", "Real Alpha158 factor 'BETA5': LightGBM importance=5", "Real Alpha158 factor 'RSQR5': LightGBM importance=4", "Real raw Alpha158 factor values for 'NVDA' on 2026-05-15: KMID=-0.0193, KLEN=0.0316, ROC5=0.9551, ROC20=0.8951, ROC60=0.8339, MA5=1.0005, MA20=0.9333, STD20=0.0491", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-04, 2025-12-29], validated on [2025-12-30, 2026-02-28], best/early-stopped iteration=16 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on NVDA/2026-05-15 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.96 on NVDA/2026-05-15, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.96 (bucket 0.9-1.0) on NVDA/2026-05-15 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.96 on NVDA/2026-05-15, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: SELL
-- interwoven_calibrated_fusion: **SELL** (score=-0.633; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.70, boost=yes)
+- interwoven_calibrated_fusion: **SELL** (score=-0.813; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.90, boost=yes)
 - Same as majority vote for this case.
 - realized future return (h=1): -0.0133
 
@@ -41,18 +39,13 @@
 - qlib supporting_evidence: ["'NVDA' real LGBModel-predicted score 0.01681 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 4/8 (57% percentile) across the real 8-ticker universe on 2026-05-21.", "Real Alpha158 factor 'KLOW': LightGBM importance=2", "Real Alpha158 factor 'STD60': LightGBM importance=2", "Real Alpha158 factor 'CORD10': LightGBM importance=2", "Real Alpha158 factor 'SUMP10': LightGBM importance=2", "Real Alpha158 factor 'QTLD5': LightGBM importance=2", "Real raw Alpha158 factor values for 'NVDA' on 2026-05-21: KMID=-0.0125, KLEN=0.0426, ROC5=1.0739, ROC20=0.9095, ROC60=0.8908, MA5=1.0125, MA20=0.9767, STD20=0.0485", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-10, 2026-01-04], validated on [2026-01-05, 2026-03-06], best/early-stopped iteration=5 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.97 on NVDA/2026-05-21, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: deepalpha action=SELL vs alphagen direction=LONG on NVDA/2026-05-21 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on NVDA/2026-05-21 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and alphagen disagree on direction for NVDA/2026-05-21 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: alphagen and deepalpha disagree on direction for NVDA/2026-05-21 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.97 on NVDA/2026-05-21, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.97 (bucket 0.9-1.0) on NVDA/2026-05-21 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: alphagen Q3 value=1.00 (bucket 0.9-1.0) on NVDA/2026-05-21 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: HOLD
-- interwoven_calibrated_fusion: **HOLD** (score=-0.064; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.50, boost=yes)
+- interwoven_calibrated_fusion: **HOLD** (score=-0.102; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.80, boost=yes)
 - **Differs from majority vote** because of the multipliers above.
 - realized future return (h=1): -0.0190
 
@@ -71,18 +64,13 @@
 - qlib supporting_evidence: ["'NVDA' real LGBModel-predicted score -0.01138 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 6/8 (29% percentile) across the real 8-ticker universe on 2026-05-27.", "Real Alpha158 factor 'CORD5': LightGBM importance=2", "Real Alpha158 factor 'RSQR20': LightGBM importance=2", "Real Alpha158 factor 'STD5': LightGBM importance=1", "Real Alpha158 factor 'STD10': LightGBM importance=1", "Real Alpha158 factor 'KLEN': LightGBM importance=1", "Real raw Alpha158 factor values for 'NVDA' on 2026-05-27: KMID=-0.0071, KLEN=0.0251, ROC5=1.0377, ROC20=1.0027, ROC60=0.8583, MA5=1.0214, MA20=1.0095, STD20=0.0496", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-16, 2026-01-10], validated on [2026-01-11, 2026-03-12], best/early-stopped iteration=3 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.98 on NVDA/2026-05-27, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: deepalpha action=SELL vs alphagen direction=LONG on NVDA/2026-05-27 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on NVDA/2026-05-27 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and alphagen disagree on direction for NVDA/2026-05-27 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: alphagen and deepalpha disagree on direction for NVDA/2026-05-27 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.98 on NVDA/2026-05-27, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.98 (bucket 0.9-1.0) on NVDA/2026-05-27 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: alphagen Q3 value=0.71 (bucket 0.7-0.8) on NVDA/2026-05-27 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: HOLD
-- interwoven_calibrated_fusion: **HOLD** (score=-0.136; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.50, boost=yes)
+- interwoven_calibrated_fusion: **HOLD** (score=-0.217; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.80, boost=yes)
 - **Differs from majority vote** because of the multipliers above.
 - realized future return (h=1): 0.0078
 
@@ -101,22 +89,14 @@
 - qlib supporting_evidence: ["'NVDA' real LGBModel-predicted score 0.00362 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 2/8 (86% percentile) across the real 8-ticker universe on 2026-06-02.", "Real Alpha158 factor 'CORD5': LightGBM importance=3", "Real Alpha158 factor 'RSQR20': LightGBM importance=3", "Real Alpha158 factor 'CORD10': LightGBM importance=3", "Real Alpha158 factor 'RESI30': LightGBM importance=2", "Real Alpha158 factor 'KLOW': LightGBM importance=2", "Real raw Alpha158 factor values for 'NVDA' on 2026-06-02: KMID=-0.0192, KLEN=0.0481, ROC5=0.9643, ROC20=0.8908, ROC60=0.7980, MA5=0.9740, MA20=0.9782, STD20=0.0369", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-22, 2026-01-16], validated on [2026-01-17, 2026-03-18], best/early-stopped iteration=5 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.98 on NVDA/2026-06-02, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: deepalpha action=SELL vs alphagen direction=LONG on NVDA/2026-06-02 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: deepalpha action=SELL vs qlib direction=LONG on NVDA/2026-06-02 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on NVDA/2026-06-02 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and alphagen disagree on direction for NVDA/2026-06-02 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and qlib disagree on direction for NVDA/2026-06-02 yet share evidence-atom tags: factor _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: alphagen and deepalpha disagree on direction for NVDA/2026-06-02 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and qlib disagree on direction for NVDA/2026-06-02 yet share evidence-atom tags: factor _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.98 on NVDA/2026-06-02, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.98 (bucket 0.9-1.0) on NVDA/2026-06-02 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: alphagen Q3 value=0.71 (bucket 0.7-0.8) on NVDA/2026-06-02 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: qlib Q3 value=0.71 (bucket 0.7-0.8) on NVDA/2026-06-02 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
 
 ### Fusion decision
 - majority_vote: HOLD
 - confidence_weighted_vote: HOLD
-- interwoven_calibrated_fusion: **HOLD** (score=0.010; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.50, boost=yes)
+- interwoven_calibrated_fusion: **HOLD** (score=0.014; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.70, boost=yes)
 - Same as majority vote for this case.
 - realized future return (h=1): -0.0362
 
@@ -135,19 +115,14 @@
 - qlib supporting_evidence: ["'NVDA' real LGBModel-predicted score 0.00502 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 6/8 (29% percentile) across the real 8-ticker universe on 2026-06-08.", "Real Alpha158 factor 'ROC30': LightGBM importance=1", "Real Alpha158 factor 'SUMP10': LightGBM importance=1", "Real Alpha158 factor 'SUMN30': LightGBM importance=1", "Real Alpha158 factor 'CORD5': LightGBM importance=1", "Real Alpha158 factor 'IMAX20': LightGBM importance=1", "Real raw Alpha158 factor values for 'NVDA' on 2026-06-08: KMID=-0.0073, KLEN=0.0213, ROC5=1.0741, ROC20=1.0302, ROC60=0.8768, MA5=1.0252, MA20=1.0475, STD20=0.0331", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-28, 2026-01-22], validated on [2026-01-23, 2026-03-24], best/early-stopped iteration=1 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
-- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; finrl validation_status=weak (task observation_batch_day1_historical_extension__2026-06-08) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
+- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; finrl validation_status=weak (task observation_batch_day1_historical_extension__2026-06-08) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.97 on NVDA/2026-06-08, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: deepalpha action=SELL vs alphagen direction=LONG on NVDA/2026-06-08 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on NVDA/2026-06-08 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and alphagen disagree on direction for NVDA/2026-06-08 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: alphagen and deepalpha disagree on direction for NVDA/2026-06-08 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.97 on NVDA/2026-06-08, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.97 (bucket 0.9-1.0) on NVDA/2026-06-08 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: alphagen Q3 value=1.00 (bucket 0.9-1.0) on NVDA/2026-06-08 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: HOLD
-- interwoven_calibrated_fusion: **HOLD** (score=-0.044; risk_mult=1.00, validation_mult=0.65, contradiction_mult=0.50, boost=yes)
+- interwoven_calibrated_fusion: **HOLD** (score=-0.061; risk_mult=1.00, validation_mult=0.65, contradiction_mult=0.70, boost=yes)
 - **Differs from majority vote** because of the multipliers above.
 - realized future return (h=1): -0.0022
 
@@ -165,13 +140,12 @@
 - deepalpha supporting_evidence: ['close_max_20 (importance=0.0789)', 'vwap (importance=0.0783)', 'ema_50 (importance=0.0470)']
 
 ### Detected contradictions
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.95 on NVDA/2026-07-02, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.95 (bucket 0.9-1.0) on NVDA/2026-07-02 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.95 on NVDA/2026-07-02, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 
 ### Fusion decision
 - majority_vote: BUY
 - confidence_weighted_vote: BUY
-- interwoven_calibrated_fusion: **BUY** (score=0.704; risk_mult=1.00, validation_mult=0.80, contradiction_mult=0.80, boost=yes)
+- interwoven_calibrated_fusion: **BUY** (score=0.792; risk_mult=1.00, validation_mult=0.80, contradiction_mult=0.90, boost=yes)
 - Same as majority vote for this case.
 - realized future return (h=1): 0.0037
 
@@ -228,32 +202,19 @@ The Neutral Analyst's 30-30-40 adjustment to the Trader's original 40-30-30 plan
 - **BUY_WITH_HIGH_RISK**: deepalpha says BUY on NVDA/2026-07-06; nofx reports risk_level=HIGH _(limitation: exact (ticker, date) join across Q1/Q2 — no approximation.)_
 - **BUY_WITH_HIGH_RISK**: tradingagents says BUY on NVDA/2026-07-06; fingpt reports risk_level=HIGH _(limitation: exact (ticker, date) join across Q1/Q2 — no approximation.)_
 - **BUY_WITH_HIGH_RISK**: tradingagents says BUY on NVDA/2026-07-06; nofx reports risk_level=HIGH _(limitation: exact (ticker, date) join across Q1/Q2 — no approximation.)_
-- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; agentictrading validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
-- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; finrl validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
-- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; prediction_arena validation_status=fail (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
-- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; vibe_trading validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
+- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; agentictrading validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; finrl validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; prediction_arena validation_status=fail (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **LONG_WITH_WEAK_VALIDATION**: alphagen LONG on NVDA; vibe_trading validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.99 on NVDA/2026-07-06, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: deepalpha action=BUY vs deepalpha direction=SHORT on NVDA/2026-07-06 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: deepalpha action=BUY vs finrl_x direction=SHORT on NVDA/2026-07-06 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: tradingagents action=BUY vs deepalpha direction=SHORT on NVDA/2026-07-06 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: tradingagents action=BUY vs finrl_x direction=SHORT on NVDA/2026-07-06 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
-- **DIRECTION_RETURN_INTRA_CONFLICT**: finrl_x direction=SHORT but expected_return=0.0275 on NVDA/2026-07-06 _(limitation: single-record check, no join, no approximation.)_
-- **SAME_DIRECTION_ZERO_ATOM_OVERLAP**: deepalpha and tradingagents agree on direction for NVDA/2026-07-06 but share zero evidence-atom tags (factor,technical vs sentiment,unknown) _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **SAME_DIRECTION_ZERO_ATOM_OVERLAP**: tradingagents and alphagen agree on direction for NVDA/2026-07-06 but share zero evidence-atom tags (sentiment,unknown vs earnings,factor,liquidity,technical) _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and deepalpha disagree on direction for NVDA/2026-07-06 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and finrl_x disagree on direction for NVDA/2026-07-06 yet share evidence-atom tags: factor _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: alphagen and deepalpha disagree on direction for NVDA/2026-07-06 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: alphagen and finrl_x disagree on direction for NVDA/2026-07-06 yet share evidence-atom tags: factor _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **RISK_ATOMS_BUT_BULLISH_HEADLINE**: tradingagents headline=BUY on NVDA/2026-07-06 but risk_atoms=risk_language_in_reasoning _(limitation: single-record check; risk_atoms themselves may draw on other Q's fields for the same (ticker, date) — see risk_atoms_from_record in icaif_metrics.py.)_
-- **VALIDATION_FAIL_BUT_STRONG_BULLISH**: deepalpha strong BUY on NVDA/2026-07-06, but task observation_batch_day1__2026-07-06 contains a Q5 record with validation_status:fail _(limitation: Q5Backtest has no ticker/date field — joined on task_id, upgraded to universe-confirmed when possible, same limitation as LONG_WITH_WEAK_VALIDATION.)_
-- **VALIDATION_FAIL_BUT_STRONG_BULLISH**: alphagen strong LONG on NVDA/2026-07-06, but task observation_batch_day1__2026-07-06 contains a Q5 record with validation_status:fail _(limitation: Q5Backtest has no ticker/date field — joined on task_id, upgraded to universe-confirmed when possible, same limitation as LONG_WITH_WEAK_VALIDATION.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.99 on NVDA/2026-07-06, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.99 (bucket 0.9-1.0) on NVDA/2026-07-06 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: alphagen Q3 value=1.00 (bucket 0.9-1.0) on NVDA/2026-07-06 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: finrl_x Q3 value=0.72 (bucket 0.7-0.8) on NVDA/2026-07-06 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
 
 ### Fusion decision
 - majority_vote: BUY
 - confidence_weighted_vote: BUY
 - interwoven_calibrated_fusion: **HOLD** (score=0.063; risk_mult=0.60, validation_mult=0.40, contradiction_mult=0.50, boost=yes)
 - **Differs from majority vote** because of the multipliers above.
-- realized future return (h=1): 0.0071
+- realized future return: insufficient_data (not enough trading days elapsed yet)

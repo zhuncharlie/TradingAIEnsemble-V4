@@ -1,6 +1,15 @@
-flag,count,limitation
-ACTION_ALPHA_DIRECTION_CONFLICT,27,"exact (ticker, date) join across Q1/Q3 — no approximation."
-BUY_WITH_HIGH_RISK,15,"exact (ticker, date) join across Q1/Q2 — no approximation."
-HIGH_CONFIDENCE_POOR_CALIBRATION,39,"uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that."
-HIGH_WEIGHT_HIGH_DRAWDOWN,5,Q4Portfolio and Q5Backtest are joined on task_id only (neither carries both ticker and date). 'high weight on ticker X' and 'severe drawdown' may come from unrelated adapters/strategies in the same run.
-LONG_WITH_WEAK_VALIDATION,43,"Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period."
+flag,category,count,limitation
+ACTION_ALPHA_DIRECTION_CONFLICT,cross_question,27,"exact (ticker, date) join across Q1/Q3 — no approximation."
+BUY_WITH_HIGH_RISK,cross_question,15,"exact (ticker, date) join across Q1/Q2 — no approximation."
+CONFIDENCE_IN_POOR_CALIBRATION_BUCKET,calibration,94,"exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION."
+DIRECTION_RETURN_INTRA_CONFLICT,intra_record,5,"single-record check, no join, no approximation."
+HEADLINE_EVIDENCE_MISMATCH,evidence,36,"keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py."
+HIGH_CONFIDENCE_POOR_CALIBRATION,calibration,39,"uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that."
+HIGH_WEIGHT_HIGH_DRAWDOWN,cross_question,5,Q4Portfolio and Q5Backtest are joined on task_id only (neither carries both ticker and date) — upgraded to universe-confirmed when the ticker is in the batch's known universe.
+LONG_WITH_WEAK_VALIDATION,cross_question,43,Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.
+OPPOSITE_DIRECTION_ATOM_OVERLAP,evidence,39,"exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU."
+RISK_ATOMS_BUT_BULLISH_HEADLINE,evidence,7,"single-record check; risk_atoms themselves may draw on other Q's fields for the same (ticker, date) — see risk_atoms_from_record in icaif_metrics.py."
+SAME_DIRECTION_ZERO_ATOM_OVERLAP,evidence,12,"exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU."
+SENTIMENT_RISK_INTRA_CONFLICT,intra_record,3,"single-record check, no join, no approximation."
+TEMPORAL_FLIP_UNEXPLAINED,temporal,2,"best-effort: only checks whether *any* Q2/Q4/Q5 record exists in the window with a different risk_level/regime/validation_status, not that it *caused* the flip — and can't distinguish a genuine signal change from adapter-side non-determinism (see deepalpha's own same-day self-contradiction, found via ACTION_ALPHA_DIRECTION_CONFLICT)."
+VALIDATION_FAIL_BUT_STRONG_BULLISH,evidence,8,"Q5Backtest has no ticker/date field — joined on task_id, upgraded to universe-confirmed when possible, same limitation as LONG_WITH_WEAK_VALIDATION."

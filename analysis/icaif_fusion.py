@@ -89,7 +89,17 @@ def _risk_lookup(df: pd.DataFrame, cfg: Config) -> Dict[tuple, float]:
 
 def _validation_lookup(df: pd.DataFrame, cfg: Config) -> Dict[str, float]:
     """task_id -> most conservative (lowest) validation multiplier across any
-    Q5 record in that comparison run (best-effort, see module docstring)."""
+    Q5 record in that comparison run (best-effort, see module docstring).
+
+    Context-aware (analysis/icaif_alignment.py, not a CONTRACT/schemas.py
+    change): a Q5 record whose ctx_alignment_source could recover real
+    batch context (index_csv/task_id_pattern) is trusted as computed; one
+    with NO recoverable context at all (ctx_alignment_source in
+    {None, "none", "filename_pattern"} — e.g. the legacy
+    comparison_2026-07-02 batch) is additionally capped at the "missing"
+    multiplier, since an unconfirmed join shouldn't be trusted more than no
+    validation data at all. Return type is unchanged (Dict[str, float]) so
+    every downstream Exp5 output column stays exactly as before."""
     q5 = extract_q5(df)
     out: Dict[str, float] = {}
     for task_id, g in q5.groupby("task_id"):
@@ -98,7 +108,10 @@ def _validation_lookup(df: pd.DataFrame, cfg: Config) -> Dict[str, float]:
             status = classify_validation_strength(
                 r.get("total_return"), r.get("sharpe"), r.get("max_drawdown"), r.get("win_rate"), cfg,
             )
-            mults.append(validation_multiplier_for(status, cfg))
+            mult = validation_multiplier_for(status, cfg)
+            if r.get("ctx_alignment_source") in (None, "none", "filename_pattern"):
+                mult = min(mult, cfg.validation_multiplier.get("missing", 0.8))
+            mults.append(mult)
         if mults:
             out[task_id] = min(mults)
     return out

@@ -347,3 +347,129 @@ def plot_final_decision_waterfall(explanation: Optional[Dict], path: Path, ticke
     fig.tight_layout()
     fig.savefig(path, dpi=150)
     plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# Expanded Experiment 4 figures (contradiction framework v2)
+# --------------------------------------------------------------------------- #
+
+def plot_contradiction_category_breakdown(category_summary: pd.DataFrame, path: Path) -> None:
+    """fig_20 — answers: of all contradictions found, how are they spread
+    across the 5 rule categories (cross_question/intra_record/evidence/
+    calibration/temporal)?"""
+    if category_summary.empty:
+        _placeholder(path, "Contradiction Category Breakdown", "No contradictions detected with current data.")
+        return
+    order = category_summary.sort_values("count", ascending=True)
+    fig, ax = plt.subplots(figsize=(8, max(3, 0.6 * len(order))))
+    ax.barh(order["category"], order["count"], color="steelblue")
+    for i, (_, r) in enumerate(order.iterrows()):
+        ax.text(r["count"], i, f"  {int(r['count'])} cases / {int(r['n_rules_fired'])} rules", va="center", fontsize=9)
+    ax.set_xlabel("number of cases")
+    ax.set_title("Contradiction Cases by Category")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_exact_vs_best_effort_split(cases: pd.DataFrame, path: Path) -> None:
+    """fig_21 — answers: what fraction of contradiction evidence is exact
+    vs. approximate, using the real exact_or_best_effort column (not an
+    ad-hoc reclassification)?"""
+    if cases.empty or "exact_or_best_effort" not in cases.columns:
+        _placeholder(path, "Exact vs. Best-Effort Split", "No contradictions detected with current data.")
+        return
+    counts = cases["exact_or_best_effort"].value_counts()
+    fig, ax = plt.subplots(figsize=(6, 5))
+    colors = {"exact": "steelblue", "best_effort": "indianred"}
+    ax.bar(counts.index, counts.values, color=[colors.get(k, "gray") for k in counts.index])
+    for i, v in enumerate(counts.values):
+        ax.text(i, v, str(v), ha="center", va="bottom")
+    ax.set_ylabel("number of cases")
+    ax.set_title("Contradiction Cases: Exact vs. Best-Effort\n(exact includes single_record — no join ambiguity)")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_severity_distribution(cases: pd.DataFrame, path: Path) -> None:
+    """fig_22 — answers: how serious are the contradictions found, using
+    each rule's fixed, documented severity (see RULE_REGISTRY)?"""
+    if cases.empty or "severity" not in cases.columns:
+        _placeholder(path, "Severity Distribution", "No contradictions detected with current data.")
+        return
+    order = ["low", "medium", "high"]
+    counts = cases["severity"].value_counts().reindex(order, fill_value=0)
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.bar(counts.index, counts.values, color=["#a7c7e7", "#f4b183", "#d9534f"])
+    for i, v in enumerate(counts.values):
+        ax.text(i, v, str(int(v)), ha="center", va="bottom")
+    ax.set_ylabel("number of cases")
+    ax.set_title("Contradiction Cases by Severity (fixed per-rule mapping, see contradiction_rulebook.md)")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_alignment_confidence_distribution(cases: pd.DataFrame, path: Path) -> None:
+    """fig_23 — answers: within 'exact'/'best effort', how much of the
+    evidence is single-record, truly exact-joined, context-confirmed, weak
+    best-effort, or has no recoverable context at all?"""
+    if cases.empty or "alignment_confidence" not in cases.columns:
+        _placeholder(path, "Alignment Confidence Distribution", "No contradictions detected with current data.")
+        return
+    order = ["single_record", "exact", "context_exact", "best_effort", "low_confidence"]
+    counts = cases["alignment_confidence"].value_counts().reindex(order, fill_value=0)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.barh(counts.index[::-1], counts.values[::-1], color="darkorange")
+    for i, v in enumerate(counts.values[::-1]):
+        ax.text(v, i, f"  {int(v)}", va="center")
+    ax.set_xlabel("number of cases")
+    ax.set_title("Alignment Confidence Distribution (5-tier, see icaif_contradictions.py)")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_temporal_contradiction_count(cases: pd.DataFrame, path: Path) -> None:
+    """fig_24 — answers: how many unexplained same-adapter direction flips
+    were found, and on which tickers?"""
+    if cases.empty:
+        _placeholder(path, "Temporal Contradictions", "No contradictions detected with current data.")
+        return
+    temporal = cases[cases["category"] == "temporal"]
+    if temporal.empty:
+        _placeholder(path, "Temporal Contradictions",
+                     "0 TEMPORAL_FLIP_UNEXPLAINED cases in current data — either no same-adapter/same-ticker "
+                     "direction flips occurred within the configured window, or every flip co-occurred with a "
+                     "Q2/Q4/Q5 record (so it doesn't count as 'unexplained'). Most adapters currently have too "
+                     "few distinct decision dates for this rule to have much chance to fire — see the "
+                     "recommended data expansion plan.")
+        return
+    counts = temporal["ticker"].value_counts()
+    fig, ax = plt.subplots(figsize=(7, max(3, 0.4 * len(counts))))
+    ax.barh(counts.index, counts.values, color="purple")
+    ax.set_xlabel("number of unexplained flips")
+    ax.set_title("Temporal Contradictions (TEMPORAL_FLIP_UNEXPLAINED) by Ticker")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_atom_vs_field_based_count(cases: pd.DataFrame, path: Path) -> None:
+    """fig_25 — answers: how much of the contradiction evidence comes from
+    reusing Experiment 2's atoms vs. directly from raw schema fields?"""
+    if cases.empty or "source_atoms" not in cases.columns:
+        _placeholder(path, "Atom-Based vs. Field-Based Contradictions", "No contradictions detected with current data.")
+        return
+    is_atom_based = cases["source_atoms"].fillna("").astype(str).str.len() > 0
+    counts = is_atom_based.value_counts().rename({True: "atom-based", False: "field-based"})
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.bar(counts.index, counts.values, color=["mediumpurple", "steelblue"])
+    for i, v in enumerate(counts.values):
+        ax.text(i, v, str(v), ha="center", va="bottom")
+    ax.set_ylabel("number of cases")
+    ax.set_title("Contradictions Sourced from Experiment 2 Atoms vs. Raw Fields Directly")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)

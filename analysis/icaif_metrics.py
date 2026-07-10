@@ -55,6 +55,18 @@ class Config:
     fusion_sell_threshold: float = -0.25
     default_missing_confidence: float = 0.5
 
+    # --- Experiment 4 rule thresholds added for the expanded contradiction
+    #     framework (analysis/icaif_contradictions.py). Every one is here,
+    #     not hard-coded in a rule function, so a reviewer can audit/tune
+    #     them without reading rule bodies. ---
+    intra_record_high_cash_in_bull: float = 0.50          # Q4 regime=BULL + cash_ratio >= this -> contradiction
+    intra_record_weak_risk_adjusted_sharpe: float = 0.30  # Q5 total_return>0 but sharpe < this
+    intra_record_weak_risk_adjusted_drawdown: float = -0.30  # ...and max_drawdown <= this
+    calibration_bucket_poor_error: float = 0.50           # per-bucket calibration_error >= this -> flagged, regardless of sample-size gating used by overconfidence_flags
+    systematic_overconfidence_min_horizons: int = 2        # adapter flagged overconfident at >= this many horizons
+    temporal_window_days: int = 14                         # max gap for a same-ticker action flip to count as "temporal"
+    evidence_overlap_min_records: int = 2                  # min co-occurring adapters for an evidence-overlap rule to apply
+
     def __post_init__(self):
         if self.risk_multiplier is None:
             self.risk_multiplier = {"LOW": 1.0, "MEDIUM": 0.85, "HIGH": 0.60, "EXTREME": 0.30}
@@ -214,6 +226,21 @@ ATOM_KEYWORDS: Dict[str, List[str]] = {
 }
 
 RISK_WORDS = ["risk", "drawdown", "volatile", "volatility", "downside", "loss", "hedge", "exposure", "leverage"]
+
+# Coarse sentiment-valence lexicon for Experiment 4's HEADLINE_EVIDENCE_MISMATCH
+# rule — deliberately separate from ATOM_KEYWORDS (which tags *topic*, not
+# *valence*). Same heuristic-keyword-list philosophy as ATOM_KEYWORDS/
+# RISK_WORDS: deterministic, no LLM call, documented as coarse.
+BEARISH_WORDS = [
+    "bearish", "downside", "sell-off", "selloff", "decline", "declining", "weak", "weakness",
+    "overvalued", "downtrend", "correction", "crash", "plunge", "plunging", "drop", "dropping",
+    "losing", "underperform", "headwind", "deteriorat", "slump", "sinking",
+]
+BULLISH_WORDS = [
+    "bullish", "upside", "rally", "rallying", "strong", "strength", "undervalued", "uptrend",
+    "breakout", "surge", "surging", "gain", "gaining", "outperform", "tailwind", "momentum higher",
+    "rebound", "rebounding", "recovery", "recovering",
+]
 
 
 def _non_empty(v: Any) -> bool:

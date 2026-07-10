@@ -34,7 +34,9 @@ from analysis.icaif_data_loader import (
     records_to_dataframe,
 )
 from analysis.icaif_contradictions import (
+    build_coverage_audit,
     build_outcome_comparison,
+    build_rulebook_md,
     detect_contradictions,
     extract_q1,
     extract_q2,
@@ -244,19 +246,34 @@ def run_experiment_3(df: pd.DataFrame, provider, cfg: Config, out: Path) -> Dict
 # --------------------------------------------------------------------------- #
 
 def run_experiment_4(df: pd.DataFrame, overconfidence_flags: pd.DataFrame, df_hits: pd.DataFrame,
-                      cfg: Config, out: Path) -> Dict:
-    result = detect_contradictions(df, overconfidence_flags, cfg)
+                      calibration_table: pd.DataFrame, cfg: Config, out: Path) -> Dict:
+    result = detect_contradictions(df, overconfidence_flags, cfg, calibration_table=calibration_table)
     cases, summary = result["cases"], result["summary"]
+    category_summary, alignment_summary = result["category_summary"], result["alignment_summary"]
     outcome_comparison = build_outcome_comparison(cases, df_hits)
+    coverage_audit = build_coverage_audit()
+    rulebook_md = build_rulebook_md()
 
     cases.to_csv(out / "contradiction_cases.csv", index=False)
     summary.to_csv(out / "contradiction_summary.csv", index=False)
+    category_summary.to_csv(out / "contradiction_category_summary.csv", index=False)
+    alignment_summary.to_csv(out / "contradiction_alignment_summary.csv", index=False)
     outcome_comparison.to_csv(out / "contradiction_outcome_comparison.csv", index=False)
+    coverage_audit.to_csv(out / "contradiction_coverage_audit.csv", index=False)
+    (out / "contradiction_rulebook.md").write_text(rulebook_md, encoding="utf-8")
 
     plots.plot_contradiction_counts(summary, out / "fig_09_contradiction_counts.png")
     plots.plot_flagged_vs_unflagged_returns(outcome_comparison, out / "fig_10_flagged_vs_unflagged_forward_returns.png")
+    plots.plot_contradiction_category_breakdown(category_summary, out / "fig_20_contradiction_category_breakdown.png")
+    plots.plot_exact_vs_best_effort_split(cases, out / "fig_21_exact_vs_best_effort_split.png")
+    plots.plot_severity_distribution(cases, out / "fig_22_severity_distribution.png")
+    plots.plot_alignment_confidence_distribution(cases, out / "fig_23_alignment_confidence_distribution.png")
+    plots.plot_temporal_contradiction_count(cases, out / "fig_24_temporal_contradiction_count.png")
+    plots.plot_atom_vs_field_based_count(cases, out / "fig_25_atom_vs_field_based_count.png")
 
-    return {"cases": cases, "summary": summary, "outcome_comparison": outcome_comparison}
+    return {"cases": cases, "summary": summary, "category_summary": category_summary,
+            "alignment_summary": alignment_summary, "outcome_comparison": outcome_comparison,
+            "coverage_audit": coverage_audit}
 
 
 # --------------------------------------------------------------------------- #
@@ -564,7 +581,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     e1 = run_experiment_1(adapters, df, out)
     e2 = run_experiment_2(df, cfg, out)
     e3 = run_experiment_3(df, provider, cfg, out)
-    e4 = run_experiment_4(df, e3["overconfidence_flags"], e3["df_hits"], cfg, out)
+    e4 = run_experiment_4(df, e3["overconfidence_flags"], e3["df_hits"], e3["calibration_table"], cfg, out)
     e5 = run_experiment_5(df, e4["cases"], provider, cfg, out)
 
     build_case_study("NVDA", df, e4["cases"], cfg, provider, out / "case_study_NVDA.md")

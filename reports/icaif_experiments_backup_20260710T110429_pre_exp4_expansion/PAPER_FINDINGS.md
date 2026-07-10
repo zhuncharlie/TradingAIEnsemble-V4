@@ -30,12 +30,12 @@ weights/total_return alone) recovers zero of these atoms by construction.
 
 ## 4. Are confidence/strength scores calibrated?
 
-52 (adapter, question, horizon, bucket) cells computed; 1 flagged overconfident. See `calibration_table.csv`, `overconfidence_flags.csv`,
+39 (adapter, question, horizon, bucket) cells computed; 2 flagged overconfident. See `calibration_table.csv`, `overconfidence_flags.csv`,
 `fig_06_reliability_diagram_q1.png`, `fig_07_reliability_diagram_q3.png`.
 
 ## 5. What contradictions are detected?
 
-335 contradiction case(s) across the 8 rules — see
+129 contradiction case(s) across the 8 rules — see
 `contradiction_summary.csv` for counts by rule and `contradiction_cases.csv`
 for the full case list (each row states its own alignment limitation).
 

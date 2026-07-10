@@ -15,15 +15,12 @@
 - qlib supporting_evidence: ["'SPY' real LGBModel-predicted score -0.14214 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 7/8 (14% percentile) across the real 8-ticker universe on 2026-05-15.", "Real Alpha158 factor 'CORD10': LightGBM importance=8", "Real Alpha158 factor 'RSQR60': LightGBM importance=7", "Real Alpha158 factor 'RESI5': LightGBM importance=6", "Real Alpha158 factor 'VSTD5': LightGBM importance=6", "Real Alpha158 factor 'KLOW2': LightGBM importance=6", "Real raw Alpha158 factor values for 'SPY' on 2026-05-15: KMID=-0.0035, KLEN=0.0074, ROC5=0.9979, ROC20=0.9607, ROC60=0.9235, MA5=1.0031, MA20=0.9792, STD20=0.0184", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-04, 2025-12-29], validated on [2025-12-30, 2026-02-28], best/early-stopped iteration=21 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on SPY/2026-05-15 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.99 on SPY/2026-05-15, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.99 (bucket 0.9-1.0) on SPY/2026-05-15 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: qlib Q3 value=0.71 (bucket 0.7-0.8) on SPY/2026-05-15 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.99 on SPY/2026-05-15, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: SELL
-- interwoven_calibrated_fusion: **SELL** (score=-0.532; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.60, boost=yes)
+- interwoven_calibrated_fusion: **SELL** (score=-0.798; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.90, boost=yes)
 - Same as majority vote for this case.
 - realized future return (h=1): -0.0007
 
@@ -42,14 +39,12 @@
 - qlib supporting_evidence: ["'SPY' real LGBModel-predicted score -0.03540 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 5/8 (43% percentile) across the real 8-ticker universe on 2026-05-21.", "Real Alpha158 factor 'KLOW': LightGBM importance=9", "Real Alpha158 factor 'CORD10': LightGBM importance=7", "Real Alpha158 factor 'RSQR20': LightGBM importance=6", "Real Alpha158 factor 'SUMN10': LightGBM importance=5", "Real Alpha158 factor 'RESI5': LightGBM importance=5", "Real raw Alpha158 factor values for 'SPY' on 2026-05-21: KMID=0.0055, KLEN=0.0106, ROC5=1.0073, ROC20=0.9539, ROC60=0.9307, MA5=0.9951, MA20=0.9829, STD20=0.0161", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-10, 2026-01-04], validated on [2026-01-05, 2026-03-06], best/early-stopped iteration=23 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on SPY/2026-05-21 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=1.00 on SPY/2026-05-21, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=1.00 (bucket 0.9-1.0) on SPY/2026-05-21 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=1.00 on SPY/2026-05-21, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: SELL
-- interwoven_calibrated_fusion: **SELL** (score=-0.502; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.70, boost=yes)
+- interwoven_calibrated_fusion: **SELL** (score=-0.645; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.90, boost=yes)
 - Same as majority vote for this case.
 - realized future return (h=1): 0.0039
 
@@ -68,18 +63,13 @@
 - qlib supporting_evidence: ["'SPY' real LGBModel-predicted score -0.00595 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 3/8 (71% percentile) across the real 8-ticker universe on 2026-05-27.", "Real Alpha158 factor 'KLOW': LightGBM importance=8", "Real Alpha158 factor 'RSQR10': LightGBM importance=7", "Real Alpha158 factor 'VSTD5': LightGBM importance=7", "Real Alpha158 factor 'CORD10': LightGBM importance=6", "Real Alpha158 factor 'RESI5': LightGBM importance=5", "Real raw Alpha158 factor values for 'SPY' on 2026-05-27: KMID=-0.0006, KLEN=0.0042, ROC5=0.9777, ROC20=0.9483, ROC60=0.9121, MA5=0.9942, MA20=0.9798, STD20=0.0151", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-16, 2026-01-10], validated on [2026-01-11, 2026-03-12], best/early-stopped iteration=24 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.99 on SPY/2026-05-27, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: deepalpha action=SELL vs alphagen direction=LONG on SPY/2026-05-27 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on SPY/2026-05-27 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: deepalpha and alphagen disagree on direction for SPY/2026-05-27 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: alphagen and deepalpha disagree on direction for SPY/2026-05-27 yet share evidence-atom tags: factor,technical _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.99 on SPY/2026-05-27, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.99 (bucket 0.9-1.0) on SPY/2026-05-27 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: alphagen Q3 value=1.00 (bucket 0.9-1.0) on SPY/2026-05-27 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: HOLD
-- interwoven_calibrated_fusion: **HOLD** (score=-0.016; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.50, boost=yes)
+- interwoven_calibrated_fusion: **HOLD** (score=-0.025; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.80, boost=yes)
 - **Differs from majority vote** because of the multipliers above.
 - realized future return (h=1): 0.0055
 
@@ -96,15 +86,12 @@
 - qlib supporting_evidence: ["'SPY' real LGBModel-predicted score -0.00202 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 8/8 (0% percentile) across the real 8-ticker universe on 2026-06-02.", "Real Alpha158 factor 'KUP': LightGBM importance=1", "Real Alpha158 factor 'STD20': LightGBM importance=1", "Real Alpha158 factor 'STD60': LightGBM importance=1", "Real Alpha158 factor 'STD5': LightGBM importance=1", "Real Alpha158 factor 'RESI10': LightGBM importance=1", "Real raw Alpha158 factor values for 'SPY' on 2026-06-02: KMID=0.0034, KLEN=0.0048, ROC5=0.9882, ROC20=0.9453, ROC60=0.8828, MA5=0.9952, MA20=0.9786, STD20=0.0126", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-22, 2026-01-16], validated on [2026-01-17, 2026-03-18], best/early-stopped iteration=1 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on SPY/2026-06-02 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=1.00 on SPY/2026-06-02, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=1.00 (bucket 0.9-1.0) on SPY/2026-06-02 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: qlib Q3 value=1.00 (bucket 0.9-1.0) on SPY/2026-06-02 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=1.00 on SPY/2026-06-02, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: SELL
-- interwoven_calibrated_fusion: **SELL** (score=-0.660; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.60, boost=yes)
+- interwoven_calibrated_fusion: **SELL** (score=-0.990; risk_mult=1.00, validation_mult=1.00, contradiction_mult=0.90, boost=yes)
 - Same as majority vote for this case.
 - realized future return (h=1): -0.0070
 
@@ -123,14 +110,12 @@
 - qlib supporting_evidence: ["'SPY' real LGBModel-predicted score -0.01333 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 6/8 (29% percentile) across the real 8-ticker universe on 2026-06-08.", "Real Alpha158 factor 'SUMN5': LightGBM importance=4", "Real Alpha158 factor 'KLOW2': LightGBM importance=3", "Real Alpha158 factor 'CORD5': LightGBM importance=3", "Real Alpha158 factor 'STD30': LightGBM importance=3", "Real Alpha158 factor 'LOW0': LightGBM importance=2", "Real raw Alpha158 factor values for 'SPY' on 2026-06-08: KMID=-0.0056, KLEN=0.0096, ROC5=1.0261, ROC20=0.9978, ROC60=0.8986, MA5=1.0140, MA20=1.0097, STD20=0.0111", "Real Qlib pipeline: Alpha158 (158 real pre-defined factors) over 8 real tickers, real LGBModel trained on [2025-03-28, 2026-01-22], validated on [2026-01-23, 2026-03-24], best/early-stopped iteration=6 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config)."]
 
 ### Detected contradictions
-- **HEADLINE_EVIDENCE_MISMATCH**: deepalpha headline=SELL on SPY/2026-06-08 but text has 0 bearish-word hits vs 1 bullish-word hits _(limitation: keyword-heuristic text valence check (BEARISH_WORDS/BULLISH_WORDS), not semantic understanding — see icaif_metrics.py.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.98 on SPY/2026-06-08, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.98 (bucket 0.9-1.0) on SPY/2026-06-08 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.98 on SPY/2026-06-08, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: SELL
-- interwoven_calibrated_fusion: **SELL** (score=-0.331; risk_mult=1.00, validation_mult=0.65, contradiction_mult=0.70, boost=yes)
+- interwoven_calibrated_fusion: **SELL** (score=-0.426; risk_mult=1.00, validation_mult=0.65, contradiction_mult=0.90, boost=yes)
 - Same as majority vote for this case.
 - realized future return (h=1): -0.0029
 
@@ -148,14 +133,12 @@
 - deepalpha supporting_evidence: ['close_max_5 (importance=0.0889)', 'bb_middle (importance=0.0802)', 'volume_mean_20 (importance=0.0631)']
 
 ### Detected contradictions
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.98 on SPY/2026-07-02, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: ai_hedge_fund Q1 value=1.00 (bucket 0.9-1.0) on SPY/2026-07-02 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.98 (bucket 0.9-1.0) on SPY/2026-07-02 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.98 on SPY/2026-07-02, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
 
 ### Fusion decision
 - majority_vote: BUY
 - confidence_weighted_vote: HOLD
-- interwoven_calibrated_fusion: **HOLD** (score=0.003; risk_mult=0.60, validation_mult=0.80, contradiction_mult=0.70, boost=no)
+- interwoven_calibrated_fusion: **HOLD** (score=0.004; risk_mult=0.60, validation_mult=0.80, contradiction_mult=0.90, boost=no)
 - **Differs from majority vote** because of the multipliers above.
 - realized future return (h=1): 0.0087
 
@@ -201,32 +184,19 @@ Prior cross-ticker lessons from AAPL reinforce this decision: overweighting near
 
 ### Detected contradictions
 - **BUY_WITH_HIGH_RISK**: tradingagents says BUY on SPY/2026-07-06; fingpt reports risk_level=HIGH _(limitation: exact (ticker, date) join across Q1/Q2 — no approximation.)_
-- **LONG_WITH_WEAK_VALIDATION**: vibe_trading LONG on SPY; agentictrading validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
-- **LONG_WITH_WEAK_VALIDATION**: vibe_trading LONG on SPY; finrl validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
-- **LONG_WITH_WEAK_VALIDATION**: vibe_trading LONG on SPY; prediction_arena validation_status=fail (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
-- **LONG_WITH_WEAK_VALIDATION**: vibe_trading LONG on SPY; vibe_trading validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id (upgraded to context_exact when analysis/icaif_alignment.py confirms the ticker is a member of the batch's known portfolio_universe) — never a guarantee the Q5 backtest is really about this adapter's strategy for this ticker.)_
-- **HIGH_WEIGHT_HIGH_DRAWDOWN**: finrl allocates weight=0.12 to SPY; prediction_arena reports max_drawdown=-0.26 _(limitation: Q4Portfolio and Q5Backtest are joined on task_id only (neither carries both ticker and date) — upgraded to universe-confirmed when the ticker is in the batch's known universe.)_
+- **LONG_WITH_WEAK_VALIDATION**: vibe_trading LONG on SPY; agentictrading validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **LONG_WITH_WEAK_VALIDATION**: vibe_trading LONG on SPY; finrl validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **LONG_WITH_WEAK_VALIDATION**: vibe_trading LONG on SPY; prediction_arena validation_status=fail (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **LONG_WITH_WEAK_VALIDATION**: vibe_trading LONG on SPY; vibe_trading validation_status=weak (task observation_batch_day1__2026-07-06) _(limitation: Q5Backtest has no ticker/date field in CONTRACT/schemas.py. Joined on task_id only: 'this adapter's LONG signal for ticker X' is compared against 'some Q5 backtest reported in the same comparison run', which may not be the same strategy or period.)_
+- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.99 on SPY/2026-07-06, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, horizon) — no ticker/date approximation beyond that.)_
+- **HIGH_WEIGHT_HIGH_DRAWDOWN**: finrl allocates weight=0.12 to SPY; prediction_arena reports max_drawdown=-0.26 _(limitation: Q4Portfolio and Q5Backtest are joined on task_id only (neither carries both ticker and date). 'high weight on ticker X' and 'severe drawdown' may come from unrelated adapters/strategies in the same run.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: tradingagents action=BUY vs deepalpha direction=SHORT on SPY/2026-07-06 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: tradingagents action=BUY vs finclaw direction=SHORT on SPY/2026-07-06 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
 - **ACTION_ALPHA_DIRECTION_CONFLICT**: tradingagents action=BUY vs qlib direction=SHORT on SPY/2026-07-06 _(limitation: exact (ticker, date) join across Q1/Q3 — no approximation.)_
-- **DIRECTION_RETURN_INTRA_CONFLICT**: finclaw direction=SHORT but expected_return=0.4001 on SPY/2026-07-06 _(limitation: single-record check, no join, no approximation.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: tradingagents and finclaw disagree on direction for SPY/2026-07-06 yet share evidence-atom tags: unknown _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: tradingagents and qlib disagree on direction for SPY/2026-07-06 yet share evidence-atom tags: unknown _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: finclaw and vibe_trading disagree on direction for SPY/2026-07-06 yet share evidence-atom tags: unknown _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **OPPOSITE_DIRECTION_ATOM_OVERLAP**: qlib and vibe_trading disagree on direction for SPY/2026-07-06 yet share evidence-atom tags: unknown _(limitation: exact (ticker, date) join; evidence atoms are a coarse 12-tag keyword vocabulary, not NLU.)_
-- **RISK_ATOMS_BUT_BULLISH_HEADLINE**: tradingagents headline=BUY on SPY/2026-07-06 but risk_atoms=risk_language_in_reasoning _(limitation: single-record check; risk_atoms themselves may draw on other Q's fields for the same (ticker, date) — see risk_atoms_from_record in icaif_metrics.py.)_
-- **VALIDATION_FAIL_BUT_STRONG_BULLISH**: vibe_trading strong LONG on SPY/2026-07-06, but task observation_batch_day1__2026-07-06 contains a Q5 record with validation_status:fail _(limitation: Q5Backtest has no ticker/date field — joined on task_id, upgraded to universe-confirmed when possible, same limitation as LONG_WITH_WEAK_VALIDATION.)_
-- **HIGH_CONFIDENCE_POOR_CALIBRATION**: deepalpha confidence=0.99 on SPY/2026-07-06, but is flagged overconfident historically _(limitation: uses Experiment 3's overconfidence flags per (adapter, question, horizon) — no ticker/date approximation beyond that.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: ai_hedge_fund Q1 value=1.00 (bucket 0.9-1.0) on SPY/2026-07-06 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: deepalpha Q1 value=0.99 (bucket 0.9-1.0) on SPY/2026-07-06 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: atlas Q3 value=0.59 (bucket 0.5-0.6) on SPY/2026-07-06 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: qlib Q3 value=0.71 (bucket 0.7-0.8) on SPY/2026-07-06 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **CONFIDENCE_IN_POOR_CALIBRATION_BUCKET**: vibe_trading Q3 value=1.00 (bucket 0.9-1.0) on SPY/2026-07-06 falls in a historically poorly-calibrated bucket _(limitation: exact join on (adapter, question, confidence bucket) against Experiment 3's calibration_table.csv; small buckets (see fig_16) make this noisier than HIGH_CONFIDENCE_POOR_CALIBRATION.)_
-- **TEMPORAL_FLIP_UNEXPLAINED**: deepalpha flipped LONG(2026-07-02) -> SHORT(2026-07-06) on SPY within 4d, no Q2/Q4/Q5 record in between _(limitation: best-effort: only checks whether *any* Q2/Q4/Q5 record exists in the window with a different risk_level/regime/validation_status, not that it *caused* the flip — and can't distinguish a genuine signal change from adapter-side non-determinism (see deepalpha's own same-day self-contradiction, found via ACTION_ALPHA_DIRECTION_CONFLICT).)_
 
 ### Fusion decision
 - majority_vote: SELL
 - confidence_weighted_vote: HOLD
 - interwoven_calibrated_fusion: **HOLD** (score=0.016; risk_mult=0.60, validation_mult=0.40, contradiction_mult=0.50, boost=yes)
 - **Differs from majority vote** because of the multipliers above.
-- realized future return (h=1): -0.0048
+- realized future return: insufficient_data (not enough trading days elapsed yet)
