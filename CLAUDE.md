@@ -1,160 +1,127 @@
-# CLAUDE.md — Global Instructions for All Sessions
+# CLAUDE.md — Global Instructions
 # trading-ai-ensemble
 
-## Project Role
+## 1. Project Scope
 
-You are building ONE adapter for the trading-ai-ensemble framework.
-This project aggregates multiple trading AI systems under a single interface,
-so users can ask the same question (e.g. "Should I buy NVDA today?") and see
-how different frameworks answer it — consensus vs. divergence, side by side.
+This repository is a problem-driven research harness for integrating and
+comparing heterogeneous open-source financial AI and quantitative trading
+systems.
 
-Your job is narrow: wrap ONE upstream project. Do not touch anything else.
+The current research framing uses four broad capability layers:
 
----
+- Q1 — Action
+- Q2 — State / Sentiment / Context
+- Q3 — Signal / Alpha
+- Q4 — Policy
 
-## Iron Rules (non-negotiable, applies to every session)
+These layers are research categories, not a permanently frozen list of fields,
+methods, metrics, or policy types. The active contract version and the current
+task define the exact implementation requirements.
 
-### 1. CONTRACT/ is read-only
-Never modify any file inside `CONTRACT/`.
-`CONTRACT/schemas.py`, `CONTRACT/base_adapter.py`, and `CONTRACT/test_harness.py`
-are the shared contract between all adapters. Changing them breaks every other session.
-If you think a schema field is missing, open a GitHub issue instead.
-
-### 2. Wrap, never refactor
-Do not modify the internal code of the upstream project you are integrating.
-Your adapter is a **thin wrapper** — it calls the upstream API and translates
-the output into the CONTRACT schema. That is all it does.
-
-If you must patch the upstream project to make it work:
-- Document the patch at the top of your adapter file with a `# PATCH:` comment
-- Create `patches/{project_name}.diff` explaining why the patch is needed
-- Never silently modify vendor code
-
-### 3. One adapter, one file
-Your entire adapter lives in `adapters/{your_adapter_name}_adapter.py`.
-Do not create helper modules, shared utilities, or sub-packages.
-The one exception: a `vendor/` subdirectory inside `adapters/` for git-cloned
-upstream repos (add it to `.gitignore`).
-
-### 4. Do not read or import other adapters
-Never import from `adapters/finrl_adapter.py` or any other adapter.
-Each adapter is independently runnable and independently testable.
-
-### 5. Validate before you call it done
-Run this command and paste the output into your response:
-```
-python CONTRACT/test_harness.py --adapter adapters/YOUR_ADAPTER_FILE.py
-```
-All checks must pass. A smoke test that prints "✓ 8/8 checks passed" is the
-only acceptable definition of "done."
-
-### 6. API keys via environment only
-Never hardcode API keys. Always read from `os.environ["KEY_NAME"]`.
-Never print or log key values.
+Adapters must remain thin wrappers around real upstream projects. The upstream
+project remains authoritative for its own models, trading logic, features,
+optimization, and execution semantics.
 
 ---
 
-## File Layout
+## 2. Permanent Safety Rules
 
-```
-trading-ai-ensemble/
-├── CONTRACT/                    ← READ-ONLY. The shared contract.
-│   ├── schemas.py               ← Pydantic models for Q1–Q5
-│   ├── base_adapter.py          ← Abstract BaseAdapter class
-│   └── test_harness.py          ← Validation runner
-│
-├── adapters/                    ← One file per upstream project
-│   ├── example_stub_adapter.py  ← Reference implementation — read this first
-│   └── YOUR_adapter.py          ← Your deliverable
-│
-├── results/                     ← Output JSONs (auto-created by adapters)
-│   └── {task_id}/
-│       └── {adapter_name}.json
-│
-└── patches/                     ← Only if upstream patching was unavoidable
-    └── {project_name}.diff
-```
+- Do not reimplement, replace, monkey-patch, or silently modify upstream
+  trading logic.
+- Do not fabricate unsupported fields, confidence values, explanations,
+  evidence, horizons, labels, or outputs.
+- Do not hardcode, print, log, serialize, or commit API keys or credentials.
+- Do not create runtime dependencies between adapters.
+- Do not make unrelated refactors or silently overwrite historical results.
+- Modify only the files and direct dependencies required by the active task.
+- Use offline, paper, simulation, or sandbox modes when practical.
 
----
+A field may be populated only when it comes from:
 
-## The Five Questions (Q-schema overview)
+- direct upstream output;
+- a documented and reproducible derivation; or
+- information explicitly supplied by the harness or task.
 
-Each upstream project answers a subset of these. Your adapter only needs to
-implement the methods for questions the upstream project actually answers.
-
-| Q  | Question | Output schema | Key fields |
-|----|----------|---------------|------------|
-| Q1 | Should I buy / sell / hold this stock? | `Q1Decision` | action, confidence, reasoning |
-| Q2 | What is the market sentiment / risk? | `Q2Sentiment` | sentiment_score (−1→+1), risk_level, drivers[] |
-| Q3 | Are there unusual signals or alpha? | `Q3Signal` | signal_type, strength, supporting_evidence[] |
-| Q4 | How should I allocate my portfolio? | `Q4Portfolio` | weights {ticker: float}, cash_ratio |
-| Q5 | How has this strategy performed historically? | `Q5Backtest` | sharpe, max_drawdown, total_return |
-
-All schemas are in `CONTRACT/schemas.py`. Import from there, never redefine.
+Otherwise, leave it unavailable according to the current contract.
 
 ---
 
-## How to Start (read this before writing a single line of code)
+## 3. Contract Protection
 
-1. Read `CONTRACT/base_adapter.py` — understand the interface you must implement
-2. Read `CONTRACT/schemas.py` — understand the output types you must return
-3. Read `adapters/example_stub_adapter.py` — see a complete minimal implementation
-4. Read the upstream project's README (URL in your session brief)
-5. Write `adapters/{name}_adapter.py` — subclass BaseAdapter, implement q*() methods
-6. Run `python CONTRACT/test_harness.py --adapter adapters/{name}_adapter.py --smoke` (fast check)
-7. Run `python CONTRACT/test_harness.py --adapter adapters/{name}_adapter.py` (full check)
-8. Paste the output. All checks must be green.
+Files under `CONTRACT/` are protected shared interfaces.
 
----
+Unless the active task explicitly authorizes a versioned contract migration:
 
-## Minimum Viable Adapter Checklist
+- do not modify `CONTRACT/`;
+- import the current contract instead of redefining it locally;
+- report contract limitations rather than silently changing the interface.
 
-- [ ] `name` class attribute set (snake_case, unique)
-- [ ] `questions_answered` class attribute set (e.g. `["Q1", "Q2"]`)
-- [ ] `upstream_repo` class attribute set (GitHub URL)
-- [ ] At least one q*() method implemented and returning a valid schema object
-- [ ] `smoke_test()` overridden to call real upstream code (even with stubbed data)
-- [ ] `python CONTRACT/test_harness.py --adapter adapters/YOUR_FILE.py` → all green
-- [ ] Result written to `results/{task_id}/{adapter_name}.json`
+During an explicitly authorized migration:
 
----
+- modify only the named files and directly affected consumers;
+- update the contract version;
+- preserve semantic correctness over superficial backward compatibility;
+- validate imports, construction, serialization, and relevant invalid cases;
+- report affected consumers and unresolved compatibility issues;
+- do not modify upstream trading logic.
 
-## What "Encapsulation" Means Here
-
-Good encapsulation (do this):
-```python
-# Call upstream API → translate output → return schema object
-result = upstream_lib.analyze(ticker, date)
-return Q1Decision(
-    action=Action.BUY if result["signal"] > 0 else Action.SELL,
-    confidence=result["confidence"],
-    reasoning=result["rationale"],
-    ...
-)
-```
-
-Bad (never do this):
-```python
-# Modifying upstream internals
-upstream_lib.internal_module.SomeClass._hidden_method = my_replacement
-
-# Reimplementing upstream logic
-def my_own_sentiment_scorer(text):   # ← this belongs in the upstream project
-    ...
-```
-
-The rule: if a bug in your adapter means the upstream project's output is wrong,
-fix the upstream project (via a patch file). If a bug means the translation to
-our schema is wrong, fix the adapter. Never mix the two.
+After the authorized migration task ends, `CONTRACT/` returns to protected
+status automatically.
 
 ---
 
-## Registered Adapters (do not duplicate)
+## 4. Data, Provenance, and Causality
 
-| Adapter file | Project | Questions |
-|---|---|---|
-| `finrl_adapter.py` | AI4Finance/FinRL | Q4, Q5 |
-| `tradingagents_adapter.py` | TauricResearch/TradingAgents | Q1, Q2 |
+Keep the following artifacts separate:
 
-Check this table before starting. If your project is already listed, ask
-the project maintainer before creating a second adapter for the same upstream.
+1. native upstream output;
+2. canonical adapter output;
+3. mapped, normalized, corrected, or calibrated output;
+4. fusion output;
+5. execution and evaluation output.
+
+Do not overwrite an earlier-stage artifact with a later-stage result.
+
+Every derived result must remain traceable to its source inputs, transformation,
+and material assumptions.
+
+Preserve native output faithfully. If it is too large or not directly
+serializable, preserve a faithful representation or artifact reference and
+document any omitted content.
+
+For Q4 and all time-dependent evaluation:
+
+- future evaluation-period information must not influence earlier decisions;
+- every decision must have a known or inferable information cutoff;
+- trajectories must be generated causally, usually through stepwise execution.
+
+Exact schema fields, provenance enums, calibration methods, fusion methods,
+benchmarks, and metrics are defined by the active contract or experiment
+specification, not by this file.
+
+---
+
+## 5. Validation and Completion
+
+Run the tests and checks relevant to the active task.
+
+Do not claim completion unless the relevant commands were actually executed.
+
+Always report:
+
+- commands run;
+- passes, failures, and skipped checks;
+- affected files or consumers;
+- unresolved compatibility issues;
+- known upstream, data, or reproducibility limitations.
+
+Never delete tests, weaken validation, suppress failures, or fabricate passing
+output merely to declare success.
+
+The active task defines the authorized scope, but it never implicitly permits:
+
+- rewriting upstream trading logic;
+- fabricating information;
+- exposing credentials;
+- breaking provenance;
+- violating time causality.
