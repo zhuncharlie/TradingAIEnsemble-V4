@@ -1,0 +1,16 @@
+{
+  "decisions": [
+    {
+      "information_cutoff": "2023-11-27",
+      "timestamp": "2023-11-28",
+      "weights": {"AAPL": 0.51, "MSFT": 0.29, "NVDA": 0.20},
+      "active_tickers": ["AAPL", "MSFT", "NVDA"]
+    },
+    {
+      "information_cutoff": "2023-11-28",
+      "timestamp": "2023-11-29",
+      "weights": {"AAPL": 0.48, "MSFT": 0.33, "NVDA": 0.19},
+      "active_tickers": ["AAPL", "MSFT", "NVDA"]
+    }
+  ]
+}

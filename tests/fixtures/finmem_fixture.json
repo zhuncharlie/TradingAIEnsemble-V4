@@ -1,0 +1,19 @@
+{
+  "_comment": "Hand-authored, realistic shape of one real upstream reflection_result_series_dict[date] entry (agent.py:455). Field names/shape match the real dict the LLM's structured JSON output guardrail produces; text content here is fixture-only, not fetched from any real run.",
+  "buy_example": {
+    "investment_decision": "buy",
+    "summary_reason": "Recent price momentum and positive headline sentiment support accumulating a position."
+  },
+  "sell_example": {
+    "investment_decision": "sell",
+    "summary_reason": "Deteriorating headline sentiment and a break below short-term support suggest reducing exposure."
+  },
+  "hold_example": {
+    "investment_decision": "hold",
+    "summary_reason": "Mixed signals with no clear directional edge; maintaining current position."
+  },
+  "unexpected_value_example": {
+    "investment_decision": "STRONG_BUY",
+    "summary_reason": "Some upstream/LLM variance in casing or unexpected categories should not crash the mapper."
+  }
+}

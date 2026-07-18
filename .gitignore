@@ -6,6 +6,11 @@ __pycache__/
 adapters/vendor/
 *.png
 *.csv
+# Adapter capability-recovery audit deliverable — a paper/report artifact
+# at repo root, not scratch output.
+!adapter_capability_recovery.csv
+# New-adapter integration deliverable — same category as the above.
+!new_adapter_integration.csv
 # Comparison-layer chart outputs are paper deliverables, not scratch output.
 !plots/*.png
 !plots/*.html

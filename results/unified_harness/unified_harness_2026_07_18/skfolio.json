@@ -1,0 +1,1295 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "skfolio",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": null,
+  "q3": null,
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "PORTFOLIO",
+      "targets": null,
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "ROLLING_OPTIMIZER",
+    "generation_window": {
+      "start": "2022-01-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "fixed",
+      "catalog_id": null,
+      "fixed_assets": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": null,
+      "max_assets": null,
+      "selector_description": "Caller-supplied ticker list (context.universe/targets); skfolio performs no asset selection of its own."
+    },
+    "observation_policy": {
+      "lookback_window": "60_trading_days (real WalkForward train fold)",
+      "features": [
+        "daily linear returns (skfolio.preprocessing.prices_to_returns)"
+      ],
+      "data_sources": [
+        "yfinance daily close prices"
+      ],
+      "observation_description": "Real historical return covariance/mean over each rolling real train fold."
+    },
+    "decision_policy": {
+      "decision_rule": "Real skfolio MeanRisk (mean-variance, long-only, fully invested — upstream's own defaults) refit each WalkForward fold.",
+      "output_semantics": "target portfolio weights (non-negative, sum to 1)",
+      "rebalance_frequency": "every 10 trading days (WalkForward test_size)",
+      "holding_horizon": null
+    },
+    "update_policy": {
+      "mode": "ROLLING_REFIT",
+      "update_frequency": "every 10 trading days",
+      "update_description": "Each WalkForward fold refits skfolio's real MeanRisk optimizer from scratch on that fold's real train slice."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": null,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": 1.0,
+      "net_exposure_max": 1.0,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": null
+    },
+    "initial_weights": null,
+    "artifact": null,
+    "decisions": [
+      {
+        "timestamp": "2022-03-31",
+        "information_cutoff": "2022-03-30",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.716902776890109,
+          "MSFT": 0.2830971418666706,
+          "NVDA": 8.124322055665166e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-03-30 (60 real observations), applied for test fold starting 2022-03-31."
+      },
+      {
+        "timestamp": "2022-04-14",
+        "information_cutoff": "2022-04-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.6820839860305913,
+          "MSFT": 0.31791600740804393,
+          "NVDA": 6.56136489468968e-9
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-04-13 (60 real observations), applied for test fold starting 2022-04-14."
+      },
+      {
+        "timestamp": "2022-04-29",
+        "information_cutoff": "2022-04-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.9415452985152504,
+          "MSFT": 0.05845463030061112,
+          "NVDA": 7.118413853895633e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-04-28 (60 real observations), applied for test fold starting 2022-04-29."
+      },
+      {
+        "timestamp": "2022-05-13",
+        "information_cutoff": "2022-05-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.6925327501838489,
+          "MSFT": 0.30746724626780736,
+          "NVDA": 3.5483437161775014e-9
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-05-12 (60 real observations), applied for test fold starting 2022-05-13."
+      },
+      {
+        "timestamp": "2022-05-27",
+        "information_cutoff": "2022-05-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3953632943831494,
+          "MSFT": 0.6046366982824297,
+          "NVDA": 7.334420841503444e-9
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-05-26 (60 real observations), applied for test fold starting 2022-05-27."
+      },
+      {
+        "timestamp": "2022-06-13",
+        "information_cutoff": "2022-06-10",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.20325123111399884,
+          "MSFT": 0.7967487509421234,
+          "NVDA": 1.7943877881340457e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-06-10 (60 real observations), applied for test fold starting 2022-06-13."
+      },
+      {
+        "timestamp": "2022-06-28",
+        "information_cutoff": "2022-06-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.22085954749593295,
+          "MSFT": 0.779140427586698,
+          "NVDA": 2.4917368966981394e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-06-27 (60 real observations), applied for test fold starting 2022-06-28."
+      },
+      {
+        "timestamp": "2022-07-13",
+        "information_cutoff": "2022-07-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.20883987873866763,
+          "MSFT": 0.7911601076289909,
+          "NVDA": 1.363234151755497e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-07-12 (60 real observations), applied for test fold starting 2022-07-13."
+      },
+      {
+        "timestamp": "2022-07-27",
+        "information_cutoff": "2022-07-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.0000309019186597576,
+          "MSFT": 0.999968871382868,
+          "NVDA": 2.2669847208151895e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-07-26 (60 real observations), applied for test fold starting 2022-07-27."
+      },
+      {
+        "timestamp": "2022-08-10",
+        "information_cutoff": "2022-08-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.33663678052743823,
+          "MSFT": 0.6633630004184463,
+          "NVDA": 2.1905411549351418e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-08-09 (60 real observations), applied for test fold starting 2022-08-10."
+      },
+      {
+        "timestamp": "2022-08-24",
+        "information_cutoff": "2022-08-23",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.5735897560877875,
+          "MSFT": 0.42641011303554877,
+          "NVDA": 1.308766637907072e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-08-23 (60 real observations), applied for test fold starting 2022-08-24."
+      },
+      {
+        "timestamp": "2022-09-08",
+        "information_cutoff": "2022-09-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.7897739554895457,
+          "MSFT": 0.21022579232610025,
+          "NVDA": 2.5218435418067837e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-09-07 (60 real observations), applied for test fold starting 2022-09-08."
+      },
+      {
+        "timestamp": "2022-09-22",
+        "information_cutoff": "2022-09-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.5442280661228209,
+          "MSFT": 0.4557718785270617,
+          "NVDA": 5.5350117355466426e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-09-21 (60 real observations), applied for test fold starting 2022-09-22."
+      },
+      {
+        "timestamp": "2022-10-06",
+        "information_cutoff": "2022-10-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.39181118303224177,
+          "MSFT": 0.6081887087250972,
+          "NVDA": 1.0824266093496587e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-10-05 (60 real observations), applied for test fold starting 2022-10-06."
+      },
+      {
+        "timestamp": "2022-10-20",
+        "information_cutoff": "2022-10-19",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.5463486486765239,
+          "MSFT": 0.4536513258454492,
+          "NVDA": 2.5478026903192687e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-10-19 (60 real observations), applied for test fold starting 2022-10-20."
+      },
+      {
+        "timestamp": "2022-11-03",
+        "information_cutoff": "2022-11-02",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.417604984662427,
+          "MSFT": 0.5823948596108156,
+          "NVDA": 1.557267573140669e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-11-02 (60 real observations), applied for test fold starting 2022-11-03."
+      },
+      {
+        "timestamp": "2022-11-17",
+        "information_cutoff": "2022-11-16",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.4233227573192063,
+          "MSFT": 0.5766771643127154,
+          "NVDA": 7.836807825418476e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-11-16 (60 real observations), applied for test fold starting 2022-11-17."
+      },
+      {
+        "timestamp": "2022-12-02",
+        "information_cutoff": "2022-12-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.42524000958883285,
+          "MSFT": 0.5747599010890204,
+          "NVDA": 8.932214673430472e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-12-01 (60 real observations), applied for test fold starting 2022-12-02."
+      },
+      {
+        "timestamp": "2022-12-16",
+        "information_cutoff": "2022-12-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.4877355068819901,
+          "MSFT": 0.5122643806207372,
+          "NVDA": 1.1249727256801072e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-12-15 (60 real observations), applied for test fold starting 2022-12-16."
+      },
+      {
+        "timestamp": "2023-01-03",
+        "information_cutoff": "2022-12-30",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.517484839587766,
+          "MSFT": 0.48251514424834707,
+          "NVDA": 1.616388695406908e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2022-12-30 (60 real observations), applied for test fold starting 2023-01-03."
+      },
+      {
+        "timestamp": "2023-01-18",
+        "information_cutoff": "2023-01-17",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.45080777619078616,
+          "MSFT": 0.5491918115429667,
+          "NVDA": 4.1226624697188953e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-01-17 (60 real observations), applied for test fold starting 2023-01-18."
+      },
+      {
+        "timestamp": "2023-02-01",
+        "information_cutoff": "2023-01-31",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.4727040251143321,
+          "MSFT": 0.5272959724545611,
+          "NVDA": 2.4311067381917996e-9
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-01-31 (60 real observations), applied for test fold starting 2023-02-01."
+      },
+      {
+        "timestamp": "2023-02-15",
+        "information_cutoff": "2023-02-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.5998633379326754,
+          "MSFT": 0.4001366445340914,
+          "NVDA": 1.753323322061215e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-02-14 (60 real observations), applied for test fold starting 2023-02-15."
+      },
+      {
+        "timestamp": "2023-03-02",
+        "information_cutoff": "2023-03-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.6398770923757225,
+          "MSFT": 0.3601228422328396,
+          "NVDA": 6.539143786187317e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-03-01 (60 real observations), applied for test fold starting 2023-03-02."
+      },
+      {
+        "timestamp": "2023-03-16",
+        "information_cutoff": "2023-03-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.6633036630176523,
+          "MSFT": 0.33669611476430733,
+          "NVDA": 2.2221804022996426e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-03-15 (60 real observations), applied for test fold starting 2023-03-16."
+      },
+      {
+        "timestamp": "2023-03-30",
+        "information_cutoff": "2023-03-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.751579111566778,
+          "MSFT": 0.24842081231186594,
+          "NVDA": 7.612135596198231e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-03-29 (60 real observations), applied for test fold starting 2023-03-30."
+      },
+      {
+        "timestamp": "2023-04-14",
+        "information_cutoff": "2023-04-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.8210741649978037,
+          "MSFT": 0.17892582043582833,
+          "NVDA": 1.4566368056442731e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-04-13 (60 real observations), applied for test fold starting 2023-04-14."
+      },
+      {
+        "timestamp": "2023-04-28",
+        "information_cutoff": "2023-04-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.849539039883516,
+          "MSFT": 0.13870235144653628,
+          "NVDA": 0.011758608669947754
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-04-27 (60 real observations), applied for test fold starting 2023-04-28."
+      },
+      {
+        "timestamp": "2023-05-12",
+        "information_cutoff": "2023-05-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.7601250824999981,
+          "MSFT": 0.23987474204022613,
+          "NVDA": 1.754597759732286e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-05-11 (60 real observations), applied for test fold starting 2023-05-12."
+      },
+      {
+        "timestamp": "2023-05-26",
+        "information_cutoff": "2023-05-25",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.768788173389082,
+          "MSFT": 0.231211719103408,
+          "NVDA": 1.0750751002924942e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-05-25 (60 real observations), applied for test fold starting 2023-05-26."
+      },
+      {
+        "timestamp": "2023-06-12",
+        "information_cutoff": "2023-06-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.8282608538471264,
+          "MSFT": 0.1717390427319292,
+          "NVDA": 1.0342094444506317e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-06-09 (60 real observations), applied for test fold starting 2023-06-12."
+      },
+      {
+        "timestamp": "2023-06-27",
+        "information_cutoff": "2023-06-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.87634423653889,
+          "MSFT": 0.12365538146066683,
+          "NVDA": 3.8200044310734996e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-06-26 (60 real observations), applied for test fold starting 2023-06-27."
+      },
+      {
+        "timestamp": "2023-07-12",
+        "information_cutoff": "2023-07-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.9016293227983293,
+          "MSFT": 0.09837058428243718,
+          "NVDA": 9.29192336481166e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-07-11 (60 real observations), applied for test fold starting 2023-07-12."
+      },
+      {
+        "timestamp": "2023-07-26",
+        "information_cutoff": "2023-07-25",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.8415209708033632,
+          "MSFT": 0.15847846989227712,
+          "NVDA": 5.59304359609496e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-07-25 (60 real observations), applied for test fold starting 2023-07-26."
+      },
+      {
+        "timestamp": "2023-08-09",
+        "information_cutoff": "2023-08-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.7951169389985558,
+          "MSFT": 0.2048829951678905,
+          "NVDA": 6.583355372116376e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-08-08 (60 real observations), applied for test fold starting 2023-08-09."
+      },
+      {
+        "timestamp": "2023-08-23",
+        "information_cutoff": "2023-08-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.754197041516787,
+          "MSFT": 0.2458017874989293,
+          "NVDA": 1.1709842837286738e-6
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-08-22 (60 real observations), applied for test fold starting 2023-08-23."
+      },
+      {
+        "timestamp": "2023-09-07",
+        "information_cutoff": "2023-09-06",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.6044886075774258,
+          "MSFT": 0.39551108810688923,
+          "NVDA": 3.0431568493568895e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-09-06 (60 real observations), applied for test fold starting 2023-09-07."
+      },
+      {
+        "timestamp": "2023-09-21",
+        "information_cutoff": "2023-09-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.518928475643499,
+          "MSFT": 0.4810712629052306,
+          "NVDA": 2.614512703969516e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-09-20 (60 real observations), applied for test fold starting 2023-09-21."
+      },
+      {
+        "timestamp": "2023-10-05",
+        "information_cutoff": "2023-10-04",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.5399991321030091,
+          "MSFT": 0.46000051699551636,
+          "NVDA": 3.5090147438186516e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-10-04 (60 real observations), applied for test fold starting 2023-10-05."
+      },
+      {
+        "timestamp": "2023-10-19",
+        "information_cutoff": "2023-10-18",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.4614346341542114,
+          "MSFT": 0.5385649056386883,
+          "NVDA": 4.602071003841686e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-10-18 (60 real observations), applied for test fold starting 2023-10-19."
+      },
+      {
+        "timestamp": "2023-11-02",
+        "information_cutoff": "2023-11-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.5628771709566505,
+          "MSFT": 0.4371223994938214,
+          "NVDA": 4.2954952822055977e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-11-01 (60 real observations), applied for test fold starting 2023-11-02."
+      },
+      {
+        "timestamp": "2023-11-16",
+        "information_cutoff": "2023-11-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.5170086950173512,
+          "MSFT": 0.4829908787278709,
+          "NVDA": 4.2625477783441693e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-11-15 (60 real observations), applied for test fold starting 2023-11-16."
+      },
+      {
+        "timestamp": "2023-12-01",
+        "information_cutoff": "2023-11-30",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.7779728401012764,
+          "MSFT": 0.2220267145630966,
+          "NVDA": 4.4533562704907826e-7
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-11-30 (60 real observations), applied for test fold starting 2023-12-01."
+      },
+      {
+        "timestamp": "2023-12-15",
+        "information_cutoff": "2023-12-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.8184590387251772,
+          "MSFT": 0.1815409380727034,
+          "NVDA": 2.320211923516037e-8
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real skfolio MeanRisk().fit() on train fold ending 2023-12-14 (60 real observations), applied for test fold starting 2023-12-15."
+      }
+    ],
+    "explanation": "Real skfolio.model_selection.WalkForward(60-day train, 10-day test) drove 44 real MeanRisk refits over AAPL, MSFT, NVDA's real yfinance daily prices in [2022-01-01, 2024-01-15]."
+  },
+  "native_output": {
+    "tickers_requested": [
+      "AAPL",
+      "MSFT",
+      "NVDA"
+    ],
+    "active_tickers": [
+      "AAPL",
+      "MSFT",
+      "NVDA"
+    ],
+    "n_splits": 44,
+    "folds": [
+      {
+        "train_end": "2022-03-30",
+        "test_start": "2022-03-31",
+        "weights": {
+          "AAPL": 0.716902776890109,
+          "MSFT": 0.2830971418666706,
+          "NVDA": 8.124322055665166e-8
+        }
+      },
+      {
+        "train_end": "2022-04-13",
+        "test_start": "2022-04-14",
+        "weights": {
+          "AAPL": 0.6820839860305913,
+          "MSFT": 0.31791600740804393,
+          "NVDA": 6.56136489468968e-9
+        }
+      },
+      {
+        "train_end": "2022-04-28",
+        "test_start": "2022-04-29",
+        "weights": {
+          "AAPL": 0.9415452985152504,
+          "MSFT": 0.05845463030061112,
+          "NVDA": 7.118413853895633e-8
+        }
+      },
+      {
+        "train_end": "2022-05-12",
+        "test_start": "2022-05-13",
+        "weights": {
+          "AAPL": 0.6925327501838489,
+          "MSFT": 0.30746724626780736,
+          "NVDA": 3.5483437161775014e-9
+        }
+      },
+      {
+        "train_end": "2022-05-26",
+        "test_start": "2022-05-27",
+        "weights": {
+          "AAPL": 0.3953632943831494,
+          "MSFT": 0.6046366982824297,
+          "NVDA": 7.334420841503444e-9
+        }
+      },
+      {
+        "train_end": "2022-06-10",
+        "test_start": "2022-06-13",
+        "weights": {
+          "AAPL": 0.20325123111399884,
+          "MSFT": 0.7967487509421234,
+          "NVDA": 1.7943877881340457e-8
+        }
+      },
+      {
+        "train_end": "2022-06-27",
+        "test_start": "2022-06-28",
+        "weights": {
+          "AAPL": 0.22085954749593295,
+          "MSFT": 0.779140427586698,
+          "NVDA": 2.4917368966981394e-8
+        }
+      },
+      {
+        "train_end": "2022-07-12",
+        "test_start": "2022-07-13",
+        "weights": {
+          "AAPL": 0.20883987873866763,
+          "MSFT": 0.7911601076289909,
+          "NVDA": 1.363234151755497e-8
+        }
+      },
+      {
+        "train_end": "2022-07-26",
+        "test_start": "2022-07-27",
+        "weights": {
+          "AAPL": 0.0000309019186597576,
+          "MSFT": 0.999968871382868,
+          "NVDA": 2.2669847208151895e-7
+        }
+      },
+      {
+        "train_end": "2022-08-09",
+        "test_start": "2022-08-10",
+        "weights": {
+          "AAPL": 0.33663678052743823,
+          "MSFT": 0.6633630004184463,
+          "NVDA": 2.1905411549351418e-7
+        }
+      },
+      {
+        "train_end": "2022-08-23",
+        "test_start": "2022-08-24",
+        "weights": {
+          "AAPL": 0.5735897560877875,
+          "MSFT": 0.42641011303554877,
+          "NVDA": 1.308766637907072e-7
+        }
+      },
+      {
+        "train_end": "2022-09-07",
+        "test_start": "2022-09-08",
+        "weights": {
+          "AAPL": 0.7897739554895457,
+          "MSFT": 0.21022579232610025,
+          "NVDA": 2.5218435418067837e-7
+        }
+      },
+      {
+        "train_end": "2022-09-21",
+        "test_start": "2022-09-22",
+        "weights": {
+          "AAPL": 0.5442280661228209,
+          "MSFT": 0.4557718785270617,
+          "NVDA": 5.5350117355466426e-8
+        }
+      },
+      {
+        "train_end": "2022-10-05",
+        "test_start": "2022-10-06",
+        "weights": {
+          "AAPL": 0.39181118303224177,
+          "MSFT": 0.6081887087250972,
+          "NVDA": 1.0824266093496587e-7
+        }
+      },
+      {
+        "train_end": "2022-10-19",
+        "test_start": "2022-10-20",
+        "weights": {
+          "AAPL": 0.5463486486765239,
+          "MSFT": 0.4536513258454492,
+          "NVDA": 2.5478026903192687e-8
+        }
+      },
+      {
+        "train_end": "2022-11-02",
+        "test_start": "2022-11-03",
+        "weights": {
+          "AAPL": 0.417604984662427,
+          "MSFT": 0.5823948596108156,
+          "NVDA": 1.557267573140669e-7
+        }
+      },
+      {
+        "train_end": "2022-11-16",
+        "test_start": "2022-11-17",
+        "weights": {
+          "AAPL": 0.4233227573192063,
+          "MSFT": 0.5766771643127154,
+          "NVDA": 7.836807825418476e-8
+        }
+      },
+      {
+        "train_end": "2022-12-01",
+        "test_start": "2022-12-02",
+        "weights": {
+          "AAPL": 0.42524000958883285,
+          "MSFT": 0.5747599010890204,
+          "NVDA": 8.932214673430472e-8
+        }
+      },
+      {
+        "train_end": "2022-12-15",
+        "test_start": "2022-12-16",
+        "weights": {
+          "AAPL": 0.4877355068819901,
+          "MSFT": 0.5122643806207372,
+          "NVDA": 1.1249727256801072e-7
+        }
+      },
+      {
+        "train_end": "2022-12-30",
+        "test_start": "2023-01-03",
+        "weights": {
+          "AAPL": 0.517484839587766,
+          "MSFT": 0.48251514424834707,
+          "NVDA": 1.616388695406908e-8
+        }
+      },
+      {
+        "train_end": "2023-01-17",
+        "test_start": "2023-01-18",
+        "weights": {
+          "AAPL": 0.45080777619078616,
+          "MSFT": 0.5491918115429667,
+          "NVDA": 4.1226624697188953e-7
+        }
+      },
+      {
+        "train_end": "2023-01-31",
+        "test_start": "2023-02-01",
+        "weights": {
+          "AAPL": 0.4727040251143321,
+          "MSFT": 0.5272959724545611,
+          "NVDA": 2.4311067381917996e-9
+        }
+      },
+      {
+        "train_end": "2023-02-14",
+        "test_start": "2023-02-15",
+        "weights": {
+          "AAPL": 0.5998633379326754,
+          "MSFT": 0.4001366445340914,
+          "NVDA": 1.753323322061215e-8
+        }
+      },
+      {
+        "train_end": "2023-03-01",
+        "test_start": "2023-03-02",
+        "weights": {
+          "AAPL": 0.6398770923757225,
+          "MSFT": 0.3601228422328396,
+          "NVDA": 6.539143786187317e-8
+        }
+      },
+      {
+        "train_end": "2023-03-15",
+        "test_start": "2023-03-16",
+        "weights": {
+          "AAPL": 0.6633036630176523,
+          "MSFT": 0.33669611476430733,
+          "NVDA": 2.2221804022996426e-7
+        }
+      },
+      {
+        "train_end": "2023-03-29",
+        "test_start": "2023-03-30",
+        "weights": {
+          "AAPL": 0.751579111566778,
+          "MSFT": 0.24842081231186594,
+          "NVDA": 7.612135596198231e-8
+        }
+      },
+      {
+        "train_end": "2023-04-13",
+        "test_start": "2023-04-14",
+        "weights": {
+          "AAPL": 0.8210741649978037,
+          "MSFT": 0.17892582043582833,
+          "NVDA": 1.4566368056442731e-8
+        }
+      },
+      {
+        "train_end": "2023-04-27",
+        "test_start": "2023-04-28",
+        "weights": {
+          "AAPL": 0.849539039883516,
+          "MSFT": 0.13870235144653628,
+          "NVDA": 0.011758608669947754
+        }
+      },
+      {
+        "train_end": "2023-05-11",
+        "test_start": "2023-05-12",
+        "weights": {
+          "AAPL": 0.7601250824999981,
+          "MSFT": 0.23987474204022613,
+          "NVDA": 1.754597759732286e-7
+        }
+      },
+      {
+        "train_end": "2023-05-25",
+        "test_start": "2023-05-26",
+        "weights": {
+          "AAPL": 0.768788173389082,
+          "MSFT": 0.231211719103408,
+          "NVDA": 1.0750751002924942e-7
+        }
+      },
+      {
+        "train_end": "2023-06-09",
+        "test_start": "2023-06-12",
+        "weights": {
+          "AAPL": 0.8282608538471264,
+          "MSFT": 0.1717390427319292,
+          "NVDA": 1.0342094444506317e-7
+        }
+      },
+      {
+        "train_end": "2023-06-26",
+        "test_start": "2023-06-27",
+        "weights": {
+          "AAPL": 0.87634423653889,
+          "MSFT": 0.12365538146066683,
+          "NVDA": 3.8200044310734996e-7
+        }
+      },
+      {
+        "train_end": "2023-07-11",
+        "test_start": "2023-07-12",
+        "weights": {
+          "AAPL": 0.9016293227983293,
+          "MSFT": 0.09837058428243718,
+          "NVDA": 9.29192336481166e-8
+        }
+      },
+      {
+        "train_end": "2023-07-25",
+        "test_start": "2023-07-26",
+        "weights": {
+          "AAPL": 0.8415209708033632,
+          "MSFT": 0.15847846989227712,
+          "NVDA": 5.59304359609496e-7
+        }
+      },
+      {
+        "train_end": "2023-08-08",
+        "test_start": "2023-08-09",
+        "weights": {
+          "AAPL": 0.7951169389985558,
+          "MSFT": 0.2048829951678905,
+          "NVDA": 6.583355372116376e-8
+        }
+      },
+      {
+        "train_end": "2023-08-22",
+        "test_start": "2023-08-23",
+        "weights": {
+          "AAPL": 0.754197041516787,
+          "MSFT": 0.2458017874989293,
+          "NVDA": 1.1709842837286738e-6
+        }
+      },
+      {
+        "train_end": "2023-09-06",
+        "test_start": "2023-09-07",
+        "weights": {
+          "AAPL": 0.6044886075774258,
+          "MSFT": 0.39551108810688923,
+          "NVDA": 3.0431568493568895e-7
+        }
+      },
+      {
+        "train_end": "2023-09-20",
+        "test_start": "2023-09-21",
+        "weights": {
+          "AAPL": 0.518928475643499,
+          "MSFT": 0.4810712629052306,
+          "NVDA": 2.614512703969516e-7
+        }
+      },
+      {
+        "train_end": "2023-10-04",
+        "test_start": "2023-10-05",
+        "weights": {
+          "AAPL": 0.5399991321030091,
+          "MSFT": 0.46000051699551636,
+          "NVDA": 3.5090147438186516e-7
+        }
+      },
+      {
+        "train_end": "2023-10-18",
+        "test_start": "2023-10-19",
+        "weights": {
+          "AAPL": 0.4614346341542114,
+          "MSFT": 0.5385649056386883,
+          "NVDA": 4.602071003841686e-7
+        }
+      },
+      {
+        "train_end": "2023-11-01",
+        "test_start": "2023-11-02",
+        "weights": {
+          "AAPL": 0.5628771709566505,
+          "MSFT": 0.4371223994938214,
+          "NVDA": 4.2954952822055977e-7
+        }
+      },
+      {
+        "train_end": "2023-11-15",
+        "test_start": "2023-11-16",
+        "weights": {
+          "AAPL": 0.5170086950173512,
+          "MSFT": 0.4829908787278709,
+          "NVDA": 4.2625477783441693e-7
+        }
+      },
+      {
+        "train_end": "2023-11-30",
+        "test_start": "2023-12-01",
+        "weights": {
+          "AAPL": 0.7779728401012764,
+          "MSFT": 0.2220267145630966,
+          "NVDA": 4.4533562704907826e-7
+        }
+      },
+      {
+        "train_end": "2023-12-14",
+        "test_start": "2023-12-15",
+        "weights": {
+          "AAPL": 0.8184590387251772,
+          "MSFT": 0.1815409380727034,
+          "NVDA": 2.320211923516037e-8
+        }
+      }
+    ]
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

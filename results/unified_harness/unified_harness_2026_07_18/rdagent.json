@@ -1,0 +1,122 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "rdagent",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0032664800000000004,
+    "latency_sec": 80.09996151924133
+  },
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": "5d"
+    },
+    "signal_semantics": "factor_value — the real executed value of the RD-Agent-implemented factor.py for this ticker (LLM-proposed hypothesis -> formulated factor -> generated + locally-executed code), not a return prediction or probability.",
+    "values": {
+      "AAPL": -0.045144079463039555
+    },
+    "score_scale": "continuous, unitless (real locally-executed generated-code output)",
+    "direction": "LONG",
+    "strength": 0.0711438447720567,
+    "expected_returns": null,
+    "factor_expression": "\\text{Momentum}_{t} = \\frac{P_{t}}{P_{t-21}} - 1",
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "hypothesis",
+        "value": "Simple and effective factors such as price momentum (1-month return), short-term reversal (5-day return), volatility (20-day standard deviation of returns), volume ratio (current volume divided by 20-day average), and moving average crossover (5-day minus 20-day moving average normalized by close) are likely to capture common market anomalies and provide predictive power for future returns.",
+        "source": "RD-Agent QlibFactorHypothesisGen.gen() (real LLM call)",
+        "reference": null
+      },
+      {
+        "kind": "hypothesis_reason",
+        "value": "These factors are computationally light, interpretable, and have strong theoretical and empirical backing in finance literature. Momentum, reversal, volatility, volume, and trend-following signals are foundational in quantitative investing. Starting with these simple factors allows rapid prototyping and baseline performance assessment before introducing more complex combinations.",
+        "source": "RD-Agent QlibFactorHypothesisGen.gen() (real LLM call)",
+        "reference": null
+      },
+      {
+        "kind": "factor_formulation",
+        "value": "'Momentum_1M': [Momentum Factor] Return over the past 21 trading days (approximately one month). [formulation: \\text{Momentum}_{t} = \\frac{P_{t}}{P_{t-21}} - 1]",
+        "source": "RD-Agent QlibFactorHypothesis2Experiment.convert() (real LLM call)",
+        "reference": null
+      },
+      {
+        "kind": "coder_feedback",
+        "value": "final_decision=True -- The factor is implemented correctly. The code executes without error, the output format matches the requirements (MultiIndex with datetime and instrument, single column 'Momentum_1M' of float64 type), and there are no infinite values. The factor formulation aligns with the description.",
+        "source": "RD-Agent QlibFactorCoSTEER real CoSTEERSingleFeedback (real LLM-as-judge call)",
+        "reference": null
+      },
+      {
+        "kind": "execution_feedback",
+        "value": "Execution succeeded without error.\nExpected output file found.",
+        "source": "RD-Agent FactorEvaluatorForCoder (real local subprocess execution of factor.py)",
+        "reference": null
+      },
+      {
+        "kind": "value_feedback",
+        "value": "value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe output format is correct: the dataframe has a MultiIndex with datetime and instrument, and a single column 'Momentum_1M' with float64 type.\nThe generated dataframe is daily.\n\nshape feedback: None",
+        "source": "RD-Agent FactorValueEvaluator (real evaluator over the executed factor values)",
+        "reference": null
+      },
+      {
+        "kind": "code_feedback",
+        "value": "No critics found.",
+        "source": "RD-Agent FactorCodeEvaluator (real LLM code critique)",
+        "reference": null
+      },
+      {
+        "kind": "correlation_diagnostic",
+        "value": "This adapter's own translation: correlation of the real executed factor values with AAPL's real 5-day forward return = -0.0711 (used to derive direction/strength, not upstream's own evaluation).",
+        "source": "adapter_derived (Pearson correlation, factor_series vs forward return)",
+        "reference": null
+      }
+    ],
+    "explanation": "Simple and effective factors such as price momentum (1-month return), short-term reversal (5-day return), volatility (20-day standard deviation of returns), volume ratio (current volume divided by 20-day average), and moving average crossover (5-day minus 20-day moving average normalized by close) are likely to capture common market anomalies and provide predictive power for future returns."
+  },
+  "q4": null,
+  "native_output": {
+    "upstream": {
+      "hypothesis": "Simple and effective factors such as price momentum (1-month return), short-term reversal (5-day return), volatility (20-day standard deviation of returns), volume ratio (current volume divided by 20-day average), and moving average crossover (5-day minus 20-day moving average normalized by close) are likely to capture common market anomalies and provide predictive power for future returns.",
+      "hypothesis_reason": "These factors are computationally light, interpretable, and have strong theoretical and empirical backing in finance literature. Momentum, reversal, volatility, volume, and trend-following signals are foundational in quantitative investing. Starting with these simple factors allows rapid prototyping and baseline performance assessment before introducing more complex combinations.",
+      "factor_name": "Momentum_1M",
+      "factor_description": "[Momentum Factor] Return over the past 21 trading days (approximately one month).",
+      "factor_formulation": "\\text{Momentum}_{t} = \\frac{P_{t}}{P_{t-21}} - 1",
+      "coder_feedback": {
+        "final_decision": true,
+        "final_feedback": "The factor is implemented correctly. The code executes without error, the output format matches the requirements (MultiIndex with datetime and instrument, single column 'Momentum_1M' of float64 type), and there are no infinite values. The factor formulation aligns with the description.",
+        "execution_feedback": "Execution succeeded without error.\nExpected output file found.",
+        "value_feedback": "value feedback: The source dataframe has only one column which is correct.\nThe source dataframe does not have any infinite values.\nThe output format is correct: the dataframe has a MultiIndex with datetime and instrument, and a single column 'Momentum_1M' with float64 type.\nThe generated dataframe is daily.\n\nshape feedback: None",
+        "code_feedback": "No critics found.",
+        "value_generated_flag": true,
+        "final_decision_based_on_gt": false
+      },
+      "coder_error": null,
+      "factor_code": "import pandas as pd\nimport numpy as np\n\ndef calculate_Momentum_1M():\n    # Read data\n    df = pd.read_hdf('daily_pv.h5', key='data')\n    \n    # Ensure index is sorted\n    df = df.sort_index()\n    \n    # Compute momentum: return over 21 trading days\n    # Use groupby on instrument (level=0) to compute per instrument\n    momentum = df.groupby(level='instrument')['$close'].transform(lambda x: x / x.shift(21) - 1)\n    \n    # Create result DataFrame with the desired column name\n    result = momentum.to_frame(name='Momentum_1M')\n    \n    # Swap index levels to have datetime first, then instrument\n    result = result.swaplevel(0, 1).sort_index()\n    \n    # Save to HDF5 file\n    result.to_hdf('result.h5', key='data', mode='w')\n\nif __name__ == '__main__':\n    calculate_Momentum_1M()",
+      "executed_factor_value": -0.045144079463039555
+    },
+    "adapter_derived": {
+      "ticker": "AAPL",
+      "correlation": -0.0711438447720567
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

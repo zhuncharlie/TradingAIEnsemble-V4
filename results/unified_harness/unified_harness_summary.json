@@ -1,0 +1,319 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "as_of": "2024-01-15",
+  "data_cutoff": "2024-01-15",
+  "gen_start": "2023-06-01",
+  "gen_end": "2024-01-15",
+  "frozen_universe": [
+    "AAPL",
+    "MSFT",
+    "NVDA"
+  ],
+  "results": [
+    {
+      "name": "ai_hedge_fund",
+      "env": "ai_hedge_fund_real",
+      "cmd": "conda run -n ai_hedge_fund_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/ai_hedge_fund_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 14.2,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q1"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/ai_hedge_fund.json"
+    },
+    {
+      "name": "fingpt",
+      "env": "fingpt_real",
+      "cmd": "conda run -n fingpt_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/fingpt_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 89.6,
+      "status": "FAILED",
+      "failure_reason": "ERROR conda.cli.main_run:execute(49): `conda run python CONTRACT/adapter_runner.py --adapter adapters/fingpt_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness` failed. (See above for error)"
+    },
+    {
+      "name": "finbert",
+      "env": "finbert_real",
+      "cmd": "conda run -n finbert_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/finbert_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 31.5,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q2"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/finbert.json"
+    },
+    {
+      "name": "finmem",
+      "env": "finmem_real",
+      "cmd": "conda run -n finmem_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/finmem_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "BLOCKED",
+      "latency_sec": 48.7,
+      "status": "BLOCKED",
+      "failure_reason": "ERROR conda.cli.main_run:execute(49): `conda run python CONTRACT/adapter_runner.py --adapter adapters/finmem_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness` failed. (See above for error)"
+    },
+    {
+      "name": "deepalpha",
+      "env": "deepalpha_real",
+      "cmd": "conda run -n deepalpha_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/deepalpha_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 18.0,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q1",
+        "q3"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/deepalpha.json"
+    },
+    {
+      "name": "rdagent",
+      "env": "rdagent_real",
+      "cmd": "conda run -n rdagent_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/rdagent_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --horizon 5d --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 98.9,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q3"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/rdagent.json"
+    },
+    {
+      "name": "quantmuse",
+      "env": "nofx_real",
+      "cmd": "conda run -n nofx_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/quantmuse_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 39.4,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q2",
+        "q3"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/quantmuse.json"
+    },
+    {
+      "name": "prediction_arena",
+      "env": "prediction_arena_real",
+      "cmd": "conda run -n prediction_arena_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/prediction_arena_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 29.9,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q2"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/prediction_arena.json"
+    },
+    {
+      "name": "tradingagents",
+      "env": "tradingagents_real",
+      "cmd": "conda run -n tradingagents_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/tradingagents_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 280,
+      "status": "FAILED",
+      "failure_reason": "timed out after 280s"
+    },
+    {
+      "name": "finrobot",
+      "env": "finrobot_real",
+      "cmd": "conda run -n finrobot_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/finrobot_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 34.5,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q1",
+        "q2"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/finrobot.json"
+    },
+    {
+      "name": "finagent",
+      "env": "finagent_real",
+      "cmd": "conda run -n finagent_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/finagent_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --gen-start 2023-06-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 280,
+      "status": "FAILED",
+      "failure_reason": "timed out after 280s"
+    },
+    {
+      "name": "alphagen",
+      "env": "alphagen_real",
+      "cmd": "conda run -n alphagen_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/alphagen_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope CROSS_SECTION --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 115.1,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q3"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/alphagen.json"
+    },
+    {
+      "name": "atlas",
+      "env": "atlas_real",
+      "cmd": "conda run -n atlas_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/atlas_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope CROSS_SECTION --target AAPL --universe AAPL --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 37.5,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q3"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/atlas.json"
+    },
+    {
+      "name": "alphaforge",
+      "env": "alphaforge_real",
+      "cmd": "conda run -n alphaforge_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/alphaforge_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope CROSS_SECTION --target AAPL --universe AAPL MSFT NVDA --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 41.3,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q3"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/alphaforge.json"
+    },
+    {
+      "name": "finclaw",
+      "env": "finclaw_real",
+      "cmd": "conda run -n finclaw_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/finclaw_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --gen-start 2023-06-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 180.8,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q3",
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/finclaw.json"
+    },
+    {
+      "name": "finrl_x",
+      "env": "finrl_x_real",
+      "cmd": "conda run -n finrl_x_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/finrl_x_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope CROSS_SECTION --target AAPL --universe AAPL MSFT NVDA --gen-start 2023-06-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 206.4,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q2",
+        "q3",
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/finrl_x.json"
+    },
+    {
+      "name": "qlib",
+      "env": "qlib_real",
+      "cmd": "conda run -n qlib_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/qlib_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope CROSS_SECTION --target AAPL --universe AAPL MSFT NVDA --gen-start 2023-06-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 61.7,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q3",
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/qlib.json"
+    },
+    {
+      "name": "vibe_trading",
+      "env": "vibe_trading_real",
+      "cmd": "conda run -n vibe_trading_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/vibe_trading_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope ASSET --target AAPL --universe AAPL --gen-start 2023-08-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 80.1,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q3",
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/vibe_trading.json"
+    },
+    {
+      "name": "agentictrading",
+      "env": "agentictrading_real",
+      "cmd": "conda run -n agentictrading_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/agentictrading_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope PORTFOLIO --universe AAPL MSFT NVDA --gen-start 2023-06-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 13.7,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/agentictrading.json"
+    },
+    {
+      "name": "deepdow",
+      "env": "deepdow_real",
+      "cmd": "conda run -n deepdow_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/deepdow_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope PORTFOLIO --universe AAPL MSFT NVDA --gen-start 2023-06-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 42.8,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/deepdow.json"
+    },
+    {
+      "name": "skfolio",
+      "env": "skfolio_real",
+      "cmd": "conda run -n skfolio_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/skfolio_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope PORTFOLIO --universe AAPL MSFT NVDA --gen-start 2022-01-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 15.9,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/skfolio.json"
+    },
+    {
+      "name": "universal_portfolios",
+      "env": "universal_portfolios_real",
+      "cmd": "conda run -n universal_portfolios_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/universal_portfolios_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope PORTFOLIO --universe AAPL MSFT NVDA --gen-start 2023-06-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 17.8,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/universal_portfolios.json"
+    },
+    {
+      "name": "finrl",
+      "env": "finrl_real",
+      "cmd": "conda run -n finrl_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/finrl_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope PORTFOLIO --universe AAPL MSFT NVDA --gen-start 2022-07-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 62.9,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/finrl.json"
+    },
+    {
+      "name": "earnmore",
+      "env": "earnmore_real",
+      "cmd": "conda run -n earnmore_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/earnmore_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope PORTFOLIO --universe AAPL MSFT --gen-start 2008-09-01 --gen-end 2009-03-01 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 60.1,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/earnmore.json"
+    },
+    {
+      "name": "trademaster",
+      "env": "trademaster_real",
+      "cmd": "conda run -n trademaster_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/trademaster_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope PORTFOLIO --universe AAPL MSFT JNJ --gen-start 2021-01-04 --gen-end 2021-12-31 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "PASS",
+      "latency_sec": 45.4,
+      "status": "PASSED",
+      "questions_answered_actual": [
+        "q4"
+      ],
+      "result_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness/unified_harness_2026_07_18/trademaster.json"
+    },
+    {
+      "name": "pgportfolio",
+      "env": "pgportfolio_real",
+      "cmd": "conda run -n pgportfolio_real --no-capture-output python CONTRACT/adapter_runner.py --adapter adapters/pgportfolio_adapter.py --task-id unified_harness_2026_07_18 --as-of 2024-01-15 --scope PORTFOLIO --universe BTC-USD ETH-USD --gen-start 2023-10-01 --gen-end 2024-01-15 --out-dir /mnt/beegfs/xqinag/projects/trading-ai-ensemble/results/unified_harness",
+      "expect": "BLOCKED",
+      "latency_sec": 280,
+      "status": "BLOCKED",
+      "failure_reason": "timed out after 280s"
+    }
+  ]
+}

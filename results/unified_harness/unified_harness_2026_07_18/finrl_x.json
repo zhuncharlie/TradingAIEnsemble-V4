@@ -1,0 +1,901 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "finrl_x",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "CROSS_SECTION",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "states": [
+      {
+        "dimension": "market_regime",
+        "value_numeric": 0.0,
+        "value_category": "risk_on",
+        "value_text": null,
+        "value_distribution": null,
+        "scale": "risk_score in {0,1,2,3} (0->risk_on, 1->neutral, 2-3->risk_off); value_category is upstream's own tri-level label",
+        "observation_window": "26-week SPX trend MA / 13-week SPX drawdown / 3-year robust VIX z-score",
+        "confidence": null,
+        "evidence": [
+          {
+            "kind": "model_feature",
+            "value": "trend_deterioration=False",
+            "source": "adaptive_rotation.market_regime.compute_slow_regime_signals",
+            "reference": "SPX vs 26-week moving average"
+          },
+          {
+            "kind": "model_feature",
+            "value": "drawdown_stress=False",
+            "source": "adaptive_rotation.market_regime.compute_slow_regime_signals",
+            "reference": "13-week SPX drawdown >= 10%"
+          },
+          {
+            "kind": "model_feature",
+            "value": "volatility_stress=False",
+            "source": "adaptive_rotation.market_regime.compute_slow_regime_signals",
+            "reference": "3-year robust VIX z-score >= 3.0"
+          }
+        ]
+      },
+      {
+        "dimension": "regime_recommended_cash_floor",
+        "value_numeric": 0.0,
+        "value_category": null,
+        "value_text": null,
+        "value_distribution": null,
+        "scale": "[0,1] fraction of portfolio recommended to hold as cash, per this regime",
+        "observation_window": null,
+        "confidence": null,
+        "evidence": [
+          {
+            "kind": "model_feature",
+            "value": "cash_floor=0.0000 for regime=risk_on",
+            "source": "adaptive_rotation.market_regime.detect_slow_regime (RegimeResult.cash_floor)",
+            "reference": "same real regime computation that feeds Q4's cash-floor overlay (see q4_policy)"
+          }
+        ]
+      }
+    ],
+    "explanation": "Upstream FinRL-Trading's own rule-based slow-regime detector (adaptive_rotation.market_regime.detect_slow_regime, real weekly ^GSPC/^VIX closes as of 2024-01-15) reports 'risk_on' (risk_score=0/3, cash_floor=0%, also reported structurally as its own StateEstimate below). This is the same real regime computation that feeds the cash-floor overlay on this adapter's Q4 policy (see q4_policy) — v1 folded this into Q4's own `regime` field; v2 routes it here since market_regime is a state of the world, not a policy property (see CONTRACT/schemas.py Q4Policy docstring)."
+  },
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "CROSS_SECTION",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "predicted_return (real out-of-sample model forecast of next-quarter log price return)",
+    "values": {
+      "AAPL": 0.03906099385432685
+    },
+    "score_scale": "log return, unitless",
+    "direction": "NEUTRAL",
+    "strength": 0.24137931034482762,
+    "expected_returns": {
+      "AAPL": 0.03906099385432685
+    },
+    "factor_expression": null,
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "model_feature",
+        "value": "cur_ratio (importance=0.156)",
+        "source": "ml_bucket_selection.run_bucket importance_records (model=Stacking)",
+        "reference": null
+      },
+      {
+        "kind": "model_feature",
+        "value": "operating_margin (importance=0.130)",
+        "source": "ml_bucket_selection.run_bucket importance_records (model=Stacking)",
+        "reference": null
+      },
+      {
+        "kind": "model_feature",
+        "value": "EPS (importance=0.121)",
+        "source": "ml_bucket_selection.run_bucket importance_records (model=Stacking)",
+        "reference": null
+      }
+    ],
+    "explanation": "predicted_return is upstream FinRL-Trading's own out-of-sample regression prediction (best_model=Stacking of a real RF/XGBoost/HistGBM/ExtraTrees/Ridge/Stacking competition, ml_bucket_selection.run_bucket()) of log(next_quarter_close / current_quarter_close) over a scoped 30-name NASDAQ-style universe. Fundamentals inputs are yfinance's latest-available quarterly statements, NOT point-in-time as of context.as_of/data_cutoff (see adapter_notes — a known limitation of avoiding the paid FMP point-in-time database)."
+  },
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "CROSS_SECTION",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "FROZEN_LEARNED_POLICY",
+    "generation_window": {
+      "start": "2023-06-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "dynamic",
+      "catalog_id": null,
+      "fixed_assets": null,
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": "varies with underlying fundamentals cadence (quarterly)",
+      "max_assets": 8,
+      "selector_description": "Top-25% of a scoped NASDAQ-style universe by predicted_return, real ML ensemble ranking via upstream ml_bucket_selection.run_bucket() (same computation as this adapter's Q3 signal)."
+    },
+    "observation_policy": {
+      "lookback_window": "60 trading days rolling covariance over the harness-supplied generation window",
+      "features": null,
+      "data_sources": [
+        "yfinance OHLCV via upstream FinRL YahooDownloader",
+        "yfinance ^GSPC/^VIX weekly closes (regime detector)"
+      ],
+      "observation_description": "Upstream FinRL FeatureEngineer technical indicators + adapter-side rolling return-covariance matrix (StockPortfolioEnv's required cov_list input)."
+    },
+    "decision_policy": {
+      "decision_rule": "Real A2C DRL policy (stable_baselines3 via upstream FinRL DRLAgent/StockPortfolioEnv) trained over generation_window; final-day softmax portfolio weights over the ML-selected top-25% universe, cash-floor-adjusted by upstream's own rule-based regime detector.",
+      "output_semantics": "target portfolio weights (non-negative, sum to 1 including CASH)",
+      "rebalance_frequency": null,
+      "holding_horizon": null
+    },
+    "update_policy": {
+      "mode": "NONE",
+      "update_frequency": null,
+      "update_description": "Policy is retrained from scratch each time q4_policy() is called over a given generation_window; no online learning occurs after generation."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": null,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": 1.0,
+      "net_exposure_max": 1.0,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": null
+    },
+    "initial_weights": {
+      "ADI": 0.10749072581529617,
+      "AMD": 0.13815483450889587,
+      "CSCO": 0.09975747764110565,
+      "INTC": 0.09975747764110565,
+      "INTU": 0.09975747764110565,
+      "LRCX": 0.09975747764110565,
+      "META": 0.2555669844150543,
+      "PANW": 0.09975747764110565,
+      "CASH": 6.705522537231445e-8
+    },
+    "artifact": null,
+    "decisions": null,
+    "explanation": "Universe is upstream FinRL-Trading's own top-25% ML-selected subset of a 30-name scoped NASDAQ-style universe (PANW, INTU, INTC, LRCX, ADI, META, AMD, CSCO), from the same real ml_bucket_selection.run_bucket() ranking Q3 uses. Weights are the final-day allocation from a real A2C policy (upstream FinRL's own DRLAgent wrapping stable_baselines3.A2C), trained live for 3000 timesteps on real yfinance price history over the harness-supplied generation window [2023-06-01, 2024-01-15]. Upstream's own rule-based slow-regime detector (adaptive_rotation.market_regime, real weekly ^GSPC/^VIX data as of 2024-01-15 — see q2_state for the same real regime output) reports 'risk_on' (risk_score=0), contributing a 0% cash floor blended with the DRL policy's own 0.0% cash allocation via cash_ratio=max(drl_cash, regime_cash_floor), rescaling the remaining weights down proportionally. None of the caller-requested targets/universe were in this cycle's ML-selected top-25% set; the full ML-selected set is used regardless (see module header, 'Q4 universe')."
+  },
+  "native_output": {
+    "q2": {
+      "state": "risk_on",
+      "group_cap": 1.0,
+      "cash_floor": 0.0,
+      "is_persistent": false,
+      "signals": {
+        "trend_deterioration": false,
+        "drawdown_stress": false,
+        "volatility_stress": false,
+        "risk_score": 0,
+        "spx_price": 4783.830078125,
+        "spx_ma_26w": 4485.239595853365,
+        "spx_drawdown_13w": 0.0,
+        "vix_z_score": -2.1706081445718697
+      }
+    },
+    "q3": {
+      "ranking": [
+        {
+          "tic": "PANW",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.05705335670316253,
+          "best_model": "Stacking",
+          "rank_position": 1
+        },
+        {
+          "tic": "INTU",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.04852103600159076,
+          "best_model": "Stacking",
+          "rank_position": 2
+        },
+        {
+          "tic": "INTC",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.04795332473777553,
+          "best_model": "Stacking",
+          "rank_position": 3
+        },
+        {
+          "tic": "LRCX",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.043513243239850306,
+          "best_model": "Stacking",
+          "rank_position": 4
+        },
+        {
+          "tic": "ADI",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.04339643733841003,
+          "best_model": "Stacking",
+          "rank_position": 5
+        },
+        {
+          "tic": "META",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.04334773692329436,
+          "best_model": "Stacking",
+          "rank_position": 6
+        },
+        {
+          "tic": "AMD",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.04284910591008697,
+          "best_model": "Stacking",
+          "rank_position": 7
+        },
+        {
+          "tic": "CSCO",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.041486720547070456,
+          "best_model": "Stacking",
+          "rank_position": 8
+        },
+        {
+          "tic": "REGN",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.04043331394283815,
+          "best_model": "Stacking",
+          "rank_position": 9
+        },
+        {
+          "tic": "TSLA",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03989862143378895,
+          "best_model": "Stacking",
+          "rank_position": 10
+        },
+        {
+          "tic": "GILD",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03947887415278975,
+          "best_model": "Stacking",
+          "rank_position": 11
+        },
+        {
+          "tic": "AAPL",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03906099385432685,
+          "best_model": "Stacking",
+          "rank_position": 12
+        },
+        {
+          "tic": "MSFT",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03868668108389442,
+          "best_model": "Stacking",
+          "rank_position": 13
+        },
+        {
+          "tic": "AMGN",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03739233983457972,
+          "best_model": "Stacking",
+          "rank_position": 14
+        },
+        {
+          "tic": "AMZN",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.0372602720662383,
+          "best_model": "Stacking",
+          "rank_position": 15
+        },
+        {
+          "tic": "AVGO",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03642056146560377,
+          "best_model": "Stacking",
+          "rank_position": 16
+        },
+        {
+          "tic": "BKNG",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03634629508136594,
+          "best_model": "Stacking",
+          "rank_position": 17
+        },
+        {
+          "tic": "VRTX",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03540667462267866,
+          "best_model": "Stacking",
+          "rank_position": 18
+        },
+        {
+          "tic": "GOOGL",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03498450580834795,
+          "best_model": "Stacking",
+          "rank_position": 19
+        },
+        {
+          "tic": "PEP",
+          "datadate": "2026-06-30",
+          "predicted_return": 0.034234839343126114,
+          "best_model": "Stacking",
+          "rank_position": 20
+        },
+        {
+          "tic": "NFLX",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.03397084683613584,
+          "best_model": "Stacking",
+          "rank_position": 21
+        },
+        {
+          "tic": "ISRG",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.033786440869570944,
+          "best_model": "Stacking",
+          "rank_position": 22
+        },
+        {
+          "tic": "COST",
+          "datadate": "2026-06-30",
+          "predicted_return": 0.033312887505859284,
+          "best_model": "Stacking",
+          "rank_position": 23
+        },
+        {
+          "tic": "ADBE",
+          "datadate": "2026-06-30",
+          "predicted_return": 0.03177318288011036,
+          "best_model": "Stacking",
+          "rank_position": 24
+        },
+        {
+          "tic": "HON",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.02956717920562983,
+          "best_model": "Stacking",
+          "rank_position": 25
+        },
+        {
+          "tic": "MDLZ",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.028145033699371602,
+          "best_model": "Stacking",
+          "rank_position": 26
+        },
+        {
+          "tic": "SBUX",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.02647001295245726,
+          "best_model": "Stacking",
+          "rank_position": 27
+        },
+        {
+          "tic": "QCOM",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.02604879723335564,
+          "best_model": "Stacking",
+          "rank_position": 28
+        },
+        {
+          "tic": "NVDA",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.025845932910257344,
+          "best_model": "Stacking",
+          "rank_position": 29
+        },
+        {
+          "tic": "TXN",
+          "datadate": "2026-03-31",
+          "predicted_return": 0.025089597336613124,
+          "best_model": "Stacking",
+          "rank_position": 30
+        }
+      ],
+      "model_results": [
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "val_mse": 0.033452,
+          "train_size": 109,
+          "val_size": 30,
+          "infer_size": 33
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "val_mse": 0.041465,
+          "train_size": 109,
+          "val_size": 30,
+          "infer_size": 33
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "HistGBM",
+          "val_mse": 0.033623,
+          "train_size": 109,
+          "val_size": 30,
+          "infer_size": 33
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "val_mse": 0.031456,
+          "train_size": 109,
+          "val_size": 30,
+          "infer_size": 33
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "val_mse": 0.033571,
+          "train_size": 109,
+          "val_size": 30,
+          "infer_size": 33
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "val_mse": 0.027475,
+          "train_size": 109,
+          "val_size": 30,
+          "infer_size": 33
+        }
+      ],
+      "importance_records": [
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "cur_ratio",
+          "importance": 0.187449,
+          "rank": 1
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "gross_margin",
+          "importance": 0.118405,
+          "rank": 2
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "EPS",
+          "importance": 0.117621,
+          "rank": 3
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "operating_margin",
+          "importance": 0.11314,
+          "rank": 4
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "ps",
+          "importance": 0.110799,
+          "rank": 5
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "pb",
+          "importance": 0.110786,
+          "rank": 6
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "roe",
+          "importance": 0.085276,
+          "rank": 7
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "pe",
+          "importance": 0.079985,
+          "rank": 8
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "RF",
+          "is_best": false,
+          "feature": "debt_to_equity",
+          "importance": 0.076539,
+          "rank": 9
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "cur_ratio",
+          "importance": 0.256301,
+          "rank": 1
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "gross_margin",
+          "importance": 0.136741,
+          "rank": 2
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "roe",
+          "importance": 0.121041,
+          "rank": 3
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "operating_margin",
+          "importance": 0.113136,
+          "rank": 4
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "EPS",
+          "importance": 0.090098,
+          "rank": 5
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "debt_to_equity",
+          "importance": 0.088719,
+          "rank": 6
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "pb",
+          "importance": 0.07176,
+          "rank": 7
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "ps",
+          "importance": 0.068336,
+          "rank": 8
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "XGB",
+          "is_best": false,
+          "feature": "pe",
+          "importance": 0.053868,
+          "rank": 9
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "cur_ratio",
+          "importance": 0.156199,
+          "rank": 1
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "operating_margin",
+          "importance": 0.130082,
+          "rank": 2
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "EPS",
+          "importance": 0.120785,
+          "rank": 3
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "gross_margin",
+          "importance": 0.120403,
+          "rank": 4
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "pb",
+          "importance": 0.117641,
+          "rank": 5
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "ps",
+          "importance": 0.107916,
+          "rank": 6
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "roe",
+          "importance": 0.094649,
+          "rank": 7
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "pe",
+          "importance": 0.083985,
+          "rank": 8
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "ExtraTrees",
+          "is_best": false,
+          "feature": "debt_to_equity",
+          "importance": 0.068339,
+          "rank": 9
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "pb",
+          "importance": 0.229923,
+          "rank": 1
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "gross_margin",
+          "importance": 0.228718,
+          "rank": 2
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "roe",
+          "importance": 0.163791,
+          "rank": 3
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "operating_margin",
+          "importance": 0.151,
+          "rank": 4
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "cur_ratio",
+          "importance": 0.090357,
+          "rank": 5
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "EPS",
+          "importance": 0.069687,
+          "rank": 6
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "ps",
+          "importance": 0.040657,
+          "rank": 7
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "pe",
+          "importance": 0.013408,
+          "rank": 8
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Ridge",
+          "is_best": false,
+          "feature": "debt_to_equity",
+          "importance": 0.012459,
+          "rank": 9
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "cur_ratio",
+          "importance": 0.156199,
+          "rank": 1
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "operating_margin",
+          "importance": 0.130082,
+          "rank": 2
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "EPS",
+          "importance": 0.120785,
+          "rank": 3
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "gross_margin",
+          "importance": 0.120403,
+          "rank": 4
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "pb",
+          "importance": 0.117641,
+          "rank": 5
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "ps",
+          "importance": 0.107916,
+          "rank": 6
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "roe",
+          "importance": 0.094649,
+          "rank": 7
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "pe",
+          "importance": 0.083985,
+          "rank": 8
+        },
+        {
+          "bucket": "nasdaq_top25",
+          "model": "Stacking",
+          "is_best": true,
+          "feature": "debt_to_equity",
+          "importance": 0.068339,
+          "rank": 9
+        }
+      ]
+    },
+    "q4": {
+      "selected_universe": [
+        "PANW",
+        "INTU",
+        "INTC",
+        "LRCX",
+        "ADI",
+        "META",
+        "AMD",
+        "CSCO"
+      ],
+      "drl_weights_after_regime_overlay": {
+        "ADI": 0.10749072581529617,
+        "AMD": 0.13815483450889587,
+        "CSCO": 0.09975747764110565,
+        "INTC": 0.09975747764110565,
+        "INTU": 0.09975747764110565,
+        "LRCX": 0.09975747764110565,
+        "META": 0.2555669844150543,
+        "PANW": 0.09975747764110565
+      },
+      "drl_cash_pre_regime": 6.705522537231445e-8,
+      "regime": {
+        "state": "risk_on",
+        "group_cap": 1.0,
+        "cash_floor": 0.0,
+        "is_persistent": false,
+        "signals": {
+          "trend_deterioration": false,
+          "drawdown_stress": false,
+          "volatility_stress": false,
+          "risk_score": 0,
+          "spx_price": 4783.830078125,
+          "spx_ma_26w": 4485.239595853365,
+          "spx_drawdown_13w": 0.0,
+          "vix_z_score": -2.1706081445718697
+        }
+      },
+      "generation_window": {
+        "start": "2023-06-01",
+        "end": "2024-01-15"
+      }
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": "Known limitation (yfinance fundamentals are NOT point-in-time): Q3's predicted_return and Q4's ML-selected universe are both driven by yfinance quarterly_financials/quarterly_balance_sheet, which always return the latest available reported quarters as of process run time, regardless of context.as_of/data_cutoff. Upstream's own point-in-time FMP-backed SQLite database is not used here (avoided to keep this adapter free of a paid API key — see module header). Price-based inputs (Q4's DRL training window over generation_window, Q2's regime detector as of data_cutoff) ARE correctly point-in-time."
+}

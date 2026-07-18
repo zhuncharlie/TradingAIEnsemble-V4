@@ -1,0 +1,1170 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "qlib",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "CROSS_SECTION",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "predicted_return",
+    "values": {
+      "AMZN": -0.02292652725413003,
+      "GOOGL": 0.037803010221409535,
+      "JPM": -0.005869448572646283,
+      "META": -0.01604204717941209,
+      "MSFT": -0.0633417483701616,
+      "NVDA": -0.03598892361150168,
+      "XOM": -0.005869448572646283
+    },
+    "score_scale": "real regression-label scale (Ref($close, -2)/Ref($close, -1) - 1) — a forward daily-return ratio, not normalized/rescaled",
+    "direction": "SHORT",
+    "strength": 1.0,
+    "expected_returns": {
+      "AMZN": -0.02292652725413003,
+      "GOOGL": 0.037803010221409535,
+      "JPM": -0.005869448572646283,
+      "META": -0.01604204717941209,
+      "MSFT": -0.0633417483701616,
+      "NVDA": -0.03598892361150168,
+      "XOM": -0.005869448572646283
+    },
+    "factor_expression": "Top-5 real Alpha158 factors by real LightGBM feature importance: RESI20=3, BETA20=3, KUP=2, WVMA5=2, MA30=1",
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "model_score",
+        "value": "MSFT rank 7/7 (0% percentile) on 2024-01-12",
+        "source": "qlib LGBModel.predict() real cross-sectional score, adapter-side percentile rank",
+        "reference": "label_expression=Ref($close, -2)/Ref($close, -1) - 1"
+      },
+      {
+        "kind": "model_feature",
+        "value": "RESI20=3",
+        "source": "qlib LGBModel.get_feature_importance() over the real Alpha158 158-factor set",
+        "reference": "qlib/contrib/data/handler.py::Alpha158"
+      },
+      {
+        "kind": "model_feature",
+        "value": "BETA20=3",
+        "source": "qlib LGBModel.get_feature_importance() over the real Alpha158 158-factor set",
+        "reference": "qlib/contrib/data/handler.py::Alpha158"
+      },
+      {
+        "kind": "model_feature",
+        "value": "KUP=2",
+        "source": "qlib LGBModel.get_feature_importance() over the real Alpha158 158-factor set",
+        "reference": "qlib/contrib/data/handler.py::Alpha158"
+      },
+      {
+        "kind": "model_feature",
+        "value": "WVMA5=2",
+        "source": "qlib LGBModel.get_feature_importance() over the real Alpha158 158-factor set",
+        "reference": "qlib/contrib/data/handler.py::Alpha158"
+      },
+      {
+        "kind": "model_feature",
+        "value": "MA30=1",
+        "source": "qlib LGBModel.get_feature_importance() over the real Alpha158 158-factor set",
+        "reference": "qlib/contrib/data/handler.py::Alpha158"
+      },
+      {
+        "kind": "factor_value",
+        "value": "KMID=0.0077, KLEN=0.0105, ROC5=0.9467, ROC20=0.9637, ROC60=0.8531, MA5=0.9815, MA20=0.9634, STD20=0.0144",
+        "source": "Alpha158 real factor computation",
+        "reference": "MSFT@2024-01-12"
+      }
+    ],
+    "explanation": "Requested ticker 'AAPL' had no usable real yfinance history for this point-in-time window; reporting the real Qlib/Alpha158/LGBModel signal for fallback ticker 'MSFT' instead (see adapters/qlib_adapter.py header, 'Universe').\n'MSFT' real LGBModel-predicted score -0.06334 (upstream's own real regression output for label 'Ref($close, -2)/Ref($close, -1) - 1') ranks 7/7 (0% percentile) across the real 7-ticker universe on 2024-01-12.\nReal Qlib pipeline: Alpha158 (158 real pre-defined factors) over 7 real tickers, real LGBModel trained on [2022-11-04, 2023-08-31], validated on [2023-09-01, 2023-10-31], best/early-stopped iteration=3 (see adapter header, 'LightGBM training budget', for why this is scoped down from upstream's own CSI300-scale benchmark config). Forward-horizon disclosure: upstream's own label expression 'Ref($close, -2)/Ref($close, -1) - 1' shifts 2 trading days ahead (a T+1-execution-safe convention), so `values`/`expected_returns` are point estimates of a ~2-trading-day forward return, not a plain 1-day return."
+  },
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "CROSS_SECTION",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "FROZEN_LEARNED_POLICY",
+    "generation_window": {
+      "start": "2023-06-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "fixed",
+      "catalog_id": null,
+      "fixed_assets": [
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "GOOGL",
+        "AMZN",
+        "META",
+        "JPM",
+        "XOM"
+      ],
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": null,
+      "max_assets": null,
+      "selector_description": "Requested ticker + up to 7 fixed liquid large-cap US companions (same COMPANION_POOL/_resolve_universe() fixed-pool resolution as q3_signal()) — TopkDropoutStrategy performs no asset-universe selection of its own; it only ranks/selects WITHIN this fixed universe via its real topk/n_drop rule."
+    },
+    "observation_policy": {
+      "lookback_window": "train=[2023-06-01,2023-11-06]",
+      "features": [
+        "KMID",
+        "KLEN",
+        "KMID2",
+        "KUP",
+        "KUP2",
+        "KLOW",
+        "KLOW2",
+        "KSFT",
+        "KSFT2",
+        "OPEN0",
+        "HIGH0",
+        "LOW0",
+        "VWAP0",
+        "ROC5",
+        "ROC10",
+        "ROC20",
+        "ROC30",
+        "ROC60",
+        "MA5",
+        "MA10",
+        "MA20",
+        "MA30",
+        "MA60",
+        "STD5",
+        "STD10",
+        "STD20",
+        "STD30",
+        "STD60",
+        "BETA5",
+        "BETA10",
+        "BETA20",
+        "BETA30",
+        "BETA60",
+        "RSQR5",
+        "RSQR10",
+        "RSQR20",
+        "RSQR30",
+        "RSQR60",
+        "RESI5",
+        "RESI10",
+        "RESI20",
+        "RESI30",
+        "RESI60",
+        "MAX5",
+        "MAX10",
+        "MAX20",
+        "MAX30",
+        "MAX60",
+        "MIN5",
+        "MIN10",
+        "MIN20",
+        "MIN30",
+        "MIN60",
+        "QTLU5",
+        "QTLU10",
+        "QTLU20",
+        "QTLU30",
+        "QTLU60",
+        "QTLD5",
+        "QTLD10",
+        "QTLD20",
+        "QTLD30",
+        "QTLD60",
+        "RANK5",
+        "RANK10",
+        "RANK20",
+        "RANK30",
+        "RANK60",
+        "RSV5",
+        "RSV10",
+        "RSV20",
+        "RSV30",
+        "RSV60",
+        "IMAX5",
+        "IMAX10",
+        "IMAX20",
+        "IMAX30",
+        "IMAX60",
+        "IMIN5",
+        "IMIN10",
+        "IMIN20",
+        "IMIN30",
+        "IMIN60",
+        "IMXD5",
+        "IMXD10",
+        "IMXD20",
+        "IMXD30",
+        "IMXD60",
+        "CORR5",
+        "CORR10",
+        "CORR20",
+        "CORR30",
+        "CORR60",
+        "CORD5",
+        "CORD10",
+        "CORD20",
+        "CORD30",
+        "CORD60",
+        "CNTP5",
+        "CNTP10",
+        "CNTP20",
+        "CNTP30",
+        "CNTP60",
+        "CNTN5",
+        "CNTN10",
+        "CNTN20",
+        "CNTN30",
+        "CNTN60",
+        "CNTD5",
+        "CNTD10",
+        "CNTD20",
+        "CNTD30",
+        "CNTD60",
+        "SUMP5",
+        "SUMP10",
+        "SUMP20",
+        "SUMP30",
+        "SUMP60",
+        "SUMN5",
+        "SUMN10",
+        "SUMN20",
+        "SUMN30",
+        "SUMN60",
+        "SUMD5",
+        "SUMD10",
+        "SUMD20",
+        "SUMD30",
+        "SUMD60",
+        "VMA5",
+        "VMA10",
+        "VMA20",
+        "VMA30",
+        "VMA60",
+        "VSTD5",
+        "VSTD10",
+        "VSTD20",
+        "VSTD30",
+        "VSTD60",
+        "WVMA5",
+        "WVMA10",
+        "WVMA20",
+        "WVMA30",
+        "WVMA60",
+        "VSUMP5",
+        "VSUMP10",
+        "VSUMP20",
+        "VSUMP30",
+        "VSUMP60",
+        "VSUMN5",
+        "VSUMN10",
+        "VSUMN20",
+        "VSUMN30",
+        "VSUMN60",
+        "VSUMD5",
+        "VSUMD10",
+        "VSUMD20",
+        "VSUMD30",
+        "VSUMD60"
+      ],
+      "data_sources": [
+        "real yfinance OHLCV via upstream scripts/dump_bin.py::DumpDataAll into a real Qlib binary provider"
+      ],
+      "observation_description": "Real Alpha158 158-factor set (same feature library q3_signal() uses), real LGBModel fit once on train=[2023-06-01,2023-11-06], validated on [2023-11-07,2023-12-06]; TopkDropoutStrategy.generate_trade_decision() observes the frozen per-day predicted score at each rebalance via real Signal.get_signal(shift=1) (previous trading day's score only — causal by construction, verified by reading qlib/contrib/strategy/signal_strategy.py)."
+    },
+    "decision_policy": {
+      "decision_rule": "qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision(): at each real rebalance day, hold the top 3 tickers by real LGBModel-predicted score (method_buy='top'), replacing at most n_drop=1 position(s) per day (method_sell='bottom'), executed through real qlib.backtest.get_strategy_executor()+backtest_loop() (SimulatorExecutor + Exchange + Account, all real upstream classes).",
+      "output_semantics": "target_weights: per-ticker fraction of total real Account value (stock+cash), from real Position.get_stock_weight_dict(only_stock=False) after that day's real order execution; 'CASH' key is the real residual cash fraction (Position.get_cash()/calculate_value()).",
+      "rebalance_frequency": "DAILY",
+      "holding_horizon": "hold_thresh=1 trading day minimum (real TopkDropoutStrategy default)"
+    },
+    "update_policy": {
+      "mode": "STATE_UPDATE",
+      "update_frequency": "per rebalance day (real Account/Position state only)",
+      "update_description": "The real LGBModel is fit exactly once (frozen — never refit inside this walk-forward loop); only TopkDropoutStrategy's real Account/Position state (cash, holdings, hold-count) evolves day to day as real buy/sell orders execute via qlib.backtest.backtest_loop()."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": true,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": null,
+      "net_exposure_max": null,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": [
+        "topk=3 concentrated long positions, at most n_drop=1 position(s) replaced per rebalance day (real code constraint — qlib/contrib/strategy/signal_strategy.py::TopkDropoutStrategy.generate_trade_decision()).",
+        "risk_degree=0.95: at most 95% of account value invested at each buy step (real BaseSignalStrategy.get_risk_degree() default); remainder held as cash."
+      ]
+    },
+    "initial_weights": null,
+    "artifact": null,
+    "decisions": [
+      {
+        "timestamp": "2023-12-08",
+        "information_cutoff": "2023-12-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "XOM": 0.3168171548152039,
+          "NVDA": 0.3168171548152039,
+          "AMZN": 0.3168171548152039,
+          "CASH": 0.04954853555438833
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-07 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-08."
+      },
+      {
+        "timestamp": "2023-12-11",
+        "information_cutoff": "2023-12-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.34780539018393736,
+          "XOM": 0.32010328894111517,
+          "NVDA": 0.31395967671825337,
+          "CASH": 0.018131644156694205
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-08 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-11."
+      },
+      {
+        "timestamp": "2023-12-12",
+        "information_cutoff": "2023-12-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.34605947620213673,
+          "XOM": 0.31529827697374985,
+          "JPM": 0.3218630194171308,
+          "CASH": 0.016779227406982563
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-11 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-12."
+      },
+      {
+        "timestamp": "2023-12-13",
+        "information_cutoff": "2023-12-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.3450288214164269,
+          "XOM": 0.317029010726376,
+          "AMZN": 0.32119762833779775,
+          "CASH": 0.0167445395193994
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-12 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-13."
+      },
+      {
+        "timestamp": "2023-12-14",
+        "information_cutoff": "2023-12-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "XOM": 0.32453656696775307,
+          "AMZN": 0.3171389884154933,
+          "JPM": 0.34056999313265396,
+          "CASH": 0.017754451484099657
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-13 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-14."
+      },
+      {
+        "timestamp": "2023-12-15",
+        "information_cutoff": "2023-12-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.32121632306253806,
+          "XOM": 0.320682763312745,
+          "JPM": 0.341355399519799,
+          "CASH": 0.01674551410491809
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-14 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-15."
+      },
+      {
+        "timestamp": "2023-12-18",
+        "information_cutoff": "2023-12-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.3252230952846691,
+          "XOM": 0.3193884798678566,
+          "AAPL": 0.337779448843301,
+          "CASH": 0.017608976004173195
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-15 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-18."
+      },
+      {
+        "timestamp": "2023-12-19",
+        "information_cutoff": "2023-12-18",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.324861961776204,
+          "XOM": 0.3212289156073398,
+          "NVDA": 0.3363734438714725,
+          "CASH": 0.01753567874498384
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-18 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-19."
+      },
+      {
+        "timestamp": "2023-12-20",
+        "information_cutoff": "2023-12-19",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.3329089924897906,
+          "NVDA": 0.33024619310819636,
+          "AMZN": 0.32015464713930347,
+          "CASH": 0.01669016726270954
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-19 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-20."
+      },
+      {
+        "timestamp": "2023-12-21",
+        "information_cutoff": "2023-12-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.33324502510034104,
+          "XOM": 0.31851710919423254,
+          "NVDA": 0.33163306588137964,
+          "CASH": 0.016604799824046702
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-20 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-21."
+      },
+      {
+        "timestamp": "2023-12-22",
+        "information_cutoff": "2023-12-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.3353284735025485,
+          "XOM": 0.31864755902743674,
+          "AAPL": 0.32887898661515613,
+          "CASH": 0.017144980854858584
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-21 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-22."
+      },
+      {
+        "timestamp": "2023-12-26",
+        "information_cutoff": "2023-12-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.335668001105122,
+          "XOM": 0.3196223132055994,
+          "AMZN": 0.3276298255719614,
+          "CASH": 0.017079860117317245
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-22 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-26."
+      },
+      {
+        "timestamp": "2023-12-27",
+        "information_cutoff": "2023-12-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.3346185941564645,
+          "AMZN": 0.32913104418324834,
+          "JPM": 0.3195896486603865,
+          "CASH": 0.016660712999900663
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-26 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-27."
+      },
+      {
+        "timestamp": "2023-12-28",
+        "information_cutoff": "2023-12-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.3338008280798184,
+          "AMZN": 0.3287402133570008,
+          "JPM": 0.3208223702559636,
+          "CASH": 0.01663658830721715
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-27 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-28."
+      },
+      {
+        "timestamp": "2023-12-29",
+        "information_cutoff": "2023-12-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.3343170933778839,
+          "NVDA": 0.3215040651784282,
+          "AMZN": 0.3274183268879389,
+          "CASH": 0.016760514555749118
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-28 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2023-12-29."
+      },
+      {
+        "timestamp": "2024-01-02",
+        "information_cutoff": "2023-12-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.3365298522206281,
+          "AMZN": 0.3288031268704701,
+          "JPM": 0.31808476012451586,
+          "CASH": 0.016582260784385974
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2023-12-29 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-02."
+      },
+      {
+        "timestamp": "2024-01-03",
+        "information_cutoff": "2024-01-02",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.33950907081540355,
+          "AAPL": 0.31724223439628,
+          "AMZN": 0.32671035620044725,
+          "CASH": 0.016538338587869225
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2024-01-02 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-03."
+      },
+      {
+        "timestamp": "2024-01-04",
+        "information_cutoff": "2024-01-03",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "AAPL": 0.31942936466747324,
+          "XOM": 0.3384829709512719,
+          "AMZN": 0.3244420126587688,
+          "CASH": 0.017645651722486024
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2024-01-03 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-04."
+      },
+      {
+        "timestamp": "2024-01-05",
+        "information_cutoff": "2024-01-04",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "XOM": 0.3393012465703484,
+          "AMZN": 0.3257466677226387,
+          "JPM": 0.31835570037934235,
+          "CASH": 0.01659638532767047
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2024-01-04 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-05."
+      },
+      {
+        "timestamp": "2024-01-08",
+        "information_cutoff": "2024-01-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "AAPL": 0.31670878478293374,
+          "XOM": 0.33301303661524906,
+          "AMZN": 0.33376764958458044,
+          "CASH": 0.01651052901723666
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2024-01-05 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-08."
+      },
+      {
+        "timestamp": "2024-01-09",
+        "information_cutoff": "2024-01-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "XOM": 0.32901724430449,
+          "AMZN": 0.3389819529140771,
+          "JPM": 0.31555064920073167,
+          "CASH": 0.016450153580701336
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2024-01-08 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-09."
+      },
+      {
+        "timestamp": "2024-01-10",
+        "information_cutoff": "2024-01-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "GOOGL": 0.34149810735522834,
+          "XOM": 0.32512281116968517,
+          "JPM": 0.3155762459311205,
+          "CASH": 0.017802835543965986
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2024-01-09 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-10."
+      },
+      {
+        "timestamp": "2024-01-11",
+        "information_cutoff": "2024-01-10",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "XOM": 0.3258899605678822,
+          "MSFT": 0.3412662967360586,
+          "JPM": 0.3150529918056871,
+          "CASH": 0.01779075089037192
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2024-01-10 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-11."
+      },
+      {
+        "timestamp": "2024-01-12",
+        "information_cutoff": "2024-01-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "target_weights": {
+          "XOM": 0.3285950843692583,
+          "AMZN": 0.3422639639904307,
+          "JPM": 0.3112981907807048,
+          "CASH": 0.01784276085960641
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy.generate_trade_decision() rebalance using the real LGBModel predicted score as of 2024-01-11 (topk=3, n_drop=1); target_weights are the real post-trade Account.Position.get_stock_weight_dict(only_stock=False) snapshot for 2024-01-12."
+      }
+    ],
+    "explanation": "Real qlib TopkDropoutStrategy (topk=3, n_drop=1) over 8 real tickers (AAPL, MSFT, NVDA, GOOGL, AMZN, META, JPM, XOM), driven by qlib.backtest.get_strategy_executor()+backtest_loop() across 24 real causal rebalance day(s) in test segment [2023-12-07,2024-01-15], fed by a real LGBModel fit once on train=[2023-06-01,2023-11-06] (generation_window=[2023-06-01,2024-01-15])."
+  },
+  "native_output": {
+    "q3": {
+      "upstream": {
+        "predicted_scores": {
+          "AMZN": -0.02292652725413003,
+          "GOOGL": 0.037803010221409535,
+          "JPM": -0.005869448572646283,
+          "META": -0.01604204717941209,
+          "MSFT": -0.0633417483701616,
+          "NVDA": -0.03598892361150168,
+          "XOM": -0.005869448572646283
+        },
+        "feature_importance_top5": [
+          {
+            "factor": "RESI20",
+            "importance": 3.0
+          },
+          {
+            "factor": "BETA20",
+            "importance": 3.0
+          },
+          {
+            "factor": "KUP",
+            "importance": 2.0
+          },
+          {
+            "factor": "WVMA5",
+            "importance": 2.0
+          },
+          {
+            "factor": "MA30",
+            "importance": 1.0
+          }
+        ],
+        "last_prediction_date": "2024-01-12",
+        "train_window": [
+          "2022-11-04",
+          "2023-08-31"
+        ],
+        "valid_window": [
+          "2023-09-01",
+          "2023-10-31"
+        ],
+        "test_window": [
+          "2023-11-01",
+          "2024-01-15"
+        ],
+        "best_iteration": 3,
+        "tickers_ok": [
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "label_expression": "Ref($close, -2)/Ref($close, -1) - 1"
+      },
+      "adapter_derived": {
+        "requested_ticker": "AAPL",
+        "resolved_ticker": "MSFT",
+        "was_fallback": true
+      }
+    },
+    "q4": {
+      "upstream": {
+        "hist_position_weights": {
+          "2023-12-07": {
+            "CASH": 1.0
+          },
+          "2023-12-08": {
+            "XOM": 0.3168171548152039,
+            "NVDA": 0.3168171548152039,
+            "AMZN": 0.3168171548152039,
+            "CASH": 0.04954853555438833
+          },
+          "2023-12-11": {
+            "GOOGL": 0.34780539018393736,
+            "XOM": 0.32010328894111517,
+            "NVDA": 0.31395967671825337,
+            "CASH": 0.018131644156694205
+          },
+          "2023-12-12": {
+            "GOOGL": 0.34605947620213673,
+            "XOM": 0.31529827697374985,
+            "JPM": 0.3218630194171308,
+            "CASH": 0.016779227406982563
+          },
+          "2023-12-13": {
+            "GOOGL": 0.3450288214164269,
+            "XOM": 0.317029010726376,
+            "AMZN": 0.32119762833779775,
+            "CASH": 0.0167445395193994
+          },
+          "2023-12-14": {
+            "XOM": 0.32453656696775307,
+            "AMZN": 0.3171389884154933,
+            "JPM": 0.34056999313265396,
+            "CASH": 0.017754451484099657
+          },
+          "2023-12-15": {
+            "GOOGL": 0.32121632306253806,
+            "XOM": 0.320682763312745,
+            "JPM": 0.341355399519799,
+            "CASH": 0.01674551410491809
+          },
+          "2023-12-18": {
+            "GOOGL": 0.3252230952846691,
+            "XOM": 0.3193884798678566,
+            "AAPL": 0.337779448843301,
+            "CASH": 0.017608976004173195
+          },
+          "2023-12-19": {
+            "GOOGL": 0.324861961776204,
+            "XOM": 0.3212289156073398,
+            "NVDA": 0.3363734438714725,
+            "CASH": 0.01753567874498384
+          },
+          "2023-12-20": {
+            "GOOGL": 0.3329089924897906,
+            "NVDA": 0.33024619310819636,
+            "AMZN": 0.32015464713930347,
+            "CASH": 0.01669016726270954
+          },
+          "2023-12-21": {
+            "GOOGL": 0.33324502510034104,
+            "XOM": 0.31851710919423254,
+            "NVDA": 0.33163306588137964,
+            "CASH": 0.016604799824046702
+          },
+          "2023-12-22": {
+            "GOOGL": 0.3353284735025485,
+            "XOM": 0.31864755902743674,
+            "AAPL": 0.32887898661515613,
+            "CASH": 0.017144980854858584
+          },
+          "2023-12-26": {
+            "GOOGL": 0.335668001105122,
+            "XOM": 0.3196223132055994,
+            "AMZN": 0.3276298255719614,
+            "CASH": 0.017079860117317245
+          },
+          "2023-12-27": {
+            "GOOGL": 0.3346185941564645,
+            "AMZN": 0.32913104418324834,
+            "JPM": 0.3195896486603865,
+            "CASH": 0.016660712999900663
+          },
+          "2023-12-28": {
+            "GOOGL": 0.3338008280798184,
+            "AMZN": 0.3287402133570008,
+            "JPM": 0.3208223702559636,
+            "CASH": 0.01663658830721715
+          },
+          "2023-12-29": {
+            "GOOGL": 0.3343170933778839,
+            "NVDA": 0.3215040651784282,
+            "AMZN": 0.3274183268879389,
+            "CASH": 0.016760514555749118
+          },
+          "2024-01-02": {
+            "GOOGL": 0.3365298522206281,
+            "AMZN": 0.3288031268704701,
+            "JPM": 0.31808476012451586,
+            "CASH": 0.016582260784385974
+          },
+          "2024-01-03": {
+            "GOOGL": 0.33950907081540355,
+            "AAPL": 0.31724223439628,
+            "AMZN": 0.32671035620044725,
+            "CASH": 0.016538338587869225
+          },
+          "2024-01-04": {
+            "AAPL": 0.31942936466747324,
+            "XOM": 0.3384829709512719,
+            "AMZN": 0.3244420126587688,
+            "CASH": 0.017645651722486024
+          },
+          "2024-01-05": {
+            "XOM": 0.3393012465703484,
+            "AMZN": 0.3257466677226387,
+            "JPM": 0.31835570037934235,
+            "CASH": 0.01659638532767047
+          },
+          "2024-01-08": {
+            "AAPL": 0.31670878478293374,
+            "XOM": 0.33301303661524906,
+            "AMZN": 0.33376764958458044,
+            "CASH": 0.01651052901723666
+          },
+          "2024-01-09": {
+            "XOM": 0.32901724430449,
+            "AMZN": 0.3389819529140771,
+            "JPM": 0.31555064920073167,
+            "CASH": 0.016450153580701336
+          },
+          "2024-01-10": {
+            "GOOGL": 0.34149810735522834,
+            "XOM": 0.32512281116968517,
+            "JPM": 0.3155762459311205,
+            "CASH": 0.017802835543965986
+          },
+          "2024-01-11": {
+            "XOM": 0.3258899605678822,
+            "MSFT": 0.3412662967360586,
+            "JPM": 0.3150529918056871,
+            "CASH": 0.01779075089037192
+          },
+          "2024-01-12": {
+            "XOM": 0.3285950843692583,
+            "AMZN": 0.3422639639904307,
+            "JPM": 0.3112981907807048,
+            "CASH": 0.01784276085960641
+          }
+        },
+        "train_window": [
+          "2023-06-01",
+          "2023-11-06"
+        ],
+        "valid_window": [
+          "2023-11-07",
+          "2023-12-06"
+        ],
+        "test_window": [
+          "2023-12-07",
+          "2024-01-15"
+        ],
+        "best_iteration": 1,
+        "tickers_ok": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "GOOGL",
+          "AMZN",
+          "META",
+          "JPM",
+          "XOM"
+        ],
+        "topk": 3,
+        "n_drop": 1
+      },
+      "adapter_derived": {
+        "requested_ticker": "AAPL",
+        "resolved_ticker": "AAPL",
+        "was_fallback": false,
+        "num_decisions": 24
+      }
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

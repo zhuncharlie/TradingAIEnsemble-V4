@@ -1,0 +1,18 @@
+{
+  "folds": [
+    {
+      "train_end_date": "2023-08-25",
+      "test_start_date": "2023-08-28",
+      "weights": {"AAPL": 0.42, "MSFT": 0.31, "NVDA": 0.27},
+      "active_tickers": ["AAPL", "MSFT", "NVDA"],
+      "train_size": 60
+    },
+    {
+      "train_end_date": "2023-09-11",
+      "test_start_date": "2023-09-12",
+      "weights": {"AAPL": 0.35, "MSFT": 0.40, "NVDA": 0.25},
+      "active_tickers": ["AAPL", "MSFT", "NVDA"],
+      "train_size": 60
+    }
+  ]
+}

@@ -1,0 +1,834 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "deepdow",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": null,
+  "q3": null,
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "PORTFOLIO",
+      "targets": null,
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "FROZEN_LEARNED_POLICY",
+    "generation_window": {
+      "start": "2023-06-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "fixed",
+      "catalog_id": null,
+      "fixed_assets": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": null,
+      "max_assets": null,
+      "selector_description": "Caller-supplied ticker list (context.universe/targets); deepdow performs no asset selection of its own."
+    },
+    "observation_policy": {
+      "lookback_window": "20_trading_days (real GreatNet input window)",
+      "features": [
+        "daily log returns"
+      ],
+      "data_sources": [
+        "yfinance daily close prices"
+      ],
+      "observation_description": "Real trailing log-return window, flattened and passed through GreatNet's real Linear+SoftmaxAllocator head."
+    },
+    "decision_policy": {
+      "decision_rule": "Real deepdow GreatNet (Linear -> SoftmaxAllocator, upstream's own tutorial architecture), trained once, then queried per real day.",
+      "output_semantics": "target portfolio weights (non-negative, sum to 1, no cash)",
+      "rebalance_frequency": "daily (one real forward pass per real trading day in the test half)",
+      "holding_horizon": null
+    },
+    "update_policy": {
+      "mode": "NONE",
+      "update_frequency": "never after initial training",
+      "update_description": "GreatNet is trained once on the real train half of generation_window and then queried statically (frozen weights) across the real test half."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": null,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": 1.0,
+      "net_exposure_max": 1.0,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": null
+    },
+    "initial_weights": null,
+    "artifact": null,
+    "decisions": [
+      {
+        "timestamp": "2023-11-09",
+        "information_cutoff": "2023-11-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32837024331092834,
+          "MSFT": 0.31502386927604675,
+          "NVDA": 0.3566059172153473
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-08 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-10",
+        "information_cutoff": "2023-11-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32662084698677063,
+          "MSFT": 0.3175608217716217,
+          "NVDA": 0.35581833124160767
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-09 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-13",
+        "information_cutoff": "2023-11-10",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32274559140205383,
+          "MSFT": 0.3202871084213257,
+          "NVDA": 0.3569672703742981
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-10 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-14",
+        "information_cutoff": "2023-11-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32274898886680603,
+          "MSFT": 0.3229424059391022,
+          "NVDA": 0.3543085753917694
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-13 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-15",
+        "information_cutoff": "2023-11-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3252025544643402,
+          "MSFT": 0.3254075348377228,
+          "NVDA": 0.3493899405002594
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-14 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-16",
+        "information_cutoff": "2023-11-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3242134749889374,
+          "MSFT": 0.322239488363266,
+          "NVDA": 0.35354697704315186
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-15 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-17",
+        "information_cutoff": "2023-11-16",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3278081715106964,
+          "MSFT": 0.31725311279296875,
+          "NVDA": 0.3549387454986572
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-16 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-20",
+        "information_cutoff": "2023-11-17",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3269113004207611,
+          "MSFT": 0.3199421167373657,
+          "NVDA": 0.3531465530395508
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-17 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-21",
+        "information_cutoff": "2023-11-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3206791579723358,
+          "MSFT": 0.3212832510471344,
+          "NVDA": 0.3580375611782074
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-20 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-22",
+        "information_cutoff": "2023-11-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3276464641094208,
+          "MSFT": 0.3168869912624359,
+          "NVDA": 0.3554665744304657
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-21 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-24",
+        "information_cutoff": "2023-11-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32264313101768494,
+          "MSFT": 0.3202757239341736,
+          "NVDA": 0.3570811152458191
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-22 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-27",
+        "information_cutoff": "2023-11-24",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3236444890499115,
+          "MSFT": 0.3215928077697754,
+          "NVDA": 0.3547627627849579
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-24 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-28",
+        "information_cutoff": "2023-11-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32203808426856995,
+          "MSFT": 0.32117128372192383,
+          "NVDA": 0.35679060220718384
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-27 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-29",
+        "information_cutoff": "2023-11-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3237820267677307,
+          "MSFT": 0.3224739730358124,
+          "NVDA": 0.3537440299987793
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-28 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-11-30",
+        "information_cutoff": "2023-11-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3227541148662567,
+          "MSFT": 0.3231295943260193,
+          "NVDA": 0.3541162312030792
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-29 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-01",
+        "information_cutoff": "2023-11-30",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3261048197746277,
+          "MSFT": 0.3200189769268036,
+          "NVDA": 0.3538762032985687
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-11-30 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-04",
+        "information_cutoff": "2023-12-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3242740035057068,
+          "MSFT": 0.32073596119880676,
+          "NVDA": 0.35499000549316406
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-01 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-05",
+        "information_cutoff": "2023-12-04",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3230021893978119,
+          "MSFT": 0.3221961259841919,
+          "NVDA": 0.3548016846179962
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-04 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-06",
+        "information_cutoff": "2023-12-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32159385085105896,
+          "MSFT": 0.3240360915660858,
+          "NVDA": 0.3543700575828552
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-05 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-07",
+        "information_cutoff": "2023-12-06",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32610026001930237,
+          "MSFT": 0.3195277452468872,
+          "NVDA": 0.35437196493148804
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-06 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-08",
+        "information_cutoff": "2023-12-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3231208920478821,
+          "MSFT": 0.32410916686058044,
+          "NVDA": 0.3527699410915375
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-07 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-11",
+        "information_cutoff": "2023-12-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32281744480133057,
+          "MSFT": 0.32154130935668945,
+          "NVDA": 0.35564127564430237
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-08 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-12",
+        "information_cutoff": "2023-12-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32577911019325256,
+          "MSFT": 0.32072877883911133,
+          "NVDA": 0.3534921407699585
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-11 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-13",
+        "information_cutoff": "2023-12-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3189701735973358,
+          "MSFT": 0.32412463426589966,
+          "NVDA": 0.3569051921367645
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-12 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-14",
+        "information_cutoff": "2023-12-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3251148760318756,
+          "MSFT": 0.3204849660396576,
+          "NVDA": 0.354400098323822
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-13 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-15",
+        "information_cutoff": "2023-12-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32603222131729126,
+          "MSFT": 0.3191785216331482,
+          "NVDA": 0.35478922724723816
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-14 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-18",
+        "information_cutoff": "2023-12-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32374849915504456,
+          "MSFT": 0.32162025570869446,
+          "NVDA": 0.3546312153339386
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-15 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-19",
+        "information_cutoff": "2023-12-18",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3240826427936554,
+          "MSFT": 0.32256829738616943,
+          "NVDA": 0.3533490002155304
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-18 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-20",
+        "information_cutoff": "2023-12-19",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32330000400543213,
+          "MSFT": 0.31846392154693604,
+          "NVDA": 0.35823604464530945
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-19 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-21",
+        "information_cutoff": "2023-12-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3226817846298218,
+          "MSFT": 0.32283952832221985,
+          "NVDA": 0.3544786274433136
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-20 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-22",
+        "information_cutoff": "2023-12-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32767462730407715,
+          "MSFT": 0.3205000162124634,
+          "NVDA": 0.3518253266811371
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-21 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-26",
+        "information_cutoff": "2023-12-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32290565967559814,
+          "MSFT": 0.31780755519866943,
+          "NVDA": 0.35928675532341003
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-22 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-27",
+        "information_cutoff": "2023-12-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32532232999801636,
+          "MSFT": 0.3209751844406128,
+          "NVDA": 0.35370248556137085
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-26 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-28",
+        "information_cutoff": "2023-12-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.320476233959198,
+          "MSFT": 0.3243211805820465,
+          "NVDA": 0.3552025854587555
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-27 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2023-12-29",
+        "information_cutoff": "2023-12-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3262273967266083,
+          "MSFT": 0.3152626156806946,
+          "NVDA": 0.35851001739501953
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-28 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2024-01-02",
+        "information_cutoff": "2023-12-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32514259219169617,
+          "MSFT": 0.32021430134773254,
+          "NVDA": 0.3546431362628937
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2023-12-29 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2024-01-03",
+        "information_cutoff": "2024-01-02",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3215514123439789,
+          "MSFT": 0.32007715106010437,
+          "NVDA": 0.35837143659591675
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2024-01-02 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2024-01-04",
+        "information_cutoff": "2024-01-03",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3267379105091095,
+          "MSFT": 0.31606414914131165,
+          "NVDA": 0.35719791054725647
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2024-01-03 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2024-01-05",
+        "information_cutoff": "2024-01-04",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32358524203300476,
+          "MSFT": 0.31923866271972656,
+          "NVDA": 0.3571760356426239
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2024-01-04 (frozen after training, see module header)."
+      },
+      {
+        "timestamp": "2024-01-08",
+        "information_cutoff": "2024-01-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3234807252883911,
+          "MSFT": 0.31984612345695496,
+          "NVDA": 0.35667315125465393
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": "Real deepdow GreatNet forward pass on the real lookback window ending 2024-01-05 (frozen after training, see module header)."
+      }
+    ],
+    "explanation": "Real deepdow GreatNet trained for 8 real epochs on 91 real rolling samples ending before 2023-11-09, then evaluated causally on 40 real subsequent trading days for AAPL, MSFT, NVDA over [2023-06-01, 2024-01-15]."
+  },
+  "native_output": {
+    "tickers_requested": [
+      "AAPL",
+      "MSFT",
+      "NVDA"
+    ],
+    "active_tickers": [
+      "AAPL",
+      "MSFT",
+      "NVDA"
+    ],
+    "n_train_samples": 91,
+    "n_test_samples": 40,
+    "lookback": 20,
+    "horizon": 5,
+    "n_epochs": 8,
+    "final_weights": {
+      "AAPL": 0.3234807252883911,
+      "MSFT": 0.31984612345695496,
+      "NVDA": 0.35667315125465393
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

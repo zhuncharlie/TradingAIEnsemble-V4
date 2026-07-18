@@ -1,0 +1,9 @@
+{
+  "ticker": "AAPL",
+  "as_of": "2024-01-15",
+  "full_reply": "AAPL closed near $185 with steady volume over the past week. Revenue growth remains solid and margins are healthy per the latest company info. Given the stable price action and strong fundamentals, my outlook is bullish. TERMINATE",
+  "messages": [
+    {"role": "assistant", "content": "Using the get_stock_data / get_stock_info / get_company_info tools, analyze AAPL as of 2024-01-15. Summarize the recent price action and company fundamentals, then state your outlook using exactly one of the words bullish, bearish, or neutral. Reply TERMINATE when done."},
+    {"role": "user", "content": "AAPL closed near $185 with steady volume over the past week. Revenue growth remains solid and margins are healthy per the latest company info. Given the stable price action and strong fundamentals, my outlook is bullish. TERMINATE"}
+  ]
+}

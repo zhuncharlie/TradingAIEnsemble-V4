@@ -1,0 +1,38 @@
+{
+  "note": "Hand-authored fixture matching the real EnvironmentTrading.step() info dict shape observed live (adapters/vendor/FinAgent/finagent/environment/trading.py:277-279): symbol, asset_type, day, value, cash, position, ret, date, price, discount, total_profit, total_return, action. Values below are a realistic post-BUY-step example, not captured from a specific live run.",
+  "post_buy_step": {
+    "symbol": "AAPL",
+    "asset_type": "company",
+    "day": 13,
+    "value": 10000.0,
+    "cash": 1838.0,
+    "position": 44,
+    "ret": 0.0,
+    "date": "2024-01-03",
+    "price": 185.5,
+    "discount": 1.0,
+    "total_profit": 0.0,
+    "total_return": 0.0,
+    "action": "BUY"
+  },
+  "flat_step": {
+    "symbol": "AAPL",
+    "asset_type": "company",
+    "day": 12,
+    "value": 10000.0,
+    "cash": 10000.0,
+    "position": 0,
+    "ret": 0.0,
+    "date": "2024-01-02",
+    "price": 183.5621795654297,
+    "discount": 1.0,
+    "total_profit": 0.0,
+    "total_return": 0.0,
+    "action": "HOLD"
+  },
+  "raw_decision_response": {
+    "analysis": "Given that no market intelligence, price movement analysis, or past trading reflections are available (due to the embeddings API limitation), I must base my decision solely on the current state.",
+    "action": "HOLD",
+    "reasoning": "No positive or negative signal is available; the safest action is to hold and wait for clearer signals."
+  }
+}

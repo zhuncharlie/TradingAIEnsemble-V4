@@ -1,0 +1,154 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "alphaforge",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 27.829728364944458
+  },
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "CROSS_SECTION",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "factor_value — combined alpha score from AlphaForge's real GP-discovered formulaic-alpha pool, linearly combined via AlphaPool._optimize() (real, upstream). Continuous cross-sectional score, not a return prediction or probability.",
+    "values": {
+      "AAPL": -0.040453046560287476,
+      "MSFT": -0.0905856117606163,
+      "NVDA": 0.5812492966651917,
+      "GOOGL": -0.08786345273256302,
+      "AMZN": -0.040456462651491165,
+      "META": -0.10345210134983063,
+      "JPM": -0.12001719325780869,
+      "XOM": -0.09842148423194885
+    },
+    "score_scale": "continuous, unitless (linear combination of real normalized formulaic alphas)",
+    "direction": "LONG",
+    "strength": 0.7142857142857142,
+    "expected_returns": null,
+    "factor_expression": "(ts_div(close,10)+(ts_div(close,10)+ts_ema(volume,20))); (ts_div(close,10)+ts_ema(volume,20)); ts_ema(volume,20); Ref(volume,10); (ts_div(close,10)+volume)",
+    "confidence": {
+      "value": 0.6119605079293251,
+      "kind": "MODEL_MARGIN",
+      "raw_value": 0.2239210158586502,
+      "method": "real AlphaPool.test_ensemble() in-sample Pearson IC against the real forward-return target, rescaled from [-1,1] to [0,1]"
+    },
+    "evidence": [
+      {
+        "kind": "factor_expression",
+        "value": "(ts_div(close,10)+(ts_div(close,10)+ts_ema(volume,20))) (combination_weight=0.0468, single_ic=0.2244)",
+        "source": "AlphaForge AlphaPool.state (real GP-discovered expression + real _optimize() weight)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "(ts_div(close,10)+ts_ema(volume,20)) (combination_weight=0.0468, single_ic=0.2244)",
+        "source": "AlphaForge AlphaPool.state (real GP-discovered expression + real _optimize() weight)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "ts_ema(volume,20) (combination_weight=0.0468, single_ic=0.2244)",
+        "source": "AlphaForge AlphaPool.state (real GP-discovered expression + real _optimize() weight)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "Ref(volume,10) (combination_weight=0.0469, single_ic=0.2242)",
+        "source": "AlphaForge AlphaPool.state (real GP-discovered expression + real _optimize() weight)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "(ts_div(close,10)+volume) (combination_weight=0.0341, single_ic=0.2193)",
+        "source": "AlphaForge AlphaPool.state (real GP-discovered expression + real _optimize() weight)",
+        "reference": null
+      },
+      {
+        "kind": "gp_search_diagnostics",
+        "value": "Real gplearn.genetic.SymbolicRegressor search: population_size=40, generations=3 (scoped down from upstream's own 1000/40 — see module header), 65 distinct real candidate expressions evaluated, real in-sample combined-pool ensemble IC (AlphaPool.test_ensemble()) = 0.2239. (pool.best_ic_ret/eval_cnt are not used here — real upstream code only updates them inside try_new_expr(), never inside the force_load_exprs() combination path this adapter calls; see module header.)",
+        "source": "AlphaForge gplearn.SymbolicRegressor + AlphaPool.test_ensemble()",
+        "reference": null
+      }
+    ],
+    "explanation": "'AAPL' real GP-discovered + AlphaPool-combined score -0.0405 ranks 2/8 (86% percentile) across the real 8-ticker universe on 2024-01-15. Combination stage: real AlphaPool._optimize() linear weights (see module header for the GAN/PPO-stage scope reduction — the paper's full dynamic-reweighting stage is not reproduced here)."
+  },
+  "q4": null,
+  "native_output": {
+    "upstream": {
+      "pool_exprs": [
+        "(ts_div(close,10)+(ts_div(close,10)+ts_ema(volume,20)))",
+        "(ts_div(close,10)+ts_ema(volume,20))",
+        "ts_ema(volume,20)",
+        "Ref(volume,10)",
+        "(ts_div(close,10)+volume)"
+      ],
+      "pool_weights": [
+        0.04675703735082104,
+        0.046756960292835076,
+        0.046756960292835076,
+        0.04693985202730664,
+        0.03412308946288847
+      ],
+      "pool_single_ics": [
+        0.22444328665733337,
+        0.224443256855011,
+        0.224443256855011,
+        0.22424186766147614,
+        0.21925532817840576
+      ],
+      "pool_ensemble_ic": 0.2239210158586502,
+      "gp_eval_count": 65,
+      "universe_used": [
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "GOOGL",
+        "AMZN",
+        "META",
+        "JPM",
+        "XOM"
+      ],
+      "asof": "2024-01-15",
+      "combined_score_last_row": {
+        "AAPL": -0.040453046560287476,
+        "MSFT": -0.0905856117606163,
+        "NVDA": 0.5812492966651917,
+        "GOOGL": -0.08786345273256302,
+        "AMZN": -0.040456462651491165,
+        "META": -0.10345210134983063,
+        "JPM": -0.12001719325780869,
+        "XOM": -0.09842148423194885
+      }
+    },
+    "adapter_derived": {
+      "requested_ticker": "AAPL",
+      "resolved_ticker": "AAPL",
+      "was_fallback": false,
+      "gp_population_size": 40,
+      "gp_generations": 3
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

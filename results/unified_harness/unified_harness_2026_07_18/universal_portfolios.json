@@ -1,0 +1,2908 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "universal_portfolios",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": null,
+  "q3": null,
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "PORTFOLIO",
+      "targets": null,
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "ONLINE_ADAPTIVE_POLICY",
+    "generation_window": {
+      "start": "2023-06-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "fixed",
+      "catalog_id": null,
+      "fixed_assets": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": null,
+      "max_assets": null,
+      "selector_description": "Caller-specified ticker list; universal-portfolios performs no asset selection of its own — every real algorithm in this project allocates only across the assets it is given."
+    },
+    "observation_policy": {
+      "lookback_window": "full generation_window (156 real trading days); algorithm-internal state (ONS) further bounds how much of that history influences each decision",
+      "features": [
+        "real daily close price relatives (Algo.PRICE_TYPE conversion)"
+      ],
+      "data_sources": [
+        "yfinance (real historical close prices)"
+      ],
+      "observation_description": "Real ONS.step() update using only past+current price relatives (verified causal via universal/algo.py:92, history = X.iloc[: t + 1])."
+    },
+    "decision_policy": {
+      "decision_rule": "Real, unmodified universal.algos.ons.ONS.step() — see module header for the per-algorithm real update rule and its real simplex-projection constraint enforcement.",
+      "output_semantics": "target_weights: real simplex-projected allocation across tickers (non-negative, sums to 1.0).",
+      "rebalance_frequency": "EVERY_TRADING_DAY",
+      "holding_horizon": null
+    },
+    "update_policy": {
+      "mode": "ONLINE_LEARNING",
+      "update_frequency": "every real trading day within generation_window",
+      "update_description": "Real ONS running state (see module header) updates from each real day's realized price relative; state is not persisted across separate q4_policy() calls (disclosed simplification, see header)."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": null,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": 1.0,
+      "net_exposure_max": 1.0,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": [
+        "Real simplex projection in ONS.step() (see module header) guarantees non-negative weights summing to 1.0 every period."
+      ]
+    },
+    "initial_weights": {
+      "AAPL": 0.3333333333333332,
+      "MSFT": 0.33333333333333326,
+      "NVDA": 0.3333333333333334
+    },
+    "artifact": null,
+    "decisions": [
+      {
+        "timestamp": "2023-06-02",
+        "information_cutoff": "2023-06-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3333333333333332,
+          "MSFT": 0.33333333333333326,
+          "NVDA": 0.3333333333333334
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-05",
+        "information_cutoff": "2023-06-02",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.33028356336534564,
+          "MSFT": 0.327508163891669,
+          "NVDA": 0.3422082727429853
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-06",
+        "information_cutoff": "2023-06-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.333490566306241,
+          "MSFT": 0.32380670633788355,
+          "NVDA": 0.3427027273558755
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-07",
+        "information_cutoff": "2023-06-06",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3295105401042645,
+          "MSFT": 0.32335281012694433,
+          "NVDA": 0.34713664976879116
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-08",
+        "information_cutoff": "2023-06-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.31780636068484786,
+          "MSFT": 0.3293846585255448,
+          "NVDA": 0.35280898078960726
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-09",
+        "information_cutoff": "2023-06-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.31842052729811304,
+          "MSFT": 0.3371173489915679,
+          "NVDA": 0.34446212371031903
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-12",
+        "information_cutoff": "2023-06-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32019539530805324,
+          "MSFT": 0.33699371802265654,
+          "NVDA": 0.34281088666929016
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-13",
+        "information_cutoff": "2023-06-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.320827299736633,
+          "MSFT": 0.3377401632734318,
+          "NVDA": 0.34143253698993525
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-14",
+        "information_cutoff": "2023-06-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.33351363631889913,
+          "MSFT": 0.34307438157230735,
+          "NVDA": 0.3234119821087935
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-15",
+        "information_cutoff": "2023-06-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.34580610952316737,
+          "MSFT": 0.3512402865273982,
+          "NVDA": 0.30295360394943444
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-16",
+        "information_cutoff": "2023-06-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3461939557752374,
+          "MSFT": 0.3363078530190829,
+          "NVDA": 0.3174981912056797
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-20",
+        "information_cutoff": "2023-06-16",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3451944782652791,
+          "MSFT": 0.3433982651159708,
+          "NVDA": 0.31140725661875013
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-21",
+        "information_cutoff": "2023-06-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.34832404775802916,
+          "MSFT": 0.3562152466041159,
+          "NVDA": 0.2954607056378551
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-22",
+        "information_cutoff": "2023-06-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3434378899991267,
+          "MSFT": 0.35709951959527253,
+          "NVDA": 0.2994625904056008
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-23",
+        "information_cutoff": "2023-06-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3397293162793372,
+          "MSFT": 0.3519793653553036,
+          "NVDA": 0.3082913183653592
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-26",
+        "information_cutoff": "2023-06-23",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3323230989845475,
+          "MSFT": 0.35374091801961144,
+          "NVDA": 0.31393598299584113
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-27",
+        "information_cutoff": "2023-06-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32177861234423705,
+          "MSFT": 0.35208235137451604,
+          "NVDA": 0.3261390362812468
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-28",
+        "information_cutoff": "2023-06-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32633070896138777,
+          "MSFT": 0.3543536418501672,
+          "NVDA": 0.31931564918844496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-29",
+        "information_cutoff": "2023-06-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.31960707859495796,
+          "MSFT": 0.3495080733106094,
+          "NVDA": 0.3308848480944327
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-06-30",
+        "information_cutoff": "2023-06-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.31632159610828375,
+          "MSFT": 0.3493613822065366,
+          "NVDA": 0.3343170216851796
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-03",
+        "information_cutoff": "2023-06-30",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3178722556883288,
+          "MSFT": 0.3558209280199976,
+          "NVDA": 0.3263068162916736
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-05",
+        "information_cutoff": "2023-07-03",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32054589347902285,
+          "MSFT": 0.35827189930942943,
+          "NVDA": 0.3211822072115477
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-06",
+        "information_cutoff": "2023-07-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32303731997623436,
+          "MSFT": 0.3559976551574865,
+          "NVDA": 0.3209650248662792
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-07",
+        "information_cutoff": "2023-07-06",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32283780402807954,
+          "MSFT": 0.35077803359747783,
+          "NVDA": 0.3263841623744427
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-10",
+        "information_cutoff": "2023-07-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32517558741473457,
+          "MSFT": 0.357604907783062,
+          "NVDA": 0.3172195048022035
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-11",
+        "information_cutoff": "2023-07-10",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.324696264312145,
+          "MSFT": 0.36101177748214053,
+          "NVDA": 0.31429195820571454
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-12",
+        "information_cutoff": "2023-07-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3279024339996589,
+          "MSFT": 0.36067245337439635,
+          "NVDA": 0.3114251126259448
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-13",
+        "information_cutoff": "2023-07-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3356073560613257,
+          "MSFT": 0.36452357319500384,
+          "NVDA": 0.2998690707436705
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-14",
+        "information_cutoff": "2023-07-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3490801274952468,
+          "MSFT": 0.36910376112879223,
+          "NVDA": 0.281816111375961
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-17",
+        "information_cutoff": "2023-07-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.34783119904197196,
+          "MSFT": 0.3628020654256722,
+          "NVDA": 0.28936673553235576
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-18",
+        "information_cutoff": "2023-07-17",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.345009186483272,
+          "MSFT": 0.37172841614969343,
+          "NVDA": 0.2832623973670346
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-19",
+        "information_cutoff": "2023-07-18",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3608218836264806,
+          "MSFT": 0.35737478909281545,
+          "NVDA": 0.2818033272807039
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-20",
+        "information_cutoff": "2023-07-19",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.35201554389571243,
+          "MSFT": 0.36310055139215336,
+          "NVDA": 0.28488390471213426
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-21",
+        "information_cutoff": "2023-07-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.34286532751680243,
+          "MSFT": 0.36390302399861035,
+          "NVDA": 0.29323164848458716
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-24",
+        "information_cutoff": "2023-07-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.33702602090129835,
+          "MSFT": 0.3601624247401392,
+          "NVDA": 0.3028115543585624
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-25",
+        "information_cutoff": "2023-07-24",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3375918189493254,
+          "MSFT": 0.3609689222483388,
+          "NVDA": 0.30143925880233574
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-26",
+        "information_cutoff": "2023-07-25",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.345409589759244,
+          "MSFT": 0.3595802230949744,
+          "NVDA": 0.29501018714578164
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-27",
+        "information_cutoff": "2023-07-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3323415517639904,
+          "MSFT": 0.37847192197928264,
+          "NVDA": 0.289186526256727
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-28",
+        "information_cutoff": "2023-07-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3328525982211041,
+          "MSFT": 0.3897404657394075,
+          "NVDA": 0.2774069360394884
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-07-31",
+        "information_cutoff": "2023-07-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.33643108865319177,
+          "MSFT": 0.38625897836591505,
+          "NVDA": 0.2773099329808933
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-01",
+        "information_cutoff": "2023-07-31",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.332929901458668,
+          "MSFT": 0.3905488209512491,
+          "NVDA": 0.2765212775900828
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-02",
+        "information_cutoff": "2023-08-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.33419473248730547,
+          "MSFT": 0.38767494696353016,
+          "NVDA": 0.2781303205491643
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-03",
+        "information_cutoff": "2023-08-02",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3230953595561472,
+          "MSFT": 0.38487668239304784,
+          "NVDA": 0.2920279580508049
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-04",
+        "information_cutoff": "2023-08-03",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.32748134828174386,
+          "MSFT": 0.3857032575777161,
+          "NVDA": 0.28681539414054
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-07",
+        "information_cutoff": "2023-08-04",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3534434060326874,
+          "MSFT": 0.3727751320958562,
+          "NVDA": 0.2737814618714564
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-08",
+        "information_cutoff": "2023-08-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3678375986952886,
+          "MSFT": 0.369037435868745,
+          "NVDA": 0.2631249654359665
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-09",
+        "information_cutoff": "2023-08-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3579743270118507,
+          "MSFT": 0.37238600325025606,
+          "NVDA": 0.2696396697378932
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-10",
+        "information_cutoff": "2023-08-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.34762876124070535,
+          "MSFT": 0.36409679646707693,
+          "NVDA": 0.28827444229221777
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-11",
+        "information_cutoff": "2023-08-10",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.34782033043322574,
+          "MSFT": 0.3617400314848616,
+          "NVDA": 0.2904396380819127
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-14",
+        "information_cutoff": "2023-08-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.33712160587999696,
+          "MSFT": 0.3557425114026361,
+          "NVDA": 0.3071358827173669
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-15",
+        "information_cutoff": "2023-08-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3518496930767911,
+          "MSFT": 0.37051606973945544,
+          "NVDA": 0.2776342371837536
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-16",
+        "information_cutoff": "2023-08-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3567968551807242,
+          "MSFT": 0.37212775779732515,
+          "NVDA": 0.2710753870219506
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-17",
+        "information_cutoff": "2023-08-16",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3561037378652497,
+          "MSFT": 0.36952789181386464,
+          "NVDA": 0.2743683703208858
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-18",
+        "information_cutoff": "2023-08-17",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3598078958063171,
+          "MSFT": 0.37055580316198083,
+          "NVDA": 0.26963630103170205
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-21",
+        "information_cutoff": "2023-08-18",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.35784260260178635,
+          "MSFT": 0.37162912678852494,
+          "NVDA": 0.27052827060968876
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-22",
+        "information_cutoff": "2023-08-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3783691719081532,
+          "MSFT": 0.3855326495279067,
+          "NVDA": 0.23609817856394008
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-23",
+        "information_cutoff": "2023-08-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3681111694775541,
+          "MSFT": 0.3797818343094699,
+          "NVDA": 0.25210699621297594
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-24",
+        "information_cutoff": "2023-08-23",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36852256018399104,
+          "MSFT": 0.38596198414594374,
+          "NVDA": 0.2455154556700653
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-25",
+        "information_cutoff": "2023-08-24",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3764757899960751,
+          "MSFT": 0.3904129934054654,
+          "NVDA": 0.2331112165984595
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-28",
+        "information_cutoff": "2023-08-25",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36667185255233764,
+          "MSFT": 0.3829515297337655,
+          "NVDA": 0.2503766177138969
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-29",
+        "information_cutoff": "2023-08-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36718852954658926,
+          "MSFT": 0.3883827256620632,
+          "NVDA": 0.24442874479134755
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-30",
+        "information_cutoff": "2023-08-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3701386369580942,
+          "MSFT": 0.3966594810508678,
+          "NVDA": 0.23320188199103806
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-31",
+        "information_cutoff": "2023-08-30",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36341682921891405,
+          "MSFT": 0.4032384528437426,
+          "NVDA": 0.2333447179373434
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-01",
+        "information_cutoff": "2023-08-31",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36250403019616295,
+          "MSFT": 0.40554155923820306,
+          "NVDA": 0.23195441056563404
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-05",
+        "information_cutoff": "2023-09-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.35482320405492224,
+          "MSFT": 0.4020826957213619,
+          "NVDA": 0.2430941002237158
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-06",
+        "information_cutoff": "2023-09-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3580940537408874,
+          "MSFT": 0.3952595699414778,
+          "NVDA": 0.24664637631763484
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-07",
+        "information_cutoff": "2023-09-06",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3680324269022994,
+          "MSFT": 0.37946411877182984,
+          "NVDA": 0.2525034543258706
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-08",
+        "information_cutoff": "2023-09-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3761522020356053,
+          "MSFT": 0.37215814753347437,
+          "NVDA": 0.25168965043092034
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-11",
+        "information_cutoff": "2023-09-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3742022129581994,
+          "MSFT": 0.36295150439701535,
+          "NVDA": 0.26284628264478527
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-12",
+        "information_cutoff": "2023-09-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37157422291576647,
+          "MSFT": 0.3570678284914139,
+          "NVDA": 0.27135794859281975
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-13",
+        "information_cutoff": "2023-09-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37380890586891674,
+          "MSFT": 0.3602225492280381,
+          "NVDA": 0.26596854490304517
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-14",
+        "information_cutoff": "2023-09-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38619329965240534,
+          "MSFT": 0.354241987012333,
+          "NVDA": 0.2595647133352617
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-15",
+        "information_cutoff": "2023-09-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3843460940666218,
+          "MSFT": 0.35307031191133964,
+          "NVDA": 0.2625835940220385
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-18",
+        "information_cutoff": "2023-09-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3708767712433062,
+          "MSFT": 0.35542735652722435,
+          "NVDA": 0.27369587222946945
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-19",
+        "information_cutoff": "2023-09-18",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36206497669668275,
+          "MSFT": 0.36172780297451723,
+          "NVDA": 0.27620722032879996
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-20",
+        "information_cutoff": "2023-09-19",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.35622432040942703,
+          "MSFT": 0.361396959507231,
+          "NVDA": 0.28237872008334197
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-21",
+        "information_cutoff": "2023-09-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.35284583130009334,
+          "MSFT": 0.3610430981671635,
+          "NVDA": 0.2861110705327432
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-22",
+        "information_cutoff": "2023-09-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3491698105975557,
+          "MSFT": 0.35353775172111085,
+          "NVDA": 0.29729243768133345
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-25",
+        "information_cutoff": "2023-09-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3482856014672027,
+          "MSFT": 0.3621992285005794,
+          "NVDA": 0.2895151700322179
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-26",
+        "information_cutoff": "2023-09-25",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.34864249232416655,
+          "MSFT": 0.36679039852819784,
+          "NVDA": 0.28456710914763556
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-27",
+        "information_cutoff": "2023-09-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3542383791441709,
+          "MSFT": 0.36757182802319477,
+          "NVDA": 0.2781897928326344
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-28",
+        "information_cutoff": "2023-09-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3623750634913514,
+          "MSFT": 0.36757900859199794,
+          "NVDA": 0.2700459279166507
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-29",
+        "information_cutoff": "2023-09-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36584356580350563,
+          "MSFT": 0.370188120463846,
+          "NVDA": 0.26396831373264845
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-02",
+        "information_cutoff": "2023-09-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36832340193162616,
+          "MSFT": 0.3699538645850418,
+          "NVDA": 0.26172273348333197
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-03",
+        "information_cutoff": "2023-10-02",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37288121966298354,
+          "MSFT": 0.3713798973864654,
+          "NVDA": 0.25573888295055114
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-04",
+        "information_cutoff": "2023-10-03",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3631151733916221,
+          "MSFT": 0.3755309986339351,
+          "NVDA": 0.26135382797444295
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-05",
+        "information_cutoff": "2023-10-04",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3668348158963581,
+          "MSFT": 0.37156005637611134,
+          "NVDA": 0.2616051277275307
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-06",
+        "information_cutoff": "2023-10-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36717173470064735,
+          "MSFT": 0.37630851462011256,
+          "NVDA": 0.2565197506792402
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-09",
+        "information_cutoff": "2023-10-06",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37182823153083366,
+          "MSFT": 0.3736962086432615,
+          "NVDA": 0.25447555982590486
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-10",
+        "information_cutoff": "2023-10-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3670302527214285,
+          "MSFT": 0.36932749636548584,
+          "NVDA": 0.2636422509130857
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-11",
+        "information_cutoff": "2023-10-10",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3704210491959634,
+          "MSFT": 0.37347989307607343,
+          "NVDA": 0.2560990577279632
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-12",
+        "information_cutoff": "2023-10-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37488527043321457,
+          "MSFT": 0.374760117322405,
+          "NVDA": 0.25035461224438055
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-13",
+        "information_cutoff": "2023-10-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3721684027583815,
+          "MSFT": 0.37862456401807726,
+          "NVDA": 0.24920703322354132
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-16",
+        "information_cutoff": "2023-10-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.366884745322076,
+          "MSFT": 0.37334722467732284,
+          "NVDA": 0.2597680300006012
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-17",
+        "information_cutoff": "2023-10-16",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3743106206990799,
+          "MSFT": 0.36920621635350787,
+          "NVDA": 0.2564831629474123
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-18",
+        "information_cutoff": "2023-10-17",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3667141218517053,
+          "MSFT": 0.3562087512758562,
+          "NVDA": 0.27707712687243846
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-19",
+        "information_cutoff": "2023-10-18",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.35914406137643407,
+          "MSFT": 0.3474264451865181,
+          "NVDA": 0.2934294934370479
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-20",
+        "information_cutoff": "2023-10-19",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3605792082656305,
+          "MSFT": 0.3445216516183795,
+          "NVDA": 0.29489914011599
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-23",
+        "information_cutoff": "2023-10-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3601931920422109,
+          "MSFT": 0.34362517976351376,
+          "NVDA": 0.29618162819427535
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-24",
+        "information_cutoff": "2023-10-23",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3710315414234583,
+          "MSFT": 0.34908989543095525,
+          "NVDA": 0.2798785631455866
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-25",
+        "information_cutoff": "2023-10-24",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37455668914829543,
+          "MSFT": 0.35180494775117144,
+          "NVDA": 0.27363836310053313
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-26",
+        "information_cutoff": "2023-10-25",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3784238977010341,
+          "MSFT": 0.32260891994004504,
+          "NVDA": 0.29896718235892095
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-27",
+        "information_cutoff": "2023-10-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37254205189677864,
+          "MSFT": 0.32662935345871263,
+          "NVDA": 0.3008285946445087
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-30",
+        "information_cutoff": "2023-10-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37113562105119813,
+          "MSFT": 0.3267815355306339,
+          "NVDA": 0.302082843418168
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-31",
+        "information_cutoff": "2023-10-30",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3746582126994118,
+          "MSFT": 0.3226800024620663,
+          "NVDA": 0.30266178483852174
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-01",
+        "information_cutoff": "2023-10-31",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3716136275172647,
+          "MSFT": 0.31995756110158613,
+          "NVDA": 0.30842881138114925
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-02",
+        "information_cutoff": "2023-11-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3773101224831791,
+          "MSFT": 0.32219078812520996,
+          "NVDA": 0.30049908939161085
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-03",
+        "information_cutoff": "2023-11-02",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37554460948780544,
+          "MSFT": 0.33078942721957955,
+          "NVDA": 0.29366596329261496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-06",
+        "information_cutoff": "2023-11-03",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.389485581541494,
+          "MSFT": 0.3315262412150132,
+          "NVDA": 0.27898817724349284
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-07",
+        "information_cutoff": "2023-11-06",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38896261296962753,
+          "MSFT": 0.33396146735395105,
+          "NVDA": 0.2770759196764214
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-08",
+        "information_cutoff": "2023-11-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3857676842584197,
+          "MSFT": 0.3331327813559209,
+          "NVDA": 0.2810995343856595
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-09",
+        "information_cutoff": "2023-11-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38796681955468665,
+          "MSFT": 0.33421905999040347,
+          "NVDA": 0.27781412045490983
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-10",
+        "information_cutoff": "2023-11-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3894890007498803,
+          "MSFT": 0.33894156421047394,
+          "NVDA": 0.27156943503964576
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-13",
+        "information_cutoff": "2023-11-10",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.39138110100751927,
+          "MSFT": 0.3396250834688819,
+          "NVDA": 0.2689938155235988
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-14",
+        "information_cutoff": "2023-11-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3950291060630581,
+          "MSFT": 0.34291855065148474,
+          "NVDA": 0.262052343285457
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-15",
+        "information_cutoff": "2023-11-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.39559817177199474,
+          "MSFT": 0.34678773279891045,
+          "NVDA": 0.2576140954290948
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-16",
+        "information_cutoff": "2023-11-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3904438817791688,
+          "MSFT": 0.3435771880056292,
+          "NVDA": 0.265978930215202
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-17",
+        "information_cutoff": "2023-11-16",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.39328542656599913,
+          "MSFT": 0.34015437326977294,
+          "NVDA": 0.26656020016422793
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-20",
+        "information_cutoff": "2023-11-17",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3882132421811426,
+          "MSFT": 0.3475686806650467,
+          "NVDA": 0.26421807715381074
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-21",
+        "information_cutoff": "2023-11-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3941349949739009,
+          "MSFT": 0.34528683201665494,
+          "NVDA": 0.26057817300944425
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-22",
+        "information_cutoff": "2023-11-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3910648514707728,
+          "MSFT": 0.3477148879219403,
+          "NVDA": 0.261220260607287
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-24",
+        "information_cutoff": "2023-11-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3865837458939274,
+          "MSFT": 0.336296239871885,
+          "NVDA": 0.27712001423418764
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-27",
+        "information_cutoff": "2023-11-24",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38506883914854645,
+          "MSFT": 0.3303557749554889,
+          "NVDA": 0.2845753858959647
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-28",
+        "information_cutoff": "2023-11-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38866503261063834,
+          "MSFT": 0.33094529099364234,
+          "NVDA": 0.28038967639571927
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-29",
+        "information_cutoff": "2023-11-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38767439702662304,
+          "MSFT": 0.3243211643804625,
+          "NVDA": 0.2880044385929145
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-30",
+        "information_cutoff": "2023-11-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38944144242343814,
+          "MSFT": 0.3295641697680976,
+          "NVDA": 0.2809943878084643
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-01",
+        "information_cutoff": "2023-11-30",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38103504319153986,
+          "MSFT": 0.323303238223316,
+          "NVDA": 0.2956617185851441
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-04",
+        "information_cutoff": "2023-12-01",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3747579743755463,
+          "MSFT": 0.3307052536745793,
+          "NVDA": 0.2945367719498744
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-05",
+        "information_cutoff": "2023-12-04",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3692495501864557,
+          "MSFT": 0.3288614779427976,
+          "NVDA": 0.3018889718707469
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-06",
+        "information_cutoff": "2023-12-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3668548388674859,
+          "MSFT": 0.33515619789374684,
+          "NVDA": 0.2979889632387673
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-07",
+        "information_cutoff": "2023-12-06",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36157126846059473,
+          "MSFT": 0.3330902667296285,
+          "NVDA": 0.3053384648097769
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-08",
+        "information_cutoff": "2023-12-07",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3638202972905019,
+          "MSFT": 0.33850965172155884,
+          "NVDA": 0.2976700509879393
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-11",
+        "information_cutoff": "2023-12-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3670694201272263,
+          "MSFT": 0.3407187893646843,
+          "NVDA": 0.29221179050808943
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-12",
+        "information_cutoff": "2023-12-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3669954553421983,
+          "MSFT": 0.33680554780720645,
+          "NVDA": 0.2961989968505952
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-13",
+        "information_cutoff": "2023-12-12",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3704714731708445,
+          "MSFT": 0.3400173935112624,
+          "NVDA": 0.28951113331789313
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-14",
+        "information_cutoff": "2023-12-13",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3644959248864535,
+          "MSFT": 0.34634089711064214,
+          "NVDA": 0.2891631780029044
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-15",
+        "information_cutoff": "2023-12-14",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3597777275754554,
+          "MSFT": 0.3590243731375543,
+          "NVDA": 0.28119789928699024
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-18",
+        "information_cutoff": "2023-12-15",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.36704513920032655,
+          "MSFT": 0.35462331517563644,
+          "NVDA": 0.2783315456240371
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-19",
+        "information_cutoff": "2023-12-18",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3783203577007797,
+          "MSFT": 0.3558261197967467,
+          "NVDA": 0.26585352250247357
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-20",
+        "information_cutoff": "2023-12-19",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3738149685433659,
+          "MSFT": 0.3540712487599779,
+          "NVDA": 0.27211378269665615
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-21",
+        "information_cutoff": "2023-12-20",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3699888533061701,
+          "MSFT": 0.34748682698926975,
+          "NVDA": 0.28252431970456016
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-22",
+        "information_cutoff": "2023-12-21",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37669526395627817,
+          "MSFT": 0.34783952061076706,
+          "NVDA": 0.27546521543295466
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-26",
+        "information_cutoff": "2023-12-22",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.37933373716456,
+          "MSFT": 0.34428435861659695,
+          "NVDA": 0.276381904218843
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-27",
+        "information_cutoff": "2023-12-26",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3829963775456594,
+          "MSFT": 0.3456941941187439,
+          "NVDA": 0.27130942833559674
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-28",
+        "information_cutoff": "2023-12-27",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38302425288159386,
+          "MSFT": 0.347276290297865,
+          "NVDA": 0.2696994568205411
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-29",
+        "information_cutoff": "2023-12-28",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.38325120632720844,
+          "MSFT": 0.3467567762231853,
+          "NVDA": 0.2699920174496064
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-02",
+        "information_cutoff": "2023-12-29",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.386426561120615,
+          "MSFT": 0.3444011172840336,
+          "NVDA": 0.26917232159535137
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-03",
+        "information_cutoff": "2024-01-02",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3941717084031689,
+          "MSFT": 0.33536868248898277,
+          "NVDA": 0.27045960910784833
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-04",
+        "information_cutoff": "2024-01-03",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.3946694861603058,
+          "MSFT": 0.33081467517495045,
+          "NVDA": 0.27451583866474377
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-05",
+        "information_cutoff": "2024-01-04",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.40132226640762264,
+          "MSFT": 0.3333691914480941,
+          "NVDA": 0.2653085421442832
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-08",
+        "information_cutoff": "2024-01-05",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.40865409255630153,
+          "MSFT": 0.33814221416839174,
+          "NVDA": 0.2532036932753068
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-09",
+        "information_cutoff": "2024-01-08",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.41672839503338743,
+          "MSFT": 0.35005785580491916,
+          "NVDA": 0.2332137491616934
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-10",
+        "information_cutoff": "2024-01-09",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.4226385772922379,
+          "MSFT": 0.35214284726734724,
+          "NVDA": 0.225218575440415
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-11",
+        "information_cutoff": "2024-01-10",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.42988057617687947,
+          "MSFT": 0.3499615011517732,
+          "NVDA": 0.22015792267134748
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-12",
+        "information_cutoff": "2024-01-11",
+        "selected_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA"
+        ],
+        "target_weights": {
+          "AAPL": 0.43475757473887033,
+          "MSFT": 0.3488677395061716,
+          "NVDA": 0.21637468575495808
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      }
+    ],
+    "explanation": "Real ONS (universal.algos.ons) run over 3 tickers (AAPL, MSFT, NVDA) across 156 real trading days in [2023-06-01, 2024-01-15]. Produced 155 real causal decisions."
+  },
+  "native_output": {
+    "algo_name": "ons",
+    "algo_class": "universal.algos.ons.ONS",
+    "tickers": [
+      "AAPL",
+      "MSFT",
+      "NVDA"
+    ],
+    "n_trading_days": 156,
+    "min_history": 0,
+    "weights_last_row": {
+      "AAPL": 0.43475757473887033,
+      "MSFT": 0.3488677395061716,
+      "NVDA": 0.21637468575495808
+    },
+    "generation_window": {
+      "start": "2023-06-01",
+      "end": "2024-01-15"
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

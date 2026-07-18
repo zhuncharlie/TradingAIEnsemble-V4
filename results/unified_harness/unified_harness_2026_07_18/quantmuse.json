@@ -1,0 +1,307 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "quantmuse",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 32.313512086868286
+  },
+  "q1": null,
+  "q2": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "states": [
+      {
+        "dimension": "sentiment",
+        "value_numeric": -0.35,
+        "value_category": null,
+        "value_text": null,
+        "value_distribution": null,
+        "scale": "[-1,1]",
+        "observation_window": null,
+        "confidence": {
+          "value": 0.7726969717169023,
+          "kind": "HEURISTIC",
+          "raw_value": 0.22730302828309762,
+          "method": "1 - sentiment_volatility (adapter heuristic, not an upstream-native confidence)"
+        },
+        "evidence": [
+          {
+            "kind": "news",
+            "value": "This week's AI winners and losers (neutral, score=0.00)",
+            "source": "Yahoo Finance news (yfinance) + QuantMuse SentimentAnalyzer per-headline LLM sentiment",
+            "reference": null
+          },
+          {
+            "kind": "news",
+            "value": "Apple Avoided the AI CapEx Spending Trap — Now the Bill May Be Coming Due (negative, score=-0.55)",
+            "source": "Yahoo Finance news (yfinance) + QuantMuse SentimentAnalyzer per-headline LLM sentiment",
+            "reference": null
+          },
+          {
+            "kind": "news",
+            "value": "VTI Is Cheaper Than It Used to Be. So What's the Catch? (negative, score=-0.20)",
+            "source": "Yahoo Finance news (yfinance) + QuantMuse SentimentAnalyzer per-headline LLM sentiment",
+            "reference": null
+          }
+        ]
+      },
+      {
+        "dimension": "risk",
+        "value_numeric": null,
+        "value_category": "HIGH",
+        "value_text": null,
+        "value_distribution": null,
+        "scale": null,
+        "observation_window": null,
+        "confidence": null,
+        "evidence": [
+          {
+            "kind": "model_output",
+            "value": "Fusion risk factor: Concentration risk: single stock (AAPL) comprises 100% of the portfolio, amplifying idiosyncratic risk.",
+            "source": "QuantMuse LLMIntegration.assess_risk()",
+            "reference": null
+          },
+          {
+            "kind": "model_output",
+            "value": "Fusion risk factor: Overbought technical conditions: RSI at 88.6 (above 70) and Bollinger Band position at 0.92 (near upper band) indicate elevated short-term reversal risk.",
+            "source": "QuantMuse LLMIntegration.assess_risk()",
+            "reference": null
+          },
+          {
+            "kind": "model_output",
+            "value": "Fusion risk factor: Negative sentiment: weighted sentiment -0.35, though low confidence (0.45) and small sample size (3) limit reliability.",
+            "source": "QuantMuse LLMIntegration.assess_risk()",
+            "reference": null
+          },
+          {
+            "kind": "technical_indicator",
+            "value": "rsi=88.585, macd=8.822, macd_signal=5.488, macd_histogram=3.334, ma_20=305.518",
+            "source": "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+            "reference": null
+          }
+        ]
+      }
+    ],
+    "explanation": null
+  },
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "factor_value: RSI-14 (QuantMuse FactorCalculator.calculate_technical_factors -- a single named real technical factor reading, not a forecast or cross-factor composite)",
+    "values": {
+      "AAPL": 88.58509070185222
+    },
+    "score_scale": "[0,100] RSI (conventionally <30 'oversold', >70 'overbought' -- not applied here as a direction/strength call, see explanation)",
+    "direction": null,
+    "strength": null,
+    "expected_returns": null,
+    "factor_expression": null,
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "technical_indicator",
+        "value": "macd=8.8221",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "macd_signal=5.4879",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "macd_histogram=3.3342",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "ma_20=305.5180",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "ma_50=302.6324",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "ma_200=273.8804",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "price_vs_ma20=9.2374",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "price_vs_ma50=10.2790",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "price_vs_ma200=21.8561",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "bb_upper=339.2037",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "bb_lower=271.8323",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "bb_position=0.9189",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "momentum_20d=11.9895",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "momentum_accel_20d=13.3923",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "momentum_60d=22.2856",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      },
+      {
+        "kind": "technical_indicator",
+        "value": "momentum_accel_60d=15.2319",
+        "source": "QuantMuse FactorCalculator.calculate_technical_factors()/calculate_price_momentum() (real figures from 1y yfinance OHLCV history)",
+        "reference": null
+      }
+    ],
+    "explanation": "RSI-14 (14-period relative strength index) is upstream QuantMuse's own real FactorCalculator.calculate_technical_factors() output for AAPL as of yfinance's most recent 1-year daily history at call time. No upstream-native composite/aggregate exists across FactorCalculator's ~13 real technical/momentum readings (calculate_all_factors() only concatenates per-family dicts, no combination logic of its own) -- per CLAUDE.md's fabrication rule this adapter does not invent a weighted average across them. RSI-14 was chosen as the single `values` entry because it is bounded to a fixed [0,100] scale and is upstream's own canonical standalone technical reading (unlike MACD, which needs a signal-line crossover, or price_vs_ma*, which needs a peer baseline, to be meaningful alone). All other real readings (macd/macd_signal/macd_histogram, ma_20/50/200, price_vs_ma20/50/200, bb_upper/bb_lower/bb_position, momentum_{20,60,252}d, momentum_accel_*) are attached as evidence, not discarded. direction/strength are left unset: applying RSI's conventional 70/30 overbought/oversold thresholds to derive a LONG/SHORT call would be a new adapter-authored interpretive layer, not verified real upstream output. Known limitation: yfinance's period='1y' price fetch is relative to wall-clock call time, not point-in-time as of 2024-01-15 (same limitation already present in this adapter's Q2 technical-factor usage before this recovery)."
+  },
+  "q4": null,
+  "native_output": {
+    "q2": {
+      "upstream": {
+        "sentiment_metrics": {
+          "weighted_sentiment": -0.35,
+          "sentiment_volatility": 0.22730302828309762,
+          "sentiment_momentum": 0.0,
+          "confidence": 0.45,
+          "sample_size": 3
+        },
+        "technical_factors": {
+          "rsi": 88.58509070185222,
+          "macd": 8.82212759409964,
+          "macd_signal": 5.487912754883081,
+          "macd_histogram": 3.3342148392165596,
+          "ma_20": 305.51799926757815,
+          "ma_50": 302.6324157714844,
+          "ma_200": 273.88044715881347,
+          "price_vs_ma20": 9.237423338216978,
+          "price_vs_ma50": 10.27899618208108,
+          "price_vs_ma200": 21.85608490731401,
+          "bb_upper": 339.2036552745549,
+          "bb_lower": 271.8323432606014,
+          "bb_position": 0.9189022021858758,
+          "momentum_20d": 11.989523605885054,
+          "momentum_accel_20d": 13.392332616430956,
+          "momentum_60d": 22.285551732327736,
+          "momentum_accel_60d": 15.231938892735664
+        },
+        "fusion_overall_risk": "high",
+        "fusion_risk_factors": [
+          "Concentration risk: single stock (AAPL) comprises 100% of the portfolio, amplifying idiosyncratic risk.",
+          "Overbought technical conditions: RSI at 88.6 (above 70) and Bollinger Band position at 0.92 (near upper band) indicate elevated short-term reversal risk.",
+          "Negative sentiment: weighted sentiment -0.35, though low confidence (0.45) and small sample size (3) limit reliability.",
+          "Momentum acceleration: both 20-day and 60-day momentum accelerate, increasing vulnerability to a sharp correction.",
+          "Price far above moving averages (20% above 200-day MA), suggesting stretched valuations and potential mean reversion."
+        ],
+        "fusion_raw_content": "{\n  \"overall_risk\": \"high\",\n  \"risk_factors\": [\n    \"Concentration risk: single stock (AAPL) comprises 100% of the portfolio, amplifying idiosyncratic risk.\",\n    \"Overbought technical conditions: RSI at 88.6 (above 70) and Bollinger Band position at 0.92 (near upper band) indicate elevated short-term reversal risk.\",\n    \"Negative sentiment: weighted sentiment -0.35, though low confidence (0.45) and small sample size (3) limit reliability.\",\n    \"Momentum acceleration: both 20-day and 60-day momentum accelerate, increasing vulnerability to a sharp correction.\",\n    \"Price far above moving averages (20% above 200-day MA), suggesting stretched valuations and potential mean reversion.\"\n  ],\n  \"recommendations\": [\n    \"Reduce AAPL exposure to lower concentration risk; consider trimming to 60-70% of portfolio.\",\n    \"Implement a trailing stop-loss (e.g., 5-8% below current price) to protect gains if overbought conditions reverse.\",\n    \"Diversify into defensive sectors, bonds, or non-correlated assets (e.g., REITs, commodities) to buffer against tech stock volatility.\",\n    \"Monitor RSI and MACD for bearish crossovers; consider hedging with put spreads or inverse ETFs on broad market indices.\",\n    \"Increase due diligence on AAPL fundamentals if sentiment data is unreliable; wait for larger sample size before acting on negative signals.\"\n  ],\n  \"position_adjustments\": {\n    \"AAPL\": {\n      \"current_weight\": 1.0,\n      \"suggested_weight\": 0.65,\n      \"action\": \"reduce\",\n      \"rationale\": \"De-risk from overbought conditions and concentration; proceeds to be allocated to cash or diversified holdings.\"\n    },\n    \"suggested_new_positions\": [\n      {\n        \"asset\": \"S&P 500 ETF (SPY)\",\n        \"suggested_weight\": 0.15,\n        \"rationale\": \"Broad market exposure to reduce single-stock risk.\"\n      },\n      {\n        \"asset\": \"Treasury Bonds (BND)\",\n        \"suggested_weight\": 0.10,\n        \"rationale\": \"Safe haven asset in case of equity correction.\"\n      },\n      {\n        \"asset\": \"Cash / Money Market\",\n        \"suggested_weight\": 0.10,\n        \"rationale\": \"Hold liquidity to deploy during pullback or to manage margin requirements.\"\n      }\n    ]\n  }\n}"
+      },
+      "adapter_derived": {
+        "ticker": "AAPL",
+        "date": "2024-01-15",
+        "risk_category": "HIGH"
+      }
+    },
+    "q3": {
+      "upstream": {
+        "technical_factors": {
+          "rsi": 88.58509070185222,
+          "macd": 8.82212759409964,
+          "macd_signal": 5.487912754883081,
+          "macd_histogram": 3.3342148392165596,
+          "ma_20": 305.51799926757815,
+          "ma_50": 302.6324157714844,
+          "ma_200": 273.88044715881347,
+          "price_vs_ma20": 9.237423338216978,
+          "price_vs_ma50": 10.27899618208108,
+          "price_vs_ma200": 21.85608490731401,
+          "bb_upper": 339.2036552745549,
+          "bb_lower": 271.8323432606014,
+          "bb_position": 0.9189022021858758,
+          "momentum_20d": 11.989523605885054,
+          "momentum_accel_20d": 13.392332616430956,
+          "momentum_60d": 22.285551732327736,
+          "momentum_accel_60d": 15.231938892735664
+        }
+      },
+      "adapter_derived": {
+        "ticker": "AAPL",
+        "date": "2024-01-15",
+        "rsi_used": 88.58509070185222
+      }
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

@@ -1,0 +1,141 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "finrl",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 53.50870752334595
+  },
+  "q1": null,
+  "q2": null,
+  "q3": null,
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "PORTFOLIO",
+      "targets": null,
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "ROLLING_OPTIMIZER",
+    "generation_window": {
+      "start": "2022-07-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "fixed",
+      "catalog_id": null,
+      "fixed_assets": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": null,
+      "max_assets": null,
+      "selector_description": "Caller-specified ticker list (QueryContext.universe/targets); FinRL's own StockPortfolioEnv/DRLAgent perform no asset selection of their own in this adapter path — selection happens upstream of this call (contrast with finrl_x_adapter.py's separate ML-bucket top-25% selection capability)."
+    },
+    "observation_policy": {
+      "lookback_window": "60_trading_days",
+      "features": [
+        "macd",
+        "boll_ub",
+        "boll_lb",
+        "rsi_30",
+        "cci_30",
+        "dx_30",
+        "close_30_sma",
+        "close_60_sma"
+      ],
+      "data_sources": [
+        "yfinance via upstream finrl.meta.preprocessor.yahoodownloader.YahooDownloader"
+      ],
+      "observation_description": "Upstream StockPortfolioEnv's real observation state: per-ticker OHLCV-derived technical indicators (macd, boll_ub, boll_lb, rsi_30, cci_30, dx_30, close_30_sma, close_60_sma) plus a real rolling 60-trading-day return-covariance matrix (adapter-side glue required by StockPortfolioEnv's own input contract, not upstream decision logic — see module header)."
+    },
+    "decision_policy": {
+      "decision_rule": "Trained A2C policy's continuous action vector, passed through upstream's own StockPortfolioEnv.softmax_normalization() to yield real non-negative portfolio weights summing to ~1.0 across the given tickers.",
+      "output_semantics": "target_weights: continuous allocation across tickers (post-softmax, non-negative, sums to ~1.0); no explicit cash weight in the model's action space.",
+      "rebalance_frequency": "DAILY",
+      "holding_horizon": null
+    },
+    "update_policy": {
+      "mode": "ROLLING_REFIT",
+      "update_frequency": "per adapter call",
+      "update_description": "Each q4_policy call retrains a fresh upstream A2C policy from scratch (DRLAgent.train_model(), real stable_baselines3.A2C) over the supplied generation_window; no trained-model state is carried between calls other than the optional saved artifact reference."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": true,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": null,
+      "net_exposure_max": null,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": null
+    },
+    "initial_weights": {
+      "AAPL": 0.35176026821136475,
+      "MSFT": 0.32411983609199524,
+      "NVDA": 0.32411983609199524
+    },
+    "artifact": {
+      "artifact_type": "model_checkpoint",
+      "reference": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/adapters/vendor/FinRL/git_ignore_folder/work/models/a2c_2d0f5daa0b6588bd.zip",
+      "hash": "847a14d958fb19ca1eaf9c4ef655d21bae083bdc623c3c3a598e00e940059be2",
+      "description": "Trained upstream stable_baselines3.A2C model (FinRL's own DRLAgent), 3000 timesteps over generation_window [2022-07-01, 2024-01-15] for tickers ['AAPL', 'MSFT', 'NVDA']. Saved via SB3's own model.save(); the v1 adapter discarded this model entirely after weight extraction."
+    },
+    "decisions": null,
+    "explanation": "initial_weights are the final-day allocation from a real A2C policy (upstream FinRL's own DRLAgent wrapping stable_baselines3.A2C), trained live for 3000 timesteps on AAPL, MSFT, NVDA's real yfinance history over the harness-supplied generation_window [2022-07-01, 2024-01-15] (upstream's own StockPortfolioEnv reward = portfolio value; upstream's own softmax weight normalization proves non-negativity/sum-to-1 — no pretrained checkpoint was available or used, matching upstream's normal usage pattern)."
+  },
+  "native_output": {
+    "upstream": {
+      "action_memory_last_row": {
+        "AAPL": 0.35176026821136475,
+        "MSFT": 0.32411983609199524,
+        "NVDA": 0.32411983609199524
+      },
+      "tickers": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "indicators": [
+        "macd",
+        "boll_ub",
+        "boll_lb",
+        "rsi_30",
+        "cci_30",
+        "dx_30",
+        "close_30_sma",
+        "close_60_sma"
+      ],
+      "model_name": "a2c",
+      "total_timesteps": 3000,
+      "artifact_path": "/mnt/beegfs/xqinag/projects/trading-ai-ensemble/adapters/vendor/FinRL/git_ignore_folder/work/models/a2c_2d0f5daa0b6588bd.zip"
+    },
+    "adapter_derived": {
+      "generation_window": {
+        "start": "2022-07-01",
+        "end": "2024-01-15"
+      },
+      "cov_lookback_days": 60
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

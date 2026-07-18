@@ -1,0 +1,1393 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "trademaster",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 36.41190266609192
+  },
+  "q1": null,
+  "q2": null,
+  "q3": null,
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "PORTFOLIO",
+      "targets": null,
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "JNJ"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "FROZEN_LEARNED_POLICY",
+    "generation_window": {
+      "start": "2021-01-04",
+      "end": "2021-12-31"
+    },
+    "universe_policy": {
+      "mode": "fixed",
+      "catalog_id": null,
+      "fixed_assets": [
+        "AAPL",
+        "JNJ",
+        "MSFT"
+      ],
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": null,
+      "max_assets": null,
+      "selector_description": "Caller-specified subset of TradeMaster's real, shipped DJ30 dataset (29 real tickers); EIIE performs no asset selection of its own — the universe is fixed by the data provided."
+    },
+    "observation_policy": {
+      "lookback_window": "10_trading_days",
+      "features": [
+        "zopen",
+        "zhigh",
+        "zlow",
+        "zadjcp",
+        "zclose",
+        "zd_5",
+        "zd_10",
+        "zd_15",
+        "zd_20",
+        "zd_25",
+        "zd_30"
+      ],
+      "data_sources": [
+        "TradeMaster's own shipped, preprocessed data/portfolio_management/dj30/*.csv"
+      ],
+      "observation_description": "Real per-ticker OHLC + z-scored technical indicators over a real 10-trading-day lookback window, matching upstream's own PortfolioManagementEIIEEnvironment state construction."
+    },
+    "decision_policy": {
+      "decision_rule": "Real EIIEConv actor network: a 1D convolution over the lookback window per ticker, concatenated with a learnable cash logit, passed through softmax (eiie.py:34-36) — verified non-negative, sums to 1.0 across tickers+cash.",
+      "output_semantics": "target_weights: real softmax allocation across tickers+CASH, long-only, fully invested.",
+      "rebalance_frequency": "DAILY",
+      "holding_horizon": null
+    },
+    "update_policy": {
+      "mode": "NONE",
+      "update_frequency": null,
+      "update_description": "Real EIIE actor/critic trained once (3 real explore+update rounds, horizon_len=24 — an honestly reduced budget, not upstream's full-scale training) on the first ~70% of generation_window's real trading days, then queried statically (no further gradient updates) across the remaining real trading days."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": true,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": 1.0,
+      "net_exposure_max": 1.0,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": null
+    },
+    "initial_weights": {
+      "CASH": 0.17297707498073578,
+      "AAPL": 0.17231890559196472,
+      "JNJ": 0.17330165207386017,
+      "MSFT": 0.48140227794647217
+    },
+    "artifact": null,
+    "decisions": [
+      {
+        "timestamp": "2021-09-29",
+        "information_cutoff": "2021-09-28",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1732683777809143,
+          "AAPL": 0.17297935485839844,
+          "JNJ": 0.17286929488182068,
+          "MSFT": 0.4808829128742218
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-09-30",
+        "information_cutoff": "2021-09-29",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17307652533054352,
+          "AAPL": 0.17288045585155487,
+          "JNJ": 0.17305786907672882,
+          "MSFT": 0.4809851348400116
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-01",
+        "information_cutoff": "2021-09-30",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1727445125579834,
+          "AAPL": 0.17300334572792053,
+          "JNJ": 0.17263920605182648,
+          "MSFT": 0.4816129505634308
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-04",
+        "information_cutoff": "2021-10-01",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17282357811927795,
+          "AAPL": 0.17324113845825195,
+          "JNJ": 0.1727546602487564,
+          "MSFT": 0.4811806082725525
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-05",
+        "information_cutoff": "2021-10-04",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1732211858034134,
+          "AAPL": 0.17273619771003723,
+          "JNJ": 0.17323695123195648,
+          "MSFT": 0.4808056652545929
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-06",
+        "information_cutoff": "2021-10-05",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17280200123786926,
+          "AAPL": 0.17286255955696106,
+          "JNJ": 0.1728137582540512,
+          "MSFT": 0.4815216660499573
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-07",
+        "information_cutoff": "2021-10-06",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17299778759479523,
+          "AAPL": 0.17290383577346802,
+          "JNJ": 0.17327339947223663,
+          "MSFT": 0.48082491755485535
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-08",
+        "information_cutoff": "2021-10-07",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17275016009807587,
+          "AAPL": 0.1726653128862381,
+          "JNJ": 0.17293742299079895,
+          "MSFT": 0.4816471040248871
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-11",
+        "information_cutoff": "2021-10-08",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1730969399213791,
+          "AAPL": 0.17267194390296936,
+          "JNJ": 0.17303936183452606,
+          "MSFT": 0.4811917543411255
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-12",
+        "information_cutoff": "2021-10-11",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17298966646194458,
+          "AAPL": 0.17327986657619476,
+          "JNJ": 0.17283186316490173,
+          "MSFT": 0.4808986783027649
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-13",
+        "information_cutoff": "2021-10-12",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17304867506027222,
+          "AAPL": 0.1729981154203415,
+          "JNJ": 0.1727420687675476,
+          "MSFT": 0.4812111258506775
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-14",
+        "information_cutoff": "2021-10-13",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17340131103992462,
+          "AAPL": 0.17281721532344818,
+          "JNJ": 0.1732940673828125,
+          "MSFT": 0.48048749566078186
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-15",
+        "information_cutoff": "2021-10-14",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1727178692817688,
+          "AAPL": 0.17309105396270752,
+          "JNJ": 0.17227968573570251,
+          "MSFT": 0.48191142082214355
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-18",
+        "information_cutoff": "2021-10-15",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1728115677833557,
+          "AAPL": 0.17276306450366974,
+          "JNJ": 0.1725851446390152,
+          "MSFT": 0.4818402826786041
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-19",
+        "information_cutoff": "2021-10-18",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1726929247379303,
+          "AAPL": 0.17305243015289307,
+          "JNJ": 0.17265616357326508,
+          "MSFT": 0.48159849643707275
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-20",
+        "information_cutoff": "2021-10-19",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17292261123657227,
+          "AAPL": 0.17280510067939758,
+          "JNJ": 0.17253731191158295,
+          "MSFT": 0.481734961271286
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-21",
+        "information_cutoff": "2021-10-20",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17262820899486542,
+          "AAPL": 0.1730940043926239,
+          "JNJ": 0.1725246161222458,
+          "MSFT": 0.48175323009490967
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-22",
+        "information_cutoff": "2021-10-21",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1729165017604828,
+          "AAPL": 0.1728156954050064,
+          "JNJ": 0.1726410686969757,
+          "MSFT": 0.4816267788410187
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-25",
+        "information_cutoff": "2021-10-22",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1727752834558487,
+          "AAPL": 0.1729818880558014,
+          "JNJ": 0.1722240447998047,
+          "MSFT": 0.4820187985897064
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-26",
+        "information_cutoff": "2021-10-25",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17250464856624603,
+          "AAPL": 0.17277182638645172,
+          "JNJ": 0.17232158780097961,
+          "MSFT": 0.48240187764167786
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-27",
+        "information_cutoff": "2021-10-26",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1725042760372162,
+          "AAPL": 0.1729361116886139,
+          "JNJ": 0.172440767288208,
+          "MSFT": 0.48211875557899475
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-28",
+        "information_cutoff": "2021-10-27",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17239439487457275,
+          "AAPL": 0.17282623052597046,
+          "JNJ": 0.17212709784507751,
+          "MSFT": 0.4826522469520569
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-10-29",
+        "information_cutoff": "2021-10-28",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17237070202827454,
+          "AAPL": 0.1725415736436844,
+          "JNJ": 0.1725514680147171,
+          "MSFT": 0.482536256313324
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-01",
+        "information_cutoff": "2021-10-29",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17236438393592834,
+          "AAPL": 0.17298109829425812,
+          "JNJ": 0.17238113284111023,
+          "MSFT": 0.4822734296321869
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-02",
+        "information_cutoff": "2021-11-01",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17231249809265137,
+          "AAPL": 0.17275239527225494,
+          "JNJ": 0.1725512444972992,
+          "MSFT": 0.4823838472366333
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-03",
+        "information_cutoff": "2021-11-02",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1726982295513153,
+          "AAPL": 0.17263732850551605,
+          "JNJ": 0.17237630486488342,
+          "MSFT": 0.482288122177124
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-04",
+        "information_cutoff": "2021-11-03",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1720186322927475,
+          "AAPL": 0.17257611453533173,
+          "JNJ": 0.1728159487247467,
+          "MSFT": 0.48258933424949646
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-05",
+        "information_cutoff": "2021-11-04",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17285500466823578,
+          "AAPL": 0.172587051987648,
+          "JNJ": 0.17193882167339325,
+          "MSFT": 0.4826190769672394
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-08",
+        "information_cutoff": "2021-11-05",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1727384477853775,
+          "AAPL": 0.17312286794185638,
+          "JNJ": 0.17210786044597626,
+          "MSFT": 0.48203083872795105
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-09",
+        "information_cutoff": "2021-11-08",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1724938452243805,
+          "AAPL": 0.17287442088127136,
+          "JNJ": 0.17209792137145996,
+          "MSFT": 0.48253387212753296
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-10",
+        "information_cutoff": "2021-11-09",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17291466891765594,
+          "AAPL": 0.17285622656345367,
+          "JNJ": 0.1720246523618698,
+          "MSFT": 0.4822044372558594
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-11",
+        "information_cutoff": "2021-11-10",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1728123277425766,
+          "AAPL": 0.1725694090127945,
+          "JNJ": 0.17230196297168732,
+          "MSFT": 0.4823162853717804
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-12",
+        "information_cutoff": "2021-11-11",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17270150780677795,
+          "AAPL": 0.17268329858779907,
+          "JNJ": 0.17224730551242828,
+          "MSFT": 0.4823678135871887
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-15",
+        "information_cutoff": "2021-11-12",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1727740466594696,
+          "AAPL": 0.1730409413576126,
+          "JNJ": 0.1719619780778885,
+          "MSFT": 0.4822229743003845
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-16",
+        "information_cutoff": "2021-11-15",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17268754541873932,
+          "AAPL": 0.17311494052410126,
+          "JNJ": 0.1719842106103897,
+          "MSFT": 0.4822133183479309
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-17",
+        "information_cutoff": "2021-11-16",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17287380993366241,
+          "AAPL": 0.17280423641204834,
+          "JNJ": 0.17239008843898773,
+          "MSFT": 0.4819318652153015
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-18",
+        "information_cutoff": "2021-11-17",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17274858057498932,
+          "AAPL": 0.17324595153331757,
+          "JNJ": 0.17217199504375458,
+          "MSFT": 0.48183345794677734
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-19",
+        "information_cutoff": "2021-11-18",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17244501411914825,
+          "AAPL": 0.17276209592819214,
+          "JNJ": 0.17250825464725494,
+          "MSFT": 0.48228469491004944
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-22",
+        "information_cutoff": "2021-11-19",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17300158739089966,
+          "AAPL": 0.17259113490581512,
+          "JNJ": 0.17275774478912354,
+          "MSFT": 0.48164960741996765
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-23",
+        "information_cutoff": "2021-11-22",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1724477857351303,
+          "AAPL": 0.17315879464149475,
+          "JNJ": 0.17230652272701263,
+          "MSFT": 0.4820869565010071
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-24",
+        "information_cutoff": "2021-11-23",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17263934016227722,
+          "AAPL": 0.17270849645137787,
+          "JNJ": 0.17281295359134674,
+          "MSFT": 0.48183923959732056
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-26",
+        "information_cutoff": "2021-11-24",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1727631390094757,
+          "AAPL": 0.17315448820590973,
+          "JNJ": 0.17255237698554993,
+          "MSFT": 0.4815300703048706
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-29",
+        "information_cutoff": "2021-11-26",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17261241376399994,
+          "AAPL": 0.17278605699539185,
+          "JNJ": 0.17247530817985535,
+          "MSFT": 0.48212623596191406
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-11-30",
+        "information_cutoff": "2021-11-29",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17246495187282562,
+          "AAPL": 0.17309458553791046,
+          "JNJ": 0.17268986999988556,
+          "MSFT": 0.4817505180835724
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-01",
+        "information_cutoff": "2021-11-30",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17184185981750488,
+          "AAPL": 0.17314504086971283,
+          "JNJ": 0.17266754806041718,
+          "MSFT": 0.4823455214500427
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-02",
+        "information_cutoff": "2021-12-01",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1717349886894226,
+          "AAPL": 0.1730559915304184,
+          "JNJ": 0.17268763482570648,
+          "MSFT": 0.4825213849544525
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-03",
+        "information_cutoff": "2021-12-02",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17263299226760864,
+          "AAPL": 0.17305640876293182,
+          "JNJ": 0.17350980639457703,
+          "MSFT": 0.4808008372783661
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-06",
+        "information_cutoff": "2021-12-03",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1722220480442047,
+          "AAPL": 0.1725563108921051,
+          "JNJ": 0.17278462648391724,
+          "MSFT": 0.4824369549751282
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-07",
+        "information_cutoff": "2021-12-06",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17182819545269012,
+          "AAPL": 0.17328354716300964,
+          "JNJ": 0.1732538938522339,
+          "MSFT": 0.4816344082355499
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-08",
+        "information_cutoff": "2021-12-07",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17276352643966675,
+          "AAPL": 0.17261403799057007,
+          "JNJ": 0.17319945991039276,
+          "MSFT": 0.48142293095588684
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-09",
+        "information_cutoff": "2021-12-08",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17146161198616028,
+          "AAPL": 0.1734650433063507,
+          "JNJ": 0.17256411910057068,
+          "MSFT": 0.4825092852115631
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-10",
+        "information_cutoff": "2021-12-09",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17226672172546387,
+          "AAPL": 0.17313867807388306,
+          "JNJ": 0.17367783188819885,
+          "MSFT": 0.4809167683124542
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-13",
+        "information_cutoff": "2021-12-10",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17258453369140625,
+          "AAPL": 0.17247934639453888,
+          "JNJ": 0.17327632009983063,
+          "MSFT": 0.48165977001190186
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-14",
+        "information_cutoff": "2021-12-13",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17232611775398254,
+          "AAPL": 0.17306280136108398,
+          "JNJ": 0.17305763065814972,
+          "MSFT": 0.4815533757209778
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-15",
+        "information_cutoff": "2021-12-14",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17251001298427582,
+          "AAPL": 0.1721489131450653,
+          "JNJ": 0.17368218302726746,
+          "MSFT": 0.4816589057445526
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-16",
+        "information_cutoff": "2021-12-15",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17254787683486938,
+          "AAPL": 0.17213784158229828,
+          "JNJ": 0.17321328818798065,
+          "MSFT": 0.4821009039878845
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-17",
+        "information_cutoff": "2021-12-16",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1719098538160324,
+          "AAPL": 0.172896146774292,
+          "JNJ": 0.17258389294147491,
+          "MSFT": 0.4826100468635559
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-20",
+        "information_cutoff": "2021-12-17",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17254586517810822,
+          "AAPL": 0.17221412062644958,
+          "JNJ": 0.17314167320728302,
+          "MSFT": 0.4820983111858368
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-21",
+        "information_cutoff": "2021-12-20",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1722036451101303,
+          "AAPL": 0.17246530950069427,
+          "JNJ": 0.17317423224449158,
+          "MSFT": 0.482156902551651
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-22",
+        "information_cutoff": "2021-12-21",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17169751226902008,
+          "AAPL": 0.17292529344558716,
+          "JNJ": 0.17213037610054016,
+          "MSFT": 0.4832468032836914
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-23",
+        "information_cutoff": "2021-12-22",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17315234243869781,
+          "AAPL": 0.1715613752603531,
+          "JNJ": 0.1734878122806549,
+          "MSFT": 0.4817984998226166
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-27",
+        "information_cutoff": "2021-12-23",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17196273803710938,
+          "AAPL": 0.1725476086139679,
+          "JNJ": 0.17296983301639557,
+          "MSFT": 0.48251980543136597
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-28",
+        "information_cutoff": "2021-12-27",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17237430810928345,
+          "AAPL": 0.17222195863723755,
+          "JNJ": 0.17287428677082062,
+          "MSFT": 0.48252949118614197
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-29",
+        "information_cutoff": "2021-12-28",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.1733275055885315,
+          "AAPL": 0.1719808131456375,
+          "JNJ": 0.1734360158443451,
+          "MSFT": 0.4812556803226471
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-30",
+        "information_cutoff": "2021-12-29",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17245443165302277,
+          "AAPL": 0.1728503406047821,
+          "JNJ": 0.172772616147995,
+          "MSFT": 0.48192259669303894
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2021-12-31",
+        "information_cutoff": "2021-12-30",
+        "selected_universe": [
+          "AAPL",
+          "JNJ",
+          "MSFT"
+        ],
+        "target_weights": {
+          "CASH": 0.17297707498073578,
+          "AAPL": 0.17231890559196472,
+          "JNJ": 0.17330165207386017,
+          "MSFT": 0.48140227794647217
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      }
+    ],
+    "explanation": "Real EIIE actor-critic policy (upstream TradeMaster's own PortfolioManagementEIIE agent + EIIEConv/EIIECritic nets), trained on 177 real trading days and evaluated causally over the following 75 real trading days, all within the harness-supplied generation_window [2021-01-04, 2021-12-31]. Universe: AAPL, JNJ, MSFT (subset of TradeMaster's real shipped DJ30 data)."
+  },
+  "native_output": {
+    "upstream": {
+      "tickers": [
+        "AAPL",
+        "JNJ",
+        "MSFT"
+      ],
+      "train_dates": [
+        "2021-01-04",
+        "2021-01-05",
+        "2021-01-06",
+        "..."
+      ],
+      "test_dates": [
+        "2021-09-15",
+        "2021-09-16",
+        "2021-09-17",
+        "..."
+      ],
+      "n_train_days": 177,
+      "n_decisions": 66,
+      "horizon_len": 24,
+      "train_rounds": 3
+    },
+    "adapter_derived": {
+      "generation_window": {
+        "start": "2021-01-04",
+        "end": "2021-12-31"
+      },
+      "time_steps": 10
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

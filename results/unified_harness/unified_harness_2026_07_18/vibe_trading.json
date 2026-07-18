@@ -1,0 +1,4543 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "vibe_trading",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 10.405715942382812
+  },
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "final_target_signal_after_backtest",
+    "values": {
+      "AAPL": 0.0
+    },
+    "score_scale": "[-1,1] per upstream's own strategy-generate/SKILL.md convention",
+    "direction": "NEUTRAL",
+    "strength": 0.0,
+    "expected_returns": null,
+    "factor_expression": null,
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "strategy_description",
+        "value": "Go long AAPL when its 10-day moving average crosses above its 50-day moving average, flat otherwise (trend-following momentum crossover).",
+        "source": "caller-supplied natural-language request",
+        "reference": null
+      },
+      {
+        "kind": "generated_code",
+        "value": "import numpy as np\nimport pandas as pd\nfrom typing import Dict\n\nclass SignalEngine:\n    def generate(self, data_map: Dict[str, pd.DataFrame]) -> Dict[str, pd.Series]:\n        signals = {}\n        for code, df in data_map.items():\n            close = df['close']\n            ma10 = close.rolling(10).mean()\n            ma50 = close.rolling(50).mean()\n            signal = pd.Series(0.0, index=df.index)\n            signal[ma10 > ma50] = 1.0\n            # mask out periods where the long MA is not yet defined\n            signal[ma50.isna()] = np.nan\n            signal = signal.fillna(0.0)\n            signals[code] = signal\n        return signals",
+        "source": "DeepSeek-generated SignalEngine (upstream's real strategy-generate skill + build_llm(), single live call)",
+        "reference": null
+      },
+      {
+        "kind": "backtest_stats",
+        "value": "sharpe=-0.449, trades=2, total_return=-0.0242",
+        "source": "real backtest over 2023-06-29/2024-01-15",
+        "reference": null
+      }
+    ],
+    "explanation": null
+  },
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "ROLLING_OPTIMIZER",
+    "generation_window": {
+      "start": "2023-08-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "fixed",
+      "catalog_id": null,
+      "fixed_assets": [
+        "AAPL.US",
+        "BTC-USDT"
+      ],
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": null,
+      "max_assets": null,
+      "selector_description": "Caller-specified tickers, normalized to upstream's own code convention and augmented with a fixed BTC-USDT anchor whenever the requested tickers are single-market, so upstream's real CompositeEngine (not the single-market engine) is genuinely exercised (see module header)."
+    },
+    "observation_policy": {
+      "lookback_window": null,
+      "features": null,
+      "data_sources": [
+        "yfinance (US/HK equities, free)",
+        "OKX public REST API (crypto, no auth)"
+      ],
+      "observation_description": "Upstream CompositeEngine's real per-market rule-provider sub-engines (ChinaAEngine/GlobalEquityEngine/CryptoEngine/ForexEngine/ChinaFuturesEngine/GlobalFuturesEngine) each feed the strategy's per-market moving-average windows and inverse-volatility sizing (see decision_policy.decision_rule)."
+    },
+    "decision_policy": {
+      "decision_rule": "Per-market dual moving-average crossover (fast/slow windows vary by upstream-detected market) with inverse-volatility position sizing, recomputed identically at every rebalance point from a rolling window of realized prices — no learned parameters, no training (see CROSS_MARKET_SIGNAL_ENGINE_SOURCE).",
+      "output_semantics": "target_weights: long-only clipped and renormalized (sum<=1.0) view of upstream's own [-1,1] per-symbol target signal, remainder reported under the 'CASH' key. Upstream's real signal allows short positions — see explanation.",
+      "rebalance_frequency": "DAILY",
+      "holding_horizon": null
+    },
+    "update_policy": {
+      "mode": "NONE",
+      "update_frequency": null,
+      "update_description": "Fixed deterministic formula recomputed fresh from a rolling price window at every step; no model state persists or is refit between calls."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": true,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": null,
+      "net_exposure_max": null,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": null
+    },
+    "initial_weights": {
+      "AAPL": 0.0,
+      "BTC-USDT": 0.0,
+      "CASH": 1.0
+    },
+    "artifact": {
+      "artifact_type": "strategy_code",
+      "reference": "adapters/vibe_trading_adapter.py::CROSS_MARKET_SIGNAL_ENGINE_SOURCE",
+      "hash": null,
+      "description": "Real strategy source actually executed to produce every decision above: upstream's own cross-market example (per-market MA windows + inverse-volatility sizing), adapted only to call upstream's own _detect_market() instead of a second, import-unsafe regex table (see module docstring 'Real bug found in upstream's own bundled example')."
+    },
+    "decisions": [
+      {
+        "timestamp": "2023-08-01",
+        "information_cutoff": "2023-08-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-01",
+        "information_cutoff": "2023-08-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-02",
+        "information_cutoff": "2023-08-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-02",
+        "information_cutoff": "2023-08-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-03",
+        "information_cutoff": "2023-08-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-03",
+        "information_cutoff": "2023-08-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-04",
+        "information_cutoff": "2023-08-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-04",
+        "information_cutoff": "2023-08-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-05",
+        "information_cutoff": "2023-08-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-06",
+        "information_cutoff": "2023-08-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-07",
+        "information_cutoff": "2023-08-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-07",
+        "information_cutoff": "2023-08-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-08",
+        "information_cutoff": "2023-08-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-08",
+        "information_cutoff": "2023-08-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-09",
+        "information_cutoff": "2023-08-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-09",
+        "information_cutoff": "2023-08-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-10",
+        "information_cutoff": "2023-08-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-10",
+        "information_cutoff": "2023-08-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-11",
+        "information_cutoff": "2023-08-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-11",
+        "information_cutoff": "2023-08-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-12",
+        "information_cutoff": "2023-08-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-13",
+        "information_cutoff": "2023-08-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-14",
+        "information_cutoff": "2023-08-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-14",
+        "information_cutoff": "2023-08-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-15",
+        "information_cutoff": "2023-08-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-15",
+        "information_cutoff": "2023-08-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-16",
+        "information_cutoff": "2023-08-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-16",
+        "information_cutoff": "2023-08-16",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-17",
+        "information_cutoff": "2023-08-16",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-17",
+        "information_cutoff": "2023-08-17",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-18",
+        "information_cutoff": "2023-08-17",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-18",
+        "information_cutoff": "2023-08-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-19",
+        "information_cutoff": "2023-08-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-20",
+        "information_cutoff": "2023-08-19",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-21",
+        "information_cutoff": "2023-08-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-21",
+        "information_cutoff": "2023-08-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-22",
+        "information_cutoff": "2023-08-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-22",
+        "information_cutoff": "2023-08-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-23",
+        "information_cutoff": "2023-08-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-23",
+        "information_cutoff": "2023-08-23",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-24",
+        "information_cutoff": "2023-08-23",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-24",
+        "information_cutoff": "2023-08-24",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-25",
+        "information_cutoff": "2023-08-24",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-25",
+        "information_cutoff": "2023-08-25",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-26",
+        "information_cutoff": "2023-08-25",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": [
+          {
+            "timestamp": "2023-08-26",
+            "code": "BTC-USDT",
+            "side": "sell",
+            "price": 26042.2723,
+            "qty": 21.763175,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-27",
+        "information_cutoff": "2023-08-26",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-28",
+        "information_cutoff": "2023-08-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-28",
+        "information_cutoff": "2023-08-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-29",
+        "information_cutoff": "2023-08-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-29",
+        "information_cutoff": "2023-08-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-30",
+        "information_cutoff": "2023-08-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-30",
+        "information_cutoff": "2023-08-30",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-31",
+        "information_cutoff": "2023-08-30",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-08-31",
+        "information_cutoff": "2023-08-31",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-01",
+        "information_cutoff": "2023-08-31",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-01",
+        "information_cutoff": "2023-09-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-02",
+        "information_cutoff": "2023-09-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-03",
+        "information_cutoff": "2023-09-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-04",
+        "information_cutoff": "2023-09-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-05",
+        "information_cutoff": "2023-09-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-05",
+        "information_cutoff": "2023-09-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-06",
+        "information_cutoff": "2023-09-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-06",
+        "information_cutoff": "2023-09-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-07",
+        "information_cutoff": "2023-09-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-07",
+        "information_cutoff": "2023-09-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-08",
+        "information_cutoff": "2023-09-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-08",
+        "information_cutoff": "2023-09-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-09",
+        "information_cutoff": "2023-09-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-10",
+        "information_cutoff": "2023-09-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-11",
+        "information_cutoff": "2023-09-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-11",
+        "information_cutoff": "2023-09-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-12",
+        "information_cutoff": "2023-09-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-12",
+        "information_cutoff": "2023-09-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-13",
+        "information_cutoff": "2023-09-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-13",
+        "information_cutoff": "2023-09-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-14",
+        "information_cutoff": "2023-09-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-14",
+        "information_cutoff": "2023-09-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-15",
+        "information_cutoff": "2023-09-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-15",
+        "information_cutoff": "2023-09-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-16",
+        "information_cutoff": "2023-09-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": [
+          {
+            "timestamp": "2023-09-16",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 26523.7552,
+            "qty": 21.763175,
+            "reason": "signal",
+            "pnl": -10478.5966,
+            "holding_days": 21,
+            "return_pct": -1.85
+          },
+          {
+            "timestamp": "2023-09-16",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 26523.7552,
+            "qty": 21.152093,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-17",
+        "information_cutoff": "2023-09-16",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-18",
+        "information_cutoff": "2023-09-17",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-18",
+        "information_cutoff": "2023-09-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-19",
+        "information_cutoff": "2023-09-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-19",
+        "information_cutoff": "2023-09-19",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-20",
+        "information_cutoff": "2023-09-19",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-20",
+        "information_cutoff": "2023-09-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-21",
+        "information_cutoff": "2023-09-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-21",
+        "information_cutoff": "2023-09-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-22",
+        "information_cutoff": "2023-09-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-22",
+        "information_cutoff": "2023-09-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-23",
+        "information_cutoff": "2023-09-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-24",
+        "information_cutoff": "2023-09-23",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-25",
+        "information_cutoff": "2023-09-24",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-25",
+        "information_cutoff": "2023-09-25",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-26",
+        "information_cutoff": "2023-09-25",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-26",
+        "information_cutoff": "2023-09-26",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-27",
+        "information_cutoff": "2023-09-26",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-27",
+        "information_cutoff": "2023-09-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-28",
+        "information_cutoff": "2023-09-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-28",
+        "information_cutoff": "2023-09-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-29",
+        "information_cutoff": "2023-09-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-29",
+        "information_cutoff": "2023-09-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-09-30",
+        "information_cutoff": "2023-09-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-01",
+        "information_cutoff": "2023-09-30",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-02",
+        "information_cutoff": "2023-10-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-02",
+        "information_cutoff": "2023-10-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-03",
+        "information_cutoff": "2023-10-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-03",
+        "information_cutoff": "2023-10-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-04",
+        "information_cutoff": "2023-10-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-04",
+        "information_cutoff": "2023-10-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-05",
+        "information_cutoff": "2023-10-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-05",
+        "information_cutoff": "2023-10-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-06",
+        "information_cutoff": "2023-10-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-06",
+        "information_cutoff": "2023-10-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-07",
+        "information_cutoff": "2023-10-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-08",
+        "information_cutoff": "2023-10-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-09",
+        "information_cutoff": "2023-10-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-09",
+        "information_cutoff": "2023-10-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-10",
+        "information_cutoff": "2023-10-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-10",
+        "information_cutoff": "2023-10-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.5667625373630578,
+          "CASH": 0.4332374626369422
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-11",
+        "information_cutoff": "2023-10-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-11",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 178.1109,
+            "qty": 2400.91,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-11",
+        "information_cutoff": "2023-10-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-11",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 178.1109,
+            "qty": 2400.91,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-12",
+        "information_cutoff": "2023-10-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-12",
+        "information_cutoff": "2023-10-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-13",
+        "information_cutoff": "2023-10-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-13",
+        "information_cutoff": "2023-10-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-14",
+        "information_cutoff": "2023-10-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-15",
+        "information_cutoff": "2023-10-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-15",
+            "code": "BTC-USDT",
+            "side": "sell",
+            "price": 26886.0503,
+            "qty": 21.152093,
+            "reason": "signal",
+            "pnl": 7663.2975,
+            "holding_days": 29,
+            "return_pct": 1.37
+          },
+          {
+            "timestamp": "2023-10-15",
+            "code": "BTC-USDT",
+            "side": "sell",
+            "price": 26886.0503,
+            "qty": 13.713232,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-16",
+        "information_cutoff": "2023-10-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-16",
+        "information_cutoff": "2023-10-16",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-17",
+        "information_cutoff": "2023-10-16",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.0,
+          "CASH": 1.0
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-17",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 28476.8313,
+            "qty": 13.713232,
+            "reason": "signal",
+            "pnl": -21814.7496,
+            "holding_days": 2,
+            "return_pct": -5.92
+          },
+          {
+            "timestamp": "2023-10-17",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 28476.8313,
+            "qty": 12.441705,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-17",
+        "information_cutoff": "2023-10-17",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-17",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 28476.8313,
+            "qty": 13.713232,
+            "reason": "signal",
+            "pnl": -21814.7496,
+            "holding_days": 2,
+            "return_pct": -5.92
+          },
+          {
+            "timestamp": "2023-10-17",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 28476.8313,
+            "qty": 12.441705,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-18",
+        "information_cutoff": "2023-10-17",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-18",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 175.6678,
+            "qty": 2400.91,
+            "reason": "signal",
+            "pnl": 5865.6755,
+            "holding_days": 7,
+            "return_pct": 1.37
+          },
+          {
+            "timestamp": "2023-10-18",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 175.6678,
+            "qty": 3547.47,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-18",
+        "information_cutoff": "2023-10-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-18",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 175.6678,
+            "qty": 2400.91,
+            "reason": "signal",
+            "pnl": 5865.6755,
+            "holding_days": 7,
+            "return_pct": 1.37
+          },
+          {
+            "timestamp": "2023-10-18",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 175.6678,
+            "qty": 3547.47,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-19",
+        "information_cutoff": "2023-10-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-19",
+        "information_cutoff": "2023-10-19",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-20",
+        "information_cutoff": "2023-10-19",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-20",
+        "information_cutoff": "2023-10-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-21",
+        "information_cutoff": "2023-10-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-22",
+        "information_cutoff": "2023-10-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-23",
+        "information_cutoff": "2023-10-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-23",
+        "information_cutoff": "2023-10-23",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-24",
+        "information_cutoff": "2023-10-23",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-24",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 172.9635,
+            "qty": 3547.47,
+            "reason": "signal",
+            "pnl": -9593.472,
+            "holding_days": 6,
+            "return_pct": -1.54
+          },
+          {
+            "timestamp": "2023-10-24",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 172.9635,
+            "qty": 3558.51,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-24",
+        "information_cutoff": "2023-10-24",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": [
+          {
+            "timestamp": "2023-10-24",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 172.9635,
+            "qty": 3547.47,
+            "reason": "signal",
+            "pnl": -9593.472,
+            "holding_days": 6,
+            "return_pct": -1.54
+          },
+          {
+            "timestamp": "2023-10-24",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 172.9635,
+            "qty": 3558.51,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-25",
+        "information_cutoff": "2023-10-24",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-25",
+        "information_cutoff": "2023-10-25",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-26",
+        "information_cutoff": "2023-10-25",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-26",
+        "information_cutoff": "2023-10-26",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-27",
+        "information_cutoff": "2023-10-26",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-27",
+        "information_cutoff": "2023-10-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-28",
+        "information_cutoff": "2023-10-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-29",
+        "information_cutoff": "2023-10-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-30",
+        "information_cutoff": "2023-10-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-30",
+        "information_cutoff": "2023-10-30",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-31",
+        "information_cutoff": "2023-10-30",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-10-31",
+        "information_cutoff": "2023-10-31",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-01",
+        "information_cutoff": "2023-10-31",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-01",
+        "information_cutoff": "2023-11-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-02",
+        "information_cutoff": "2023-11-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-02",
+        "information_cutoff": "2023-11-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-03",
+        "information_cutoff": "2023-11-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-03",
+        "information_cutoff": "2023-11-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-04",
+        "information_cutoff": "2023-11-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-05",
+        "information_cutoff": "2023-11-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-06",
+        "information_cutoff": "2023-11-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-06",
+        "information_cutoff": "2023-11-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-07",
+        "information_cutoff": "2023-11-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-07",
+        "information_cutoff": "2023-11-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-08",
+        "information_cutoff": "2023-11-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-08",
+        "information_cutoff": "2023-11-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-09",
+        "information_cutoff": "2023-11-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-09",
+        "information_cutoff": "2023-11-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-10",
+        "information_cutoff": "2023-11-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-10",
+        "information_cutoff": "2023-11-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-11",
+        "information_cutoff": "2023-11-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-12",
+        "information_cutoff": "2023-11-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-13",
+        "information_cutoff": "2023-11-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": [
+          {
+            "timestamp": "2023-11-13",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 185.9129,
+            "qty": 3558.51,
+            "reason": "signal",
+            "pnl": -46080.7092,
+            "holding_days": 20,
+            "return_pct": -7.49
+          },
+          {
+            "timestamp": "2023-11-13",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 185.9129,
+            "qty": 3058.08,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-13",
+        "information_cutoff": "2023-11-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": [
+          {
+            "timestamp": "2023-11-13",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 185.9129,
+            "qty": 3558.51,
+            "reason": "signal",
+            "pnl": -46080.7092,
+            "holding_days": 20,
+            "return_pct": -7.49
+          },
+          {
+            "timestamp": "2023-11-13",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 185.9129,
+            "qty": 3058.08,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-14",
+        "information_cutoff": "2023-11-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-14",
+        "information_cutoff": "2023-11-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-15",
+        "information_cutoff": "2023-11-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-15",
+        "information_cutoff": "2023-11-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-16",
+        "information_cutoff": "2023-11-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-16",
+        "information_cutoff": "2023-11-16",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-17",
+        "information_cutoff": "2023-11-16",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-17",
+        "information_cutoff": "2023-11-17",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-18",
+        "information_cutoff": "2023-11-17",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-19",
+        "information_cutoff": "2023-11-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-20",
+        "information_cutoff": "2023-11-19",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-20",
+        "information_cutoff": "2023-11-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-21",
+        "information_cutoff": "2023-11-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-21",
+        "information_cutoff": "2023-11-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-22",
+        "information_cutoff": "2023-11-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-22",
+        "information_cutoff": "2023-11-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-23",
+        "information_cutoff": "2023-11-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-24",
+        "information_cutoff": "2023-11-23",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-24",
+        "information_cutoff": "2023-11-24",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-25",
+        "information_cutoff": "2023-11-24",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-26",
+        "information_cutoff": "2023-11-25",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-27",
+        "information_cutoff": "2023-11-26",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-27",
+        "information_cutoff": "2023-11-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-28",
+        "information_cutoff": "2023-11-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-28",
+        "information_cutoff": "2023-11-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-29",
+        "information_cutoff": "2023-11-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-29",
+        "information_cutoff": "2023-11-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-30",
+        "information_cutoff": "2023-11-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-11-30",
+        "information_cutoff": "2023-11-30",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-01",
+        "information_cutoff": "2023-11-30",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-01",
+        "information_cutoff": "2023-12-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-02",
+        "information_cutoff": "2023-12-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-03",
+        "information_cutoff": "2023-12-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-04",
+        "information_cutoff": "2023-12-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-04",
+        "information_cutoff": "2023-12-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-05",
+        "information_cutoff": "2023-12-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-05",
+        "information_cutoff": "2023-12-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-06",
+        "information_cutoff": "2023-12-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-06",
+        "information_cutoff": "2023-12-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-07",
+        "information_cutoff": "2023-12-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-07",
+        "information_cutoff": "2023-12-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-08",
+        "information_cutoff": "2023-12-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-08",
+        "information_cutoff": "2023-12-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-09",
+        "information_cutoff": "2023-12-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-10",
+        "information_cutoff": "2023-12-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-11",
+        "information_cutoff": "2023-12-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-11",
+        "information_cutoff": "2023-12-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-12",
+        "information_cutoff": "2023-12-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-12",
+        "information_cutoff": "2023-12-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-13",
+        "information_cutoff": "2023-12-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-13",
+        "information_cutoff": "2023-12-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-14",
+        "information_cutoff": "2023-12-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-14",
+        "information_cutoff": "2023-12-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-15",
+        "information_cutoff": "2023-12-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-15",
+        "information_cutoff": "2023-12-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-16",
+        "information_cutoff": "2023-12-15",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-17",
+        "information_cutoff": "2023-12-16",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-18",
+        "information_cutoff": "2023-12-17",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-18",
+        "information_cutoff": "2023-12-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-19",
+        "information_cutoff": "2023-12-18",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-19",
+        "information_cutoff": "2023-12-19",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-20",
+        "information_cutoff": "2023-12-19",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-20",
+        "information_cutoff": "2023-12-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-21",
+        "information_cutoff": "2023-12-20",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-21",
+        "information_cutoff": "2023-12-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-22",
+        "information_cutoff": "2023-12-21",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-22",
+        "information_cutoff": "2023-12-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-23",
+        "information_cutoff": "2023-12-22",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-24",
+        "information_cutoff": "2023-12-23",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-25",
+        "information_cutoff": "2023-12-24",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-26",
+        "information_cutoff": "2023-12-25",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-26",
+        "information_cutoff": "2023-12-26",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-27",
+        "information_cutoff": "2023-12-26",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-27",
+        "information_cutoff": "2023-12-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-28",
+        "information_cutoff": "2023-12-27",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-28",
+        "information_cutoff": "2023-12-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-29",
+        "information_cutoff": "2023-12-28",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-29",
+        "information_cutoff": "2023-12-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-30",
+        "information_cutoff": "2023-12-29",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.0,
+          "CASH": 0.3617411853087503
+        },
+        "orders": [
+          {
+            "timestamp": "2023-12-30",
+            "code": "BTC-USDT",
+            "side": "sell",
+            "price": 42353.5126,
+            "qty": 12.441705,
+            "reason": "signal",
+            "pnl": 172649.5757,
+            "holding_days": 74,
+            "return_pct": 48.73
+          },
+          {
+            "timestamp": "2023-12-30",
+            "code": "BTC-USDT",
+            "side": "sell",
+            "price": 42353.5126,
+            "qty": 9.519767,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2023-12-31",
+        "information_cutoff": "2023-12-30",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.0,
+          "CASH": 0.3617411853087503
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-01",
+        "information_cutoff": "2023-12-31",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.0,
+          "CASH": 0.3617411853087503
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-02",
+        "information_cutoff": "2024-01-01",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.0,
+          "CASH": 0.3617411853087503
+        },
+        "orders": [
+          {
+            "timestamp": "2024-01-02",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 45206.592,
+            "qty": 9.519767,
+            "reason": "signal",
+            "pnl": -27160.6506,
+            "holding_days": 3,
+            "return_pct": -6.74
+          },
+          {
+            "timestamp": "2024-01-02",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 45206.592,
+            "qty": 8.690368,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-02",
+        "information_cutoff": "2024-01-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": [
+          {
+            "timestamp": "2024-01-02",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 45206.592,
+            "qty": 9.519767,
+            "reason": "signal",
+            "pnl": -27160.6506,
+            "holding_days": 3,
+            "return_pct": -6.74
+          },
+          {
+            "timestamp": "2024-01-02",
+            "code": "BTC-USDT",
+            "side": "buy",
+            "price": 45206.592,
+            "qty": 8.690368,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-03",
+        "information_cutoff": "2024-01-02",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-03",
+        "information_cutoff": "2024-01-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-04",
+        "information_cutoff": "2024-01-03",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-04",
+        "information_cutoff": "2024-01-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-05",
+        "information_cutoff": "2024-01-04",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-05",
+        "information_cutoff": "2024-01-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-06",
+        "information_cutoff": "2024-01-05",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-07",
+        "information_cutoff": "2024-01-06",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-08",
+        "information_cutoff": "2024-01-07",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-08",
+        "information_cutoff": "2024-01-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-09",
+        "information_cutoff": "2024-01-08",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-09",
+        "information_cutoff": "2024-01-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.6382588146912497,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.0
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-10",
+        "information_cutoff": "2024-01-09",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": [
+          {
+            "timestamp": "2024-01-10",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 184.2578,
+            "qty": 3058.08,
+            "reason": "signal",
+            "pnl": -5061.3861,
+            "holding_days": 58,
+            "return_pct": -0.89
+          },
+          {
+            "timestamp": "2024-01-10",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 184.2578,
+            "qty": 3621.27,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-10",
+        "information_cutoff": "2024-01-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": [
+          {
+            "timestamp": "2024-01-10",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 184.2578,
+            "qty": 3058.08,
+            "reason": "signal",
+            "pnl": -5061.3861,
+            "holding_days": 58,
+            "return_pct": -0.89
+          },
+          {
+            "timestamp": "2024-01-10",
+            "code": "AAPL.US",
+            "side": "sell",
+            "price": 184.2578,
+            "qty": 3621.27,
+            "reason": "signal",
+            "pnl": 0.0,
+            "holding_days": 0,
+            "return_pct": 0.0
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-11",
+        "information_cutoff": "2024-01-10",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-11",
+        "information_cutoff": "2024-01-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-12",
+        "information_cutoff": "2024-01-11",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-12",
+        "information_cutoff": "2024-01-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-13",
+        "information_cutoff": "2024-01-12",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-14",
+        "information_cutoff": "2024-01-13",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": null,
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      },
+      {
+        "timestamp": "2024-01-15",
+        "information_cutoff": "2024-01-14",
+        "selected_universe": null,
+        "target_weights": {
+          "AAPL": 0.0,
+          "BTC-USDT": 0.3617411853087504,
+          "CASH": 0.6382588146912496
+        },
+        "orders": [
+          {
+            "timestamp": "2024-01-15",
+            "code": "BTC-USDT",
+            "side": "sell",
+            "price": 43253.7,
+            "qty": 8.690368,
+            "reason": "end_of_backtest",
+            "pnl": -16971.3501,
+            "holding_days": 13,
+            "return_pct": -4.32
+          },
+          {
+            "timestamp": "2024-01-15",
+            "code": "AAPL.US",
+            "side": "buy",
+            "price": 185.92,
+            "qty": 3621.27,
+            "reason": "end_of_backtest",
+            "pnl": -6019.1557,
+            "holding_days": 5,
+            "return_pct": -0.9
+          }
+        ],
+        "turnover": null,
+        "constraint_violations": null,
+        "explanation": null
+      }
+    ],
+    "explanation": "policy_type=ROLLING_OPTIMIZER is the closest available fit, not a clean native match: this strategy is a fixed rule recomputed daily with no learning/refit step (see module header 'policy_type schema-fit gap', flagged by PROJECT_SCHEMA_AUDIT.md). Reported target_weights are long-only clipped and renormalized for this schema's convention; upstream's own signal genuinely allows short positions (see decision_policy.output_semantics)."
+  },
+  "native_output": {
+    "upstream": {
+      "codes": [
+        "AAPL.US",
+        "BTC-USDT"
+      ],
+      "metrics": {
+        "final_value": 1036889.7915586004,
+        "total_return": 0.0368897915586003,
+        "annual_return": 0.0823207707663051,
+        "max_drawdown": -0.1043933390999884,
+        "sharpe": 0.5291448299157357,
+        "calmar": 0.7886,
+        "sortino": 0.6685,
+        "win_rate": 0.2727272727272727,
+        "profit_loss_ratio": 3.4675,
+        "profit_factor": 1.3003,
+        "max_consecutive_loss": 4.0,
+        "avg_holding_days": 36.3,
+        "trade_count": 11.0,
+        "benchmark_return": 0.196948,
+        "excess_return": -0.160058,
+        "information_ratio": -1.4759
+      },
+      "n_decision_days": 283
+    },
+    "adapter_derived": {
+      "generation_window": {
+        "start": "2023-08-01",
+        "end": "2024-01-15"
+      }
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

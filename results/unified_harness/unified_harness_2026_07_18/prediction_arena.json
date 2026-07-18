@@ -1,0 +1,122 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "prediction_arena",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "states": [
+      {
+        "dimension": "forecast_probability",
+        "value_numeric": 0.18,
+        "value_category": null,
+        "value_text": null,
+        "value_distribution": {
+          "yes": 0.18,
+          "no": 0.8200000000000001
+        },
+        "scale": "probability",
+        "observation_window": null,
+        "confidence": {
+          "value": 0.18,
+          "kind": "PROBABILITY",
+          "raw_value": null,
+          "method": "Real DeepSeek P(yes) from upstream forecasting-tools' NoResearchOneShotBot, used directly as both the state value and its own confidence (this is a genuine belief-state probability, not a separate self-reported certainty score)."
+        },
+        "evidence": [
+          {
+            "kind": "market_quote",
+            "value": "live market-implied P(yes)=0.2250 (mid of real yes_bid/yes_ask quotes)",
+            "source": "Kalshi public API (api.elections.kalshi.com) — read-only, no account/auth used",
+            "reference": "kalshi:APPLEUS/APPLEUS-29DEC31"
+          },
+          {
+            "kind": "model_forecast",
+            "value": "P(yes)=0.1800 via NoResearchOneShotBot zero-research single-shot prompt",
+            "source": "Metaculus/forecasting-tools NoResearchOneShotBot + DeepSeek (deepseek-chat)",
+            "reference": null
+          },
+          {
+            "kind": "llm_rationale_excerpt",
+            "value": "## R1: Forecaster 1 Reasoning\nThe current market probability is 22.5%, which reflects traders' assessment of the case's outcome. The DOJ's antitrust case against Apple faces significant legal hurdles—Apple has strong arguments around consumer benefits and ecosystem integration, and antitrust precede",
+            "source": "DeepSeek deepseek-chat (via NoResearchOneShotBot)",
+            "reference": null
+          },
+          {
+            "kind": "llm_cost_usd",
+            "value": "0.000242",
+            "source": "forecasting-tools report.price_estimate (real litellm per-call cost tracking)",
+            "reference": null
+          }
+        ]
+      },
+      {
+        "dimension": "forecast_market_divergence",
+        "value_numeric": 0.044999999999999984,
+        "value_category": "LOW",
+        "value_text": null,
+        "value_distribution": null,
+        "scale": "[0,1] absolute probability difference; category is a fixed threshold bucket over that value",
+        "observation_window": null,
+        "confidence": null,
+        "evidence": [
+          {
+            "kind": "derived_divergence",
+            "value": "|P(yes)_llm - P(yes)_market| = |0.1800 - 0.2250| = 0.0450",
+            "source": "derived from the same two real values as forecast_probability's evidence",
+            "reference": null
+          }
+        ]
+      }
+    ],
+    "explanation": "Q2-vs-Q3 ambiguity (disclosed, not silently resolved): `forecast_probability` is the real model's own P(yes) on a real, currently open Kalshi event market. It can honestly be read either as a Q2 belief state (what the model believes about this real-world event right now) or as a Q3 predictive/tradeable signal (a directional forecast). This adapter reports it on Q2 per the schema's documented semantics ('what state is the object/market in'), but a downstream consumer treating it as a Q3-style signal instead would not be misusing the number — the ambiguity is in the underlying quantity itself, not in this adapter's choice of which Q layer to attach it to."
+  },
+  "q3": null,
+  "q4": null,
+  "native_output": {
+    "ticker": "AAPL",
+    "market": {
+      "event_ticker": "APPLEUS",
+      "series_ticker": "KXAPPLEUS",
+      "market_ticker": "APPLEUS-29DEC31",
+      "title": "DOJ wins their anti-trust case against Apple?",
+      "subtitle": "Before 2030",
+      "rules_primary": "If District Court for the District of New Jersey finds Apple responsible for any of the anti-trust claims made by the Department of Justice, the market resolves to Yes.",
+      "close_time": "2030-01-01T15:00:00Z",
+      "open_time": "2024-03-26T12:00:00Z",
+      "yes_bid": "0.2100",
+      "yes_ask": "0.2400",
+      "used_fallback": false
+    },
+    "forecast": {
+      "p_llm": 0.18,
+      "rationale": "## R1: Forecaster 1 Reasoning\nThe current market probability is 22.5%, which reflects traders' assessment of the case's outcome. The DOJ's antitrust case against Apple faces significant legal hurdles—Apple has strong arguments around consumer benefits and ecosystem integration, and antitrust precedent in tech has been mixed. However, the case is still early in litigation, and a trial or summary judgment before 2030 is plausible. Given the complexity and uncertainty, I estimate a slightly lower probability than the market, as the DOJ has struggled in similar high-profile tech antitrust cases recently.\n\n```json\n{\"yes\": 0.180}\n```\n",
+      "cost_usd": 0.00024208800000000003
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

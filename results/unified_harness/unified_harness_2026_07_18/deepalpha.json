@@ -1,0 +1,109 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "deepalpha",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "action": "BUY",
+    "action_semantics": null,
+    "action_strength": null,
+    "target_position": null,
+    "confidence": {
+      "value": 0.7688276660805531,
+      "kind": "MODEL_MARGIN",
+      "raw_value": 0.7688276660805531,
+      "method": "Real upstream RealTimePredictionEngine.generate_predictions()'s own model_agreement field: max(0, 1 - dispersion/0.1), dispersion = std(xgboost_pred, lightgbm_pred) — called directly, not reimplemented. Measures cross-model prediction agreement, not a calibrated probability."
+    },
+    "explanation": "XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on AAPL's own 3y trailing yfinance history ending at real run time — not windowed to context.as_of='2024-01-15', see adapter header/_train_ensemble docstring for this pre-existing limitation — no pretrained Kaggle-sourced artifacts were available) predicts a 5-day forward return of +0.4959%, against a transaction-cost-based signal threshold of 0.1500%. Model agreement (upstream's own RealTimePredictionEngine.generate_predictions() model_agreement) is 0.77. Real upstream confidence interval (generate_predictions()): [-1.8158%, +2.8076%].",
+    "bull_case": null,
+    "bear_case": null,
+    "evidence": null
+  },
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "predicted_return",
+    "values": {
+      "AAPL": 0.004958952169958876
+    },
+    "score_scale": "fractional forward return (e.g. 0.01 = +1%)",
+    "direction": "LONG",
+    "strength": 0.09917904339917752,
+    "expected_returns": {
+      "AAPL": 0.004958952169958876
+    },
+    "factor_expression": null,
+    "confidence": {
+      "value": 0.7688276660805531,
+      "kind": "MODEL_MARGIN",
+      "raw_value": 0.7688276660805531,
+      "method": "Same model_agreement measure as Q1Action.confidence — real upstream RealTimePredictionEngine.generate_predictions()'s own model_agreement (1 - normalised XGBoost/LightGBM prediction dispersion) — reused here since it applies to the same ensemble prediction underlying this signal."
+    },
+    "evidence": [
+      {
+        "kind": "model_feature",
+        "value": "sma_200 (importance=0.0503)",
+        "source": "XGBoost feature_importances_ (upstream AdvancedMLFramework.create_xgboost_model(), freshly trained this run)",
+        "reference": null
+      },
+      {
+        "kind": "model_feature",
+        "value": "close_min_10 (importance=0.0461)",
+        "source": "XGBoost feature_importances_ (upstream AdvancedMLFramework.create_xgboost_model(), freshly trained this run)",
+        "reference": null
+      },
+      {
+        "kind": "model_feature",
+        "value": "bb_middle (importance=0.0441)",
+        "source": "XGBoost feature_importances_ (upstream AdvancedMLFramework.create_xgboost_model(), freshly trained this run)",
+        "reference": null
+      },
+      {
+        "kind": "confidence_interval",
+        "value": "[-1.8158%, +2.8076%]",
+        "source": "RealTimePredictionEngine.generate_predictions() (real interval_width = max(model_dispersion, alert_thresholds['high_confidence']/2))",
+        "reference": null
+      }
+    ],
+    "explanation": "Ensemble predicts a 5-day forward return of +0.4959% for AAPL (model agreement 0.77); same 3y-trailing, real-run-time-windowed training data as Q1Action (see that method's docstring for the point-in-time limitation). Confidence interval: [-1.8158%, +2.8076%]."
+  },
+  "q4": null,
+  "native_output": {},
+  "field_mappings": null,
+  "adapter_notes": null
+}

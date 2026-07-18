@@ -1,0 +1,153 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "finbert",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "states": [
+      {
+        "dimension": "sentiment",
+        "value_numeric": 0.09690560698509217,
+        "value_category": null,
+        "value_text": null,
+        "value_distribution": {
+          "positive": 0.1543527975678444,
+          "negative": 0.05744719244539738,
+          "neutral": 0.7881999969482422
+        },
+        "scale": "[-1,1]; value_distribution is the mean real 3-class softmax [positive,negative,neutral] across scored headlines",
+        "observation_window": null,
+        "confidence": {
+          "value": 0.7881999969482422,
+          "kind": "PROBABILITY",
+          "raw_value": 0.7881999969482422,
+          "method": "Mean, across scored headlines, of the real per-headline max-class softmax probability from ProsusAI/finbert's own prediction — a genuine model probability, not self-reported or heuristic."
+        },
+        "evidence": [
+          {
+            "kind": "news_headline",
+            "value": "This week's AI winners and losers (neutral, score=-0.042)",
+            "source": "Yahoo Finance news (yfinance) + real ProsusAI/finbert prediction",
+            "reference": null
+          },
+          {
+            "kind": "news_headline",
+            "value": "Apple Avoided the AI CapEx Spending Trap — Now the Bill May Be Coming Due (neutral, score=0.105)",
+            "source": "Yahoo Finance news (yfinance) + real ProsusAI/finbert prediction",
+            "reference": null
+          },
+          {
+            "kind": "news_headline",
+            "value": "VTI Is Cheaper Than It Used to Be. (neutral, score=0.191)",
+            "source": "Yahoo Finance news (yfinance) + real ProsusAI/finbert prediction",
+            "reference": null
+          },
+          {
+            "kind": "news_headline",
+            "value": "Can ‘The Odyssey’ Beat the World Cup? (neutral, score=0.219)",
+            "source": "Yahoo Finance news (yfinance) + real ProsusAI/finbert prediction",
+            "reference": null
+          },
+          {
+            "kind": "news_headline",
+            "value": "Markets are Missing This: Apple Stock Offers a Different Way to Bet on the Future of AI (neutral, score=0.011)",
+            "source": "Yahoo Finance news (yfinance) + real ProsusAI/finbert prediction",
+            "reference": null
+          }
+        ]
+      }
+    ],
+    "explanation": "Aggregated real FinBERT (ProsusAI/finbert) sentiment across 5 Yahoo Finance headline(s) for AAPL: mean sentiment_score 0.097 (range [-1,1]); mean class distribution positive=0.154 negative=0.057 neutral=0.788."
+  },
+  "q3": null,
+  "q4": null,
+  "native_output": {
+    "ticker": "AAPL",
+    "date": "2024-01-15",
+    "headlines": [
+      "This week's AI winners and losers",
+      "Apple Avoided the AI CapEx Spending Trap — Now the Bill May Be Coming Due",
+      "VTI Is Cheaper Than It Used to Be. So What's the Catch?",
+      "Can ‘The Odyssey’ Beat the World Cup?",
+      "Markets are Missing This: Apple Stock Offers a Different Way to Bet on the Future of AI"
+    ],
+    "scored": [
+      {
+        "sentence": "This week's AI winners and losers",
+        "prediction": "neutral",
+        "sentiment_score": -0.042074836790561676,
+        "logit": {
+          "positive": 0.03686591982841492,
+          "negative": 0.07894075661897659,
+          "neutral": 0.8841933012008667
+        }
+      },
+      {
+        "sentence": "Apple Avoided the AI CapEx Spending Trap — Now the Bill May Be Coming Due",
+        "prediction": "neutral",
+        "sentiment_score": 0.10502590239048004,
+        "logit": {
+          "positive": 0.2384282499551773,
+          "negative": 0.13340234756469727,
+          "neutral": 0.6281694173812866
+        }
+      },
+      {
+        "sentence": "VTI Is Cheaper Than It Used to Be.",
+        "prediction": "neutral",
+        "sentiment_score": 0.1913297176361084,
+        "logit": {
+          "positive": 0.20212192833423615,
+          "negative": 0.010792216286063194,
+          "neutral": 0.7870858311653137
+        }
+      },
+      {
+        "sentence": "Can ‘The Odyssey’ Beat the World Cup?",
+        "prediction": "neutral",
+        "sentiment_score": 0.21946507692337036,
+        "logit": {
+          "positive": 0.24007263779640198,
+          "negative": 0.020607564598321915,
+          "neutral": 0.7393198013305664
+        }
+      },
+      {
+        "sentence": "Markets are Missing This: Apple Stock Offers a Different Way to Bet on the Future of AI",
+        "prediction": "neutral",
+        "sentiment_score": 0.01078217476606369,
+        "logit": {
+          "positive": 0.05427525192499161,
+          "negative": 0.04349307715892792,
+          "neutral": 0.9022316336631775
+        }
+      }
+    ]
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

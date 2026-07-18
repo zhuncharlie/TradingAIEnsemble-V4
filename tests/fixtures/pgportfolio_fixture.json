@@ -1,0 +1,8 @@
+{
+  "tickers": ["BTC-USD", "ETH-USD"],
+  "terminal_weights": {"CASH": 0.1021, "BTC-USD": 0.5432, "ETH-USD": 0.3547},
+  "real_last_date_used": "2024-01-12",
+  "train_steps": 60,
+  "window_size": 20,
+  "generation_window": {"start": "2023-10-01", "end": "2024-01-15"}
+}

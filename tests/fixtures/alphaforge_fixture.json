@@ -1,0 +1,22 @@
+{
+  "combined_score_last_row": {
+    "AAPL": 0.842,
+    "MSFT": 0.213,
+    "NVDA": -0.055,
+    "GOOGL": -0.301,
+    "AMZN": 0.019,
+    "META": -0.612,
+    "JPM": 0.088,
+    "XOM": -0.194
+  },
+  "pool_exprs": [
+    "(ts_div(close,10)+ts_ema(volume,20))",
+    "ts_ema(volume,20)",
+    "Ref(volume,10)",
+    "volume"
+  ],
+  "pool_weights": [0.0468, 0.0468, 0.0469, 0.0341],
+  "pool_single_ics": [0.031, 0.031, 0.028, 0.011],
+  "pool_ensemble_ic": 0.037,
+  "gp_eval_count": 143
+}

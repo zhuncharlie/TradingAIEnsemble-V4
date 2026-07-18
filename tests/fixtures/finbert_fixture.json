@@ -1,0 +1,30 @@
+{
+  "ticker": "AAPL",
+  "date": "2024-01-15",
+  "headlines": [
+    "Apple reported strong quarterly earnings, beating analyst expectations.",
+    "The company also warned of supply chain risks ahead."
+  ],
+  "scored": [
+    {
+      "sentence": "Apple reported strong quarterly earnings, beating analyst expectations.",
+      "prediction": "positive",
+      "sentiment_score": 0.9283559918403625,
+      "logit": {
+        "positive": 0.9528782,
+        "negative": 0.02452216,
+        "neutral": 0.02259966
+      }
+    },
+    {
+      "sentence": "The company also warned of supply chain risks ahead.",
+      "prediction": "negative",
+      "sentiment_score": -0.9036055207252502,
+      "logit": {
+        "positive": 0.02253688,
+        "negative": 0.9261424,
+        "neutral": 0.05132068
+      }
+    }
+  ]
+}

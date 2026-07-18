@@ -1,0 +1,117 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "agentictrading",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": null,
+  "q3": null,
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "PORTFOLIO",
+      "targets": null,
+      "universe": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "STATIC_ALLOCATION",
+    "generation_window": {
+      "start": "2023-06-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "fixed",
+      "catalog_id": null,
+      "fixed_assets": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": null,
+      "max_assets": 5,
+      "selector_description": "Caller-supplied ticker list (context.targets/universe), capped at MAX_TICKERS."
+    },
+    "observation_policy": {
+      "lookback_window": "[2026-06-17, 2026-07-17] (real 60-minute bars, yfinance)",
+      "features": null,
+      "data_sources": [
+        "yfinance 60-minute OHLCV bars (substituted for upstream's default Alpaca paper-trading loader)"
+      ],
+      "observation_description": "In-sample hourly return covariance and mean return over the fetch window; upstream's own MeanVarianceStrategy._optimal_weights() computes a long-only pseudo-inverse-covariance tangency portfolio (rf=0)."
+    },
+    "decision_policy": {
+      "decision_rule": "Long-only maximum-Sharpe (tangency) portfolio via pseudo-inverse covariance, rf=0 (upstream MeanVarianceStrategy._optimal_weights()); allocate once at the start of the window and hold.",
+      "output_semantics": "target portfolio weights (non-negative, sum to 1 including CASH)",
+      "rebalance_frequency": "none (single in-sample allocation, held for the window)",
+      "holding_horizon": null
+    },
+    "update_policy": {
+      "mode": "NONE",
+      "update_frequency": null,
+      "update_description": "Weights are computed once from the fetch window's own in-sample returns; no rebalancing or online learning occurs after generation."
+    },
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": null,
+      "max_abs_weight": null,
+      "gross_exposure_limit": null,
+      "net_exposure_min": 1.0,
+      "net_exposure_max": 1.0,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": null
+    },
+    "initial_weights": {
+      "AAPL": 1.0,
+      "MSFT": 0.0,
+      "NVDA": 0.0,
+      "CASH": 0.0
+    },
+    "artifact": null,
+    "decisions": null,
+    "explanation": "Weights are upstream AgenticTrading's own real long-only max-Sharpe (tangency) portfolio (MeanVarianceStrategy._optimal_weights(): pseudo-inverse of the return covariance matrix times mean returns, rf=0, clipped to non-negative and renormalized), computed over real yfinance 60-minute bars for AAPL, MSFT, NVDA. Largest position is AAPL at 100.0%. Per upstream's own module docstring: weights are estimated in-sample over the fetch window, so this is an idealized 'mean-variance optimal' reference allocation, not a tradeable out-of-sample strategy (see adapter_notes). Note: the real price-fetch window [2026-06-17, 2026-07-17] was substituted for the harness-supplied generation_window [2023-06-01, 2024-01-15] because yfinance only serves ~729 days of 60-minute history from the real wall-clock present; generation_window itself is recorded unmodified."
+  },
+  "native_output": {
+    "q4": {
+      "tickers_requested": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "active_symbols": [
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "raw_weights": {
+        "AAPL": 1.0,
+        "MSFT": 0.0,
+        "NVDA": 0.0
+      },
+      "actual_fetch_start": "2026-06-17",
+      "actual_fetch_end": "2026-07-17",
+      "generation_window_clamped": true,
+      "n_bars": null
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": "This Q4 policy uses upstream AgenticTrading's own MeanVarianceStrategy._optimal_weights() (long-only max-Sharpe/tangency portfolio, pseudo-inverse covariance, rf=0). Per upstream's own module docstring, weights are estimated IN-SAMPLE over the fetch window used, so this is an idealized 'mean-variance optimal' reference allocation, not a tradeable out-of-sample signal. Market data is substituted with yfinance 60-minute bars in place of upstream's default Alpaca paper-trading loader (see module header) -- yfinance only serves ~730 days of intraday history from the real wall-clock present, so the real price-fetch window actually used may be clamped relative to the harness-supplied generation_window (disclosed in this policy's explanation whenever that substitution fires); generation_window itself is always recorded unmodified."
+}

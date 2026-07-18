@@ -1,0 +1,60 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "ai_hedge_fund",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "action": "HOLD",
+    "action_semantics": null,
+    "action_strength": null,
+    "target_position": 0.0,
+    "confidence": {
+      "value": 1.0,
+      "kind": "SELF_REPORTED",
+      "raw_value": 100.0,
+      "method": "upstream PortfolioDecision.confidence (int 0-100) / 100"
+    },
+    "explanation": "No valid trade available",
+    "bull_case": null,
+    "bear_case": null,
+    "evidence": null
+  },
+  "q2": null,
+  "q3": null,
+  "q4": null,
+  "native_output": {
+    "decisions": {
+      "AAPL": {
+        "action": "hold",
+        "quantity": 0,
+        "confidence": 100,
+        "reasoning": "No valid trade available"
+      }
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

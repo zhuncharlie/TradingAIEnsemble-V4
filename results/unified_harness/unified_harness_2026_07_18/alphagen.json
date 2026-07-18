@@ -1,0 +1,338 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "alphagen",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 102.34938526153564
+  },
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "CROSS_SECTION",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "factor_value — combined ensemble alpha score from AlphaGen's real RL-discovered formulaic-alpha pool (LinearAlphaPool.make_ensemble_alpha), a continuous cross-sectional score, not a return prediction or probability.",
+    "values": {
+      "AAPL": -0.0467706173658371,
+      "MSFT": -0.4180803894996643,
+      "NVDA": 0.2787456512451172,
+      "GOOGL": -0.01794654130935669,
+      "AMZN": -0.07864756137132645,
+      "META": 0.13161885738372803,
+      "JPM": 0.049621134996414185,
+      "XOM": 0.10145941376686096
+    },
+    "score_scale": "continuous, unitless (linear combination of z-scored formulaic alphas)",
+    "direction": "NEUTRAL",
+    "strength": 0.4285714285714286,
+    "expected_returns": null,
+    "factor_expression": "Var(Sum(Add(30.0,$vwap),5d),20d) (weight=0.1068, single_ic=0.0766); Mul(-30.0,Std($vwap,40d)) (weight=-0.1062, single_ic=-0.0352); Add(Sub(0.01,Add(Div($open,0.01),-0.5)),2.0) (weight=0.2902, single_ic=0.0678); Greater(2.0,$close) (weight=-0.3590, single_ic=-0.0679); Ref(WMA(Add(Mul($high,$high),$vwap),5d),5d) (weight=0.4049, single_ic=-0.0297)",
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "cross_sectional_rank",
+        "value": "'AAPL' real RL-discovered ensemble alpha value -0.0468 ranks 6/8 (29% percentile) across the real 8-ticker universe on 2024-01-15. direction/strength are this adapter's percentile-rank translation (upstream exposes a continuous score, not a 3-way label).",
+        "source": "adapter_derived (percentile rank over make_ensemble_alpha output)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "Var(Sum(Add(30.0,$vwap),5d),20d) (weight=0.1068, single_ic=0.0766)",
+        "source": "alphagen.LinearAlphaPool.state (real RL-discovered expression)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "Mul(-30.0,Std($vwap,40d)) (weight=-0.1062, single_ic=-0.0352)",
+        "source": "alphagen.LinearAlphaPool.state (real RL-discovered expression)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "Add(Sub(0.01,Add(Div($open,0.01),-0.5)),2.0) (weight=0.2902, single_ic=0.0678)",
+        "source": "alphagen.LinearAlphaPool.state (real RL-discovered expression)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "Greater(2.0,$close) (weight=-0.3590, single_ic=-0.0679)",
+        "source": "alphagen.LinearAlphaPool.state (real RL-discovered expression)",
+        "reference": null
+      },
+      {
+        "kind": "factor_expression",
+        "value": "Ref(WMA(Add(Mul($high,$high),$vwap),5d),5d) (weight=0.4049, single_ic=-0.0297)",
+        "source": "alphagen.LinearAlphaPool.state (real RL-discovered expression)",
+        "reference": null
+      },
+      {
+        "kind": "rl_search_diagnostics",
+        "value": "Real upstream MaskablePPO/AlphaEnv search: best ensemble IC=0.1912, 115 distinct expressions evaluated over 4000 RL timesteps (scoped down from upstream's own 200k-350k timestep experiments — see adapter header).",
+        "source": "alphagen.LinearAlphaPool.best_ic_ret / .eval_cnt",
+        "reference": null
+      },
+      {
+        "kind": "pool_search_trajectory",
+        "value": "Real upstream LinearAlphaPool.update_history: 19 accepted pool add/remove decisions during this RL search. Final update (upstream's own .describe()): Added alpha: Var(Sum(Add(30.0,$vwap),5d),20d)\nRemoved alpha: Var(Mul(-0.5,$high),20d)\nIC of the combination: 0.1844 -> 0.0766 (increment of -0.1078)",
+        "source": "alphagen.LinearAlphaPool.update_history (real AddRemoveAlphas log)",
+        "reference": null
+      },
+      {
+        "kind": "expected_return_diagnostic",
+        "value": "Adapter-derived top-quartile-minus-bottom-quartile average 20d forward-return spread across the real training window: 0.5595. This is a universe-level statistic, not a per-ticker expected return, so it is not populated into `expected_returns`.",
+        "source": "adapter_derived (calculator.make_ensemble_alpha / calculator.target)",
+        "reference": null
+      }
+    ],
+    "explanation": "'AAPL' real RL-discovered ensemble alpha value -0.0468 ranks 6/8 (29% percentile) across the real 8-ticker universe on 2024-01-15. direction/strength are this adapter's percentile-rank translation (upstream exposes a continuous score, not a 3-way label)."
+  },
+  "q4": null,
+  "native_output": {
+    "upstream": {
+      "pool_exprs": [
+        "Var(Sum(Add(30.0,$vwap),5d),20d)",
+        "Mul(-30.0,Std($vwap,40d))",
+        "Add(Sub(0.01,Add(Div($open,0.01),-0.5)),2.0)",
+        "Greater(2.0,$close)",
+        "Ref(WMA(Add(Mul($high,$high),$vwap),5d),5d)"
+      ],
+      "pool_weights": [
+        0.10678297499941672,
+        -0.10622832504600213,
+        0.29019459290025523,
+        -0.3590054700575256,
+        0.4049330737666903
+      ],
+      "pool_single_ics": [
+        0.0766417607665062,
+        -0.035230688750743866,
+        0.06780923902988434,
+        -0.06793387979269028,
+        -0.029746128246188164,
+        0.055194269865751266
+      ],
+      "pool_best_ic_ret": 0.19120143353939056,
+      "pool_eval_cnt": 115,
+      "pool_update_history": [
+        {
+          "added_exprs": [
+            "WMA(Sub(Mul(2.0,Add(Log(Sub(Var($volume,5d),-0.01)),-1.0)),-1.0),1d)"
+          ],
+          "removed_count": 0,
+          "old_pool_ic": 0.0,
+          "new_pool_ic": 0.0,
+          "ic_increment": 0.0
+        },
+        {
+          "added_exprs": [
+            "Std(Add(Add(EMA($high,1d),Add(30.0,$low)),-5.0),10d)"
+          ],
+          "removed_count": 0,
+          "old_pool_ic": 0.0,
+          "new_pool_ic": 0.0,
+          "ic_increment": 0.0
+        },
+        {
+          "added_exprs": [
+            "Sub(Mul(2.0,Sub(Less(Add(Abs($vwap),10.0),Ref($open,5d)),-10.0)),-1.0)"
+          ],
+          "removed_count": 0,
+          "old_pool_ic": 0.0,
+          "new_pool_ic": -0.06748553365468979,
+          "ic_increment": -0.06748553365468979
+        },
+        {
+          "added_exprs": [
+            "Var(Med(Log(Add(Mul(Mul(Div(2.0,$volume),-1.0),-0.5),-5.0)),5d),5d)"
+          ],
+          "removed_count": 0,
+          "old_pool_ic": 0.06748553365468979,
+          "new_pool_ic": 0.0,
+          "ic_increment": -0.06748553365468979
+        },
+        {
+          "added_exprs": [
+            "Div(Mean(Sub(2.0,Mean(Med(Var(Log($open),5d),5d),5d)),5d),-0.01)"
+          ],
+          "removed_count": 0,
+          "old_pool_ic": 0.06748553365468979,
+          "new_pool_ic": 0.09248556941747665,
+          "ic_increment": 0.025000035762786865
+        },
+        {
+          "added_exprs": [
+            "Max(Sub(Log(Mean(Greater(Mul(Less(-10.0,$open),2.0),-0.5),1d)),0.5),40d)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.10557867586612701,
+          "new_pool_ic": 0.0,
+          "ic_increment": -0.10557867586612701
+        },
+        {
+          "added_exprs": [
+            "Add(Add($volume,Abs(Greater(Add($low,Add(Mean($open,40d),-1.0)),0.01))),5.0)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.10557867586612701,
+          "new_pool_ic": 0.1389218121767044,
+          "ic_increment": 0.03334313631057739
+        },
+        {
+          "added_exprs": [
+            "Mul(-30.0,Std($vwap,40d))"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.15097692608833313,
+          "new_pool_ic": -0.035230688750743866,
+          "ic_increment": -0.186207614839077
+        },
+        {
+          "added_exprs": [
+            "Mul(Mul(-0.5,Log(Add(Abs(Mean($low,20d)),-5.0))),2.0)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.17731821537017822,
+          "new_pool_ic": 0.1101522445678711,
+          "ic_increment": -0.06716597080230713
+        },
+        {
+          "added_exprs": [
+            "Add(Sub(0.01,Add(Div($open,0.01),-0.5)),2.0)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.17731821537017822,
+          "new_pool_ic": 0.06780923902988434,
+          "ic_increment": -0.10950897634029388
+        },
+        {
+          "added_exprs": [
+            "Less(Med(Add(Div(-1.0,$high),-10.0),40d),-10.0)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.17731821537017822,
+          "new_pool_ic": -0.130997434258461,
+          "ic_increment": -0.3083156496286392
+        },
+        {
+          "added_exprs": [
+            "Sub(-10.0,Add(Std(Mean($volume,10d),5d),-5.0))"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.17731821537017822,
+          "new_pool_ic": -0.14440588653087616,
+          "ic_increment": -0.3217241019010544
+        },
+        {
+          "added_exprs": [
+            "Greater(2.0,$close)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.17731821537017822,
+          "new_pool_ic": -0.06793387979269028,
+          "ic_increment": -0.2452520951628685
+        },
+        {
+          "added_exprs": [
+            "Ref(WMA(Add(Mul($high,$high),$vwap),5d),5d)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.17731821537017822,
+          "new_pool_ic": -0.029746128246188164,
+          "ic_increment": -0.2070643436163664
+        },
+        {
+          "added_exprs": [
+            "Med(Mul(2.0,$volume),5d)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.18175336718559265,
+          "new_pool_ic": 0.1409601867198944,
+          "ic_increment": -0.04079318046569824
+        },
+        {
+          "added_exprs": [
+            "Mean(Div(-0.01,Std($close,10d)),1d)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.18421363830566406,
+          "new_pool_ic": -0.04416205734014511,
+          "ic_increment": -0.22837569564580917
+        },
+        {
+          "added_exprs": [
+            "Ref(Add(Mul(Add(-30.0,Add(Log($vwap),-0.01)),-0.01),Std($open,20d)),10d)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.18421363830566406,
+          "new_pool_ic": -0.014226115308701992,
+          "ic_increment": -0.19843975361436605
+        },
+        {
+          "added_exprs": [
+            "Var(Mul(-0.5,$high),20d)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.18442460894584656,
+          "new_pool_ic": 0.06595054268836975,
+          "ic_increment": -0.1184740662574768
+        },
+        {
+          "added_exprs": [
+            "Var(Sum(Add(30.0,$vwap),5d),20d)"
+          ],
+          "removed_count": 1,
+          "old_pool_ic": 0.18442460894584656,
+          "new_pool_ic": 0.0766417607665062,
+          "ic_increment": -0.10778284817934036
+        }
+      ],
+      "universe_used": [
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "GOOGL",
+        "AMZN",
+        "META",
+        "JPM",
+        "XOM"
+      ],
+      "asof": "2024-01-15",
+      "ensemble_alpha_last_row": {
+        "AAPL": -0.0467706173658371,
+        "MSFT": -0.4180803894996643,
+        "NVDA": 0.2787456512451172,
+        "GOOGL": -0.01794654130935669,
+        "AMZN": -0.07864756137132645,
+        "META": 0.13161885738372803,
+        "JPM": 0.049621134996414185,
+        "XOM": 0.10145941376686096
+      }
+    },
+    "adapter_derived": {
+      "requested_ticker": "AAPL",
+      "resolved_ticker": "AAPL",
+      "was_fallback": false,
+      "hedge_return_diagnostic": 0.5594836773586945
+    }
+  },
+  "field_mappings": null,
+  "adapter_notes": null
+}

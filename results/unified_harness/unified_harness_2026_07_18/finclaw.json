@@ -1,0 +1,151 @@
+{
+  "task_id": "unified_harness_2026_07_18",
+  "run": {
+    "adapter": "finclaw",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "ranking_score",
+    "values": {
+      "AAPL": 5.020921179935195
+    },
+    "score_scale": "[0, 10] (upstream score_stock() composite entry score)",
+    "direction": "NEUTRAL",
+    "strength": 0.004184235987039031,
+    "expected_returns": null,
+    "factor_expression": null,
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "score",
+        "value": "score_stock()=5.02/10 for 'AAPL' as of last point-in-time trading day on/before 2024-01-15",
+        "source": "finclaw.evolution.auto_evolve.score_stock() (upstream, unmodified)",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_bollinger = 0.0931",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_revenue_growth = 0.0756",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_adx = 0.0751",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      }
+    ],
+    "explanation": "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code — NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...'). Backtest/walk-forward performance metrics for this genome (annual_return/sharpe/win_rate) are deliberately not surfaced here — see code comment on the Q5 exclusion rule."
+  },
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": [
+        "AAPL"
+      ],
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "FROZEN_LEARNED_POLICY",
+    "generation_window": {
+      "start": "2023-06-01",
+      "end": "2024-01-15"
+    },
+    "universe_policy": {
+      "mode": "dynamic",
+      "catalog_id": null,
+      "fixed_assets": null,
+      "allowed_markets": null,
+      "allowed_asset_classes": null,
+      "selection_frequency": "every 2d (dna.hold_days)",
+      "max_assets": 7,
+      "selector_description": "Real upstream selection rule (finclaw.evolution.auto_evolve.AutoEvolver.evaluate()'s inline backtest): each rebalance day, every stock in the loaded data pool is scored via score_stock(), filtered to score >= min_score (adaptively raised in bear-breadth regimes), cross-sectionally z-score-neutralized once >=5 candidates are scored that day, then the top dna.max_positions=7 candidates by score are bought — further reduced under market_regime_sensitivity=0.8077596914825184 weak-breadth conditions, or skipped entirely to 100% cash when breadth < min_breadth_to_trade=0.0. This is real, upstream-enforced multi-asset rotation logic, not fabricated. HOWEVER: this adapter's own translation only ever feeds AutoEvolver a small internal companion pool (requested ticker + up to 8 large-cap DEFAULT_US_SYMBOLS — see _run_evolution_for_window) so the GA has cross-sectional statistics to score against, and this adapter's own q3_signal()/q4_policy() report only the single requested asset 'AAPL' back to the harness (context.scope=ASSET) — this call is NOT itself a multi-asset portfolio-selection result, only a reflection of the real mechanism the underlying genome would run if given a full universe."
+    },
+    "observation_policy": {
+      "lookback_window": "[2023-06-01, 2024-01-15] (real yfinance OHLCV window used to re-evolve this genome; see _run_evolution_for_window)",
+      "features": [
+        "w_bollinger",
+        "w_cci",
+        "w_debt_ratio"
+      ],
+      "data_sources": [
+        "yfinance OHLCV (US equities, point-in-time)"
+      ],
+      "observation_description": "score_stock() reads a 41-dimension real w_* factor set (technical indicators from upstream's own compute_rsi/compute_macd/compute_bollinger_bands/compute_kdj/compute_obv_trend/... functions, plus fundamental factors that are evolved but score as neutral 0.5 here since this adapter passes an empty fundamentals dict — see _score_ticker()). `features` above lists only the top-3-|weight| factors in this specific evolved genome, not the full input space."
+    },
+    "decision_policy": {
+      "decision_rule": "Real upstream finclaw.evolution.scoring.score_stock(): a normalized weighted composite over 41 real technical+fundamental component scores (each raw component in [0,1]; 4 stub indicators — w_adx/w_vwap/w_ichimoku/w_elder_ray — are always forced to 0 effective weight regardless of their DNA value, per score_stock()'s own _effective_stubs set) -> score = 10 * sum(w_i * component_i) / sum(w_i), clamped to [0, 10]. A candidate is only selected for entry once this score >= dna.min_score (4) (upstream evaluate()'s adaptive_min_score gate, before any bear-regime raise via bear_min_score_add=1.9372852084892576). Real top-|weight| evolved factors for this genome: w_bollinger=0.1329, w_cci=0.1301, w_debt_ratio=0.1127.",
+      "output_semantics": "per-asset composite entry score in [0, 10] (upstream score_stock()) gated by min_score, not a portfolio target weight; realized entries are T+1-open-price buys of the top-scoring candidates (upstream evaluate()/_run_backtest).",
+      "rebalance_frequency": "every 2d (dna.hold_days) — upstream re-scores the full candidate pool and re-picks positions each hold period.",
+      "holding_horizon": "2d"
+    },
+    "update_policy": null,
+    "constraints": {
+      "long_only": true,
+      "cash_allowed": null,
+      "max_abs_weight": null,
+      "gross_exposure_limit": 0.9892871390156225,
+      "net_exposure_min": null,
+      "net_exposure_max": null,
+      "leverage_limit": null,
+      "turnover_limit": null,
+      "additional_constraints": [
+        "stop_loss_per_day=1.7025117161144105 (adaptive: effective stop = min(stop_loss_per_day * hold_days, stop_loss_pct=21.221407173860467), real upstream evaluate())",
+        "take_profit_pct=58.72743016986357 scaled by profit_target_scaling=0.3723079696589228 (signal-strength-scaled target, real upstream evaluate())",
+        "trailing_stop_enabled=0.15151580695560585 (<=0.5 => disabled per upstream's own convention; no trailing stop applied)",
+        "time_decay_exit=0.20646060962395607 (progressively tightens the stop loss after half the hold period, real upstream evaluate())",
+        "market_regime_sensitivity=0.8077596914825184 (reduces effective max concurrent positions in weak-breadth regimes, real upstream evaluate())",
+        "bear_stop_loss_mult=0.9635043476216087 (tightens stop_loss_pct in bear-breadth regimes, real upstream evaluate(); 1.0 = no change is upstream's own no-op convention)",
+        "bear_take_profit_mult=0.8694161038229414 (lowers the take_profit_pct target in bear-breadth regimes, real upstream evaluate(); 1.0 = no change is upstream's own no-op convention)",
+        "bear_hold_days_mult=0.4555272369093765 (shortens hold_days in bear-breadth regimes, real upstream evaluate(); 1.0 = no change is upstream's own no-op convention)"
+      ]
+    },
+    "initial_weights": null,
+    "artifact": {
+      "artifact_type": "serialized_policy",
+      "reference": "{\"bear_hold_days_mult\": 0.4555272369093765, \"bear_min_score_add\": 1.9372852084892576, \"bear_stop_loss_mult\": 0.9635043476216087, \"bear_take_profit_mult\": 0.8694161038229414, \"capital_utilization\": 0.9892871390156225, \"consecutive_pattern\": 0.0093, \"dip_threshold_pct\": 15.2276059474392, \"factor_momentum\": 0.0, \"gap_momentum\": 0.0, \"hold_days\": 2, \"kelly_fraction\": 0.5467687488952091, \"market_regime_sensitivity\": 0.8077596914825184, \"max_positions\": 7, \"min_breadth_to_trade\": 0.0, \"min_score\": 4, \"position_sizing_power\": 0.0, \"price_efficiency\": 0.0461, \"profit_target_scaling\": 0.3723079696589228, \"r2_min\": 0.5224875674888577, \"r2_trend_min\": 0.5010595678331331, \"range_contraction\": 0.0, \"rsi_buy_threshold\": 45.119807027534364, \"rsi_sell_threshold\": 58.42393430993076, \"scale_in_tranches\": 2, \"sector_max_pct\": 0.7721672586640002, \"slope_min\": 0.7848269571807461, \"smart_money_divergence\": 0.0, \"stop_loss_pct\": 21.221407173860467, \"stop_loss_per_day\": 1.7025117161144105, \"take_profit_pct\": 58.72743016986357, \"time_decay_exit\": 0.20646060962395607, \"trailing_activation_pct\": 24.445329369150667, \"trailing_stop_enabled\": 0.15151580695560585, \"trailing_stop_pct\": 3.7059194356810017, \"trend_exit_enabled\": 0.0, \"volume_acceleration\": 0.0, \"volume_ratio_min\": 4.572161809670399, \"w_adx\": 0.0059, \"w_aroon\": 0.0, \"w_atr\": 0.0429, \"w_beta\": 0.0011, \"w_bollinger\": 0.1329, \"w_cashflow\": 0.0, \"w_cci\": 0.1301, \"w_debt_ratio\": 0.1127, \"w_donchian\": 0.0213, \"w_elder_ray\": 0.0094, \"w_gross_margin\": 0.0102, \"w_ichimoku\": 0.0, \"w_kdj\": 0.0218, \"w_macd\": 0.0734, \"w_mean_reversion\": 0.0, \"w_mfi\": 0.0092, \"w_momentum\": 0.0, \"w_obv\": 0.0695, \"w_pattern\": 0.0034, \"w_pb\": 0.0, \"w_pe\": 0.0, \"w_peg\": 0.0, \"w_price_volume_corr\": 0.0085, \"w_profit_qoq\": 0.0163, \"w_profit_yoy\": 0.0099, \"w_ps\": 0.0291, \"w_quantile_lower\": 0.0396, \"w_quantile_upper\": 0.0655, \"w_r_squared\": 0.0158, \"w_residual\": 0.0182, \"w_revenue_growth\": 0.0033, \"w_revenue_qoq\": 0.0, \"w_revenue_yoy\": 0.0407, \"w_roc\": 0.0, \"w_roe\": 0.0, \"w_support\": 0.0, \"w_trend\": 0.0189, \"w_volume\": 0.005, \"w_volume_profile\": 0.0, \"w_vwap\": 0.0301, \"w_williams_r\": 0.0, \"weekly_trend_confirm\": 0.0}",
+      "hash": null,
+      "description": "Real evolved finclaw StrategyDNA genome (74 fields: min_score entry threshold, position sizing, stop_loss_pct/take_profit_pct/trailing-stop rules, hold_days, max_positions, kelly_fraction, and 41 w_* technical+fundamental factor weights) for 'AAPL' (fallback for requested 'AAPL'), from upstream AutoEvolver.evolve() (population=24, generations=30, seed=42) over generation_window [2023-06-01, 2024-01-15]. Selected internally by upstream's own walk-forward-based GA fitness ranking; the genome's backtest performance metrics (annual_return/sharpe/win_rate) are not reported here — see the 'No Q5' exclusion rule this migration follows (those belong to an evaluation layer, not to Q4's policy artifact)."
+    },
+    "decisions": null,
+    "explanation": "Q3 exposes this same GA's live per-day score_stock() reading; Q4 exposes the underlying evolved StrategyDNA genome itself as a frozen, serializable policy artifact — evolved once over the harness-supplied generation_window and not updated online by this adapter (upstream's own re-evolution is a separate, explicit CLI invocation, not something this adapter triggers automatically). In addition to the opaque artifact above, the honestly-mappable real DNA fields are also surfaced structurally below (universe_policy, observation_policy, decision_policy, constraints) — see each sub-field's own text for the exact real upstream source read for each mapping."
+  },
+  "native_output": {},
+  "field_mappings": null,
+  "adapter_notes": null
+}

@@ -1,0 +1,20 @@
+{
+  "stocks": ["AAPL", "AMGN", "AXP", "BA", "CAT"],
+  "mask_group1_technology": [0.0, 0.0, 1.0, 1.0, 1.0],
+  "action_vector_step0": [0.2, 0.35, 0.45, 0.0, 0.0, 0.0],
+  "action_vector_step1_with_mask_leak": [0.05, 0.06, 0.02, 0.87, 0.0, 0.0],
+  "trajectory_pair": {
+    "step0": {
+      "information_cutoff": "2009-01-20",
+      "timestamp": "2009-01-21",
+      "selected_universe": ["AAPL", "AMGN"],
+      "target_weights": {"CASH": 0.2, "AAPL": 0.35, "AMGN": 0.45, "AXP": 0.0, "BA": 0.0, "CAT": 0.0}
+    },
+    "step1": {
+      "information_cutoff": "2009-01-21",
+      "timestamp": "2009-01-22",
+      "selected_universe": ["AAPL", "AMGN"],
+      "target_weights": {"CASH": 0.16, "AAPL": 0.42, "AMGN": 0.42, "AXP": 0.0, "BA": 0.0, "CAT": 0.0}
+    }
+  }
+}
