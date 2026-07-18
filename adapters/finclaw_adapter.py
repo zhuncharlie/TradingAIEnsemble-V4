@@ -323,15 +323,19 @@ from CONTRACT.base_adapter import BaseAdapter
 from CONTRACT.schemas import (
     ConfidenceEstimate,
     ConfidenceKind,
+    DecisionPolicy,
     Direction,
     EvidenceItem,
+    ObservationPolicy,
     OutputScope,
     PolicyArtifact,
     PolicyType,
+    PortfolioConstraints,
     Q3Signal,
     Q4Policy,
     QueryContext,
     TimeWindow,
+    UniversePolicy,
 )
 
 # ── Scoped-down GA budget — see header "Design notes / scope reductions" ──
@@ -617,6 +621,17 @@ def _score_ticker(resolved_ticker: str, data: dict, dna) -> float:
     return float(score_stock(idx, indicators, dna))
 
 
+def _top_weighted_factors(dna_dict: dict, n: int = 3) -> List[Tuple[str, float]]:
+    """Same real top-|weight| `w_*` extraction `q3_signal()` already performs
+    for its `supporting_evidence` (see its `top3` local there) — mirrored
+    here (not reimported, to avoid touching q3_signal's own code) so Q4's
+    `observation_policy.features` / `decision_policy.decision_rule` report
+    the same real evolved-genome factors, not a fabricated or independently
+    reinvented selection."""
+    w_items = {k: v for k, v in dna_dict.items() if k.startswith("w_")}
+    return sorted(w_items.items(), key=lambda kv: -abs(kv[1]))[:n]
+
+
 class FinclawAdapter(BaseAdapter):
     name = "finclaw"
     questions_answered = ["Q3", "Q4"]
@@ -759,13 +774,250 @@ class FinclawAdapter(BaseAdapter):
             "frozen, serializable policy artifact — evolved once over the "
             "harness-supplied generation_window and not updated online by this "
             "adapter (upstream's own re-evolution is a separate, explicit CLI "
-            "invocation, not something this adapter triggers automatically)."
+            "invocation, not something this adapter triggers automatically). In "
+            "addition to the opaque artifact above, the honestly-mappable real "
+            "DNA fields are also surfaced structurally below (universe_policy, "
+            "observation_policy, decision_policy, constraints) — see each "
+            "sub-field's own text for the exact real upstream source read for "
+            "each mapping."
+        )
+
+        # ==================================================================
+        # Structured enrichment (this migration's addition) — every value
+        # below is read directly off the real evolved `dna` object (or a
+        # verified-real upstream code path), never invented. See this
+        # adapter's task/report for the exact source lines each was checked
+        # against (finclaw.evolution.models.StrategyDNA, .auto_evolve,
+        # .scoring). Nothing here touches the `artifact` block above.
+        # ==================================================================
+        top_factors = _top_weighted_factors(dna_dict, n=3)
+        w_count = sum(1 for k in dna_dict if k.startswith("w_"))
+
+        # ---- decision_policy: entry rule + real composite scoring formula ----
+        decision_policy = DecisionPolicy(
+            decision_rule=(
+                f"Real upstream finclaw.evolution.scoring.score_stock(): a "
+                f"normalized weighted composite over {w_count} real "
+                f"technical+fundamental component scores (each raw component "
+                f"in [0,1]; 4 stub indicators — w_adx/w_vwap/w_ichimoku/"
+                f"w_elder_ray — are always forced to 0 effective weight "
+                f"regardless of their DNA value, per score_stock()'s own "
+                f"_effective_stubs set) -> score = 10 * sum(w_i * "
+                f"component_i) / sum(w_i), clamped to [0, 10]. A candidate is "
+                f"only selected for entry once this score >= dna.min_score "
+                f"({dna.min_score}) (upstream evaluate()'s adaptive_min_score "
+                f"gate, before any bear-regime raise via "
+                f"bear_min_score_add={dna.bear_min_score_add}). Real "
+                f"top-|weight| evolved factors for this genome: "
+                + ", ".join(f"{k}={v:.4f}" for k, v in top_factors) + "."
+            ),
+            output_semantics=(
+                "per-asset composite entry score in [0, 10] (upstream "
+                "score_stock()) gated by min_score, not a portfolio target "
+                "weight; realized entries are T+1-open-price buys of the "
+                "top-scoring candidates (upstream evaluate()/_run_backtest)."
+            ),
+            rebalance_frequency=(
+                f"every {dna.hold_days}d (dna.hold_days) — upstream "
+                f"re-scores the full candidate pool and re-picks positions "
+                f"each hold period."
+            ),
+            holding_horizon=f"{dna.hold_days}d",
+        )
+
+        # ---- universe_policy: real multi-asset selection mechanism, with ----
+        # ---- honest scope disclosure for what THIS adapter call reports  ----
+        universe_policy = UniversePolicy(
+            mode="dynamic",
+            max_assets=int(dna.max_positions),
+            selection_frequency=f"every {dna.hold_days}d (dna.hold_days)",
+            selector_description=(
+                f"Real upstream selection rule (finclaw.evolution.auto_evolve."
+                f"AutoEvolver.evaluate()'s inline backtest): each rebalance "
+                f"day, every stock in the loaded data pool is scored via "
+                f"score_stock(), filtered to score >= min_score (adaptively "
+                f"raised in bear-breadth regimes), cross-sectionally "
+                f"z-score-neutralized once >=5 candidates are scored that "
+                f"day, then the top dna.max_positions={dna.max_positions} "
+                f"candidates by score are bought — further reduced under "
+                f"market_regime_sensitivity={dna.market_regime_sensitivity} "
+                f"weak-breadth conditions, or skipped entirely to 100% cash "
+                f"when breadth < min_breadth_to_trade="
+                f"{dna.min_breadth_to_trade}. This is real, upstream-enforced "
+                f"multi-asset rotation logic, not fabricated. HOWEVER: this "
+                f"adapter's own translation only ever feeds AutoEvolver a "
+                f"small internal companion pool (requested ticker + up to "
+                f"{UNIVERSE_SIZE - 1} large-cap DEFAULT_US_SYMBOLS — see "
+                f"_run_evolution_for_window) so the GA has cross-sectional "
+                f"statistics to score against, and this adapter's own "
+                f"q3_signal()/q4_policy() report only the single requested "
+                f"asset '{resolved_ticker}' back to the harness "
+                f"(context.scope=ASSET) — this call is NOT itself a "
+                f"multi-asset portfolio-selection result, only a reflection "
+                f"of the real mechanism the underlying genome would run if "
+                f"given a full universe."
+            ),
+        )
+
+        # ---- observation_policy: real top-weighted factors this genome uses ----
+        observation_policy = ObservationPolicy(
+            features=[name for name, _ in top_factors],
+            lookback_window=(
+                f"[{generation_window.start}, {generation_window.end}] "
+                f"(real yfinance OHLCV window used to re-evolve this genome; "
+                f"see _run_evolution_for_window)"
+            ),
+            data_sources=["yfinance OHLCV (US equities, point-in-time)"],
+            observation_description=(
+                f"score_stock() reads a {w_count}-dimension real w_* factor "
+                f"set (technical indicators from upstream's own compute_rsi/"
+                f"compute_macd/compute_bollinger_bands/compute_kdj/"
+                f"compute_obv_trend/... functions, plus fundamental factors "
+                f"that are evolved but score as neutral 0.5 here since this "
+                f"adapter passes an empty fundamentals dict — see "
+                f"_score_ticker()). `features` above lists only the "
+                f"top-{len(top_factors)}-|weight| factors in this specific "
+                f"evolved genome, not the full input space."
+            ),
+        )
+
+        # ---- constraints: only fields honestly expressible from real DNA ----
+        active_constraints: List[str] = []
+
+        if dna.stop_loss_per_day and dna.stop_loss_per_day > 0.01:
+            active_constraints.append(
+                f"stop_loss_per_day={dna.stop_loss_per_day} (adaptive: "
+                f"effective stop = min(stop_loss_per_day * hold_days, "
+                f"stop_loss_pct={dna.stop_loss_pct}), real upstream "
+                f"evaluate())"
+            )
+        else:
+            active_constraints.append(
+                f"stop_loss_pct={dna.stop_loss_pct} (fixed %, real upstream "
+                f"evaluate(); stop_loss_per_day=0 means the adaptive variant "
+                f"is inactive per upstream's own convention)"
+            )
+
+        if dna.profit_target_scaling and dna.profit_target_scaling > 0.01:
+            active_constraints.append(
+                f"take_profit_pct={dna.take_profit_pct} scaled by "
+                f"profit_target_scaling={dna.profit_target_scaling} "
+                f"(signal-strength-scaled target, real upstream evaluate())"
+            )
+        else:
+            active_constraints.append(
+                f"take_profit_pct={dna.take_profit_pct} (fixed %, real "
+                f"upstream evaluate(); profit_target_scaling=0 means the "
+                f"score-scaled variant is inactive per upstream's own "
+                f"convention)"
+            )
+
+        if dna.trailing_stop_enabled > 0.5:
+            active_constraints.append(
+                f"trailing_stop active (trailing_stop_enabled="
+                f"{dna.trailing_stop_enabled} > 0.5 per upstream's own "
+                f"on/off convention): trailing_activation_pct="
+                f"{dna.trailing_activation_pct}, trailing_stop_pct="
+                f"{dna.trailing_stop_pct}"
+            )
+        else:
+            active_constraints.append(
+                f"trailing_stop_enabled={dna.trailing_stop_enabled} "
+                f"(<=0.5 => disabled per upstream's own convention; no "
+                f"trailing stop applied)"
+            )
+
+        if dna.time_decay_exit and dna.time_decay_exit > 0.01:
+            active_constraints.append(
+                f"time_decay_exit={dna.time_decay_exit} (progressively "
+                f"tightens the stop loss after half the hold period, real "
+                f"upstream evaluate())"
+            )
+
+        if dna.min_breadth_to_trade and dna.min_breadth_to_trade > 0.01:
+            active_constraints.append(
+                f"min_breadth_to_trade={dna.min_breadth_to_trade} (goes 100% "
+                f"cash when market breadth falls below this, real upstream "
+                f"evaluate(); 0 means always-trade per upstream's own "
+                f"convention)"
+            )
+
+        if dna.market_regime_sensitivity and dna.market_regime_sensitivity > 0.01:
+            active_constraints.append(
+                f"market_regime_sensitivity={dna.market_regime_sensitivity} "
+                f"(reduces effective max concurrent positions in "
+                f"weak-breadth regimes, real upstream evaluate())"
+            )
+
+        if dna.weekly_trend_confirm and dna.weekly_trend_confirm > 0.5:
+            active_constraints.append(
+                f"weekly_trend_confirm={dna.weekly_trend_confirm} (>0.5 => "
+                f"enabled per upstream's own convention): requires a weekly "
+                f"5MA>20MA uptrend before entry"
+            )
+
+        if dna.trend_exit_enabled and dna.trend_exit_enabled > 0.5:
+            active_constraints.append(
+                f"trend_exit_enabled={dna.trend_exit_enabled} (>0.5 => "
+                f"enabled per upstream's own convention): exits early if the "
+                f"5-day MA crosses below the 10-day MA while holding"
+            )
+
+        for field_name, label in (
+            ("bear_stop_loss_mult", "tightens stop_loss_pct"),
+            ("bear_take_profit_mult", "lowers the take_profit_pct target"),
+            ("bear_hold_days_mult", "shortens hold_days"),
+        ):
+            val = getattr(dna, field_name)
+            if val is not None and abs(val - 1.0) > 0.001:
+                active_constraints.append(
+                    f"{field_name}={val} ({label} in bear-breadth regimes, "
+                    f"real upstream evaluate(); 1.0 = no change is "
+                    f"upstream's own no-op convention)"
+                )
+
+        # NOTE (limitation, report explicitly): dna.sector_max_pct is a real,
+        # declared, GA-evolvable StrategyDNA field (see models.py's
+        # _PARAM_RANGES) but is NEVER read anywhere in the executed
+        # auto_evolve.py evaluate()/backtest path (verified via `grep -rn
+        # sector_max_pct` across the whole finclaw package — its only two
+        # hits are its own dataclass declaration and mutation range; zero
+        # references in auto_evolve.py). Reporting it as an active
+        # constraint would be dishonest (upstream itself does not enforce
+        # it), so it is intentionally left OUT of additional_constraints —
+        # see this adapter's task report for the "computed/evolved but not
+        # enforced by upstream's own code" classification.
+
+        constraints = PortfolioConstraints(
+            # Verified, not assumed: this adapter always constructs
+            # AutoEvolver(market="us", ...) (see _run_evolution_for_window),
+            # and upstream's own auto_evolve.py only dispatches to its
+            # separate shorts/leverage-capable crypto engine when
+            # self.market == "crypto" (see the `_run_backtest_dispatch`
+            # branch); for market="us" the inline equity backtest is used,
+            # which only ever computes long entries (buy at entry_price,
+            # exit at stop/target/trailing-stop/hold-days) — no short/borrow
+            # code path is reachable for this adapter's configuration.
+            long_only=True,
+            # dna.capital_utilization is upstream's own real "fraction of
+            # total capital to deploy across positions" (auto_evolve.py:
+            # `cap_util = getattr(dna, 'capital_utilization', 1.0)`); since
+            # the strategy is long-only, gross deployed capital is directly
+            # bounded by this fraction (Kelly sizing can only scale
+            # exposure down further, never above it — kelly_scale is
+            # clamped to <= 1.0).
+            gross_exposure_limit=float(dna.capital_utilization),
+            additional_constraints=active_constraints,
         )
 
         return Q4Policy(
             context=context,
             policy_type=PolicyType.FROZEN_LEARNED_POLICY,
             generation_window=generation_window,
+            universe_policy=universe_policy,
+            observation_policy=observation_policy,
+            decision_policy=decision_policy,
+            constraints=constraints,
             artifact=artifact,
             explanation=explanation,
         )
@@ -785,4 +1037,35 @@ class FinclawAdapter(BaseAdapter):
             checks["direction_is_valid"] = result.direction in ("LONG", "SHORT", "NEUTRAL")
             checks["strength_in_range"] = result.strength is not None and 0.0 <= result.strength <= 1.0
             checks["evidence_nonempty"] = bool(result.evidence)
+
+        # Upstream's own AutoEvolver.load_data() only loads stocks with
+        # >= 60 trading days of history (see auto_evolve.py's load_data()
+        # docstring/min_days=60) — a window narrower than ~120 calendar
+        # days (accounting for weekends/holidays) yields "Loaded 0 stocks"
+        # and a real RuntimeError, not a bug in this adapter.
+        generation_window = TimeWindow(start="2023-08-01", end="2024-01-15")
+        q4_result = self.q4_policy(context, generation_window)
+        checks["q4_returns_Q4Policy"] = q4_result is not None
+        if q4_result is not None:
+            checks["q4_artifact_present"] = q4_result.artifact is not None
+            checks["q4_decision_policy_present"] = q4_result.decision_policy is not None
+            checks["q4_holding_horizon_set"] = bool(
+                q4_result.decision_policy and q4_result.decision_policy.holding_horizon
+            )
+            checks["q4_universe_policy_present"] = q4_result.universe_policy is not None
+            checks["q4_max_assets_positive_int"] = bool(
+                q4_result.universe_policy
+                and isinstance(q4_result.universe_policy.max_assets, int)
+                and q4_result.universe_policy.max_assets > 0
+            )
+            checks["q4_observation_features_nonempty"] = bool(
+                q4_result.observation_policy and q4_result.observation_policy.features
+            )
+            checks["q4_constraints_present"] = q4_result.constraints is not None
+            checks["q4_long_only_true"] = bool(
+                q4_result.constraints and q4_result.constraints.long_only is True
+            )
+            checks["q4_additional_constraints_nonempty"] = bool(
+                q4_result.constraints and q4_result.constraints.additional_constraints
+            )
         return checks

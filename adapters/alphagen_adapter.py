@@ -386,6 +386,27 @@ accurate — only the canonical field mapping below changed)
     `latency_sec` — no business logic changed, `BaseAdapter.run()`'s own
     context/generation_window checks and RunMetadata construction are
     reused via `super().run()`.
+
+============================================================================
+Capability-recovery pass (this round)
+============================================================================
+  - Confirmed `LinearAlphaPool.state`'s `ics_ret`/`weights`/`best_ic_ret` and
+    the separate `eval_cnt` attribute were already reaching `evidence`
+    (`factor_expression` items carry each real per-alpha `single_ics`/
+    `weights` value, `rl_search_diagnostics` carries `best_ic_ret`/
+    `eval_cnt`) — nothing further needed there.
+  - **Recovered (category 2 — real, public, previously discarded)**:
+    `pool.update_history` (`LinearAlphaPool.update_history`,
+    linear_alpha_pool.py:32) is a real, public, already-computed list of
+    `AddRemoveAlphas` records — one per accepted pool change during the RL
+    search, each with real `old_pool_ic`/`new_pool_ic`/`added_exprs`/
+    `removed_idx` and upstream's own real `.describe()` text
+    (pool_update.py:87-97). This was never read anywhere in the adapter.
+    Now surfaced: the full structured trajectory in
+    `native_output.upstream.pool_update_history`, plus one `evidence` item
+    (kind="pool_search_trajectory") carrying the update count and the real
+    `.describe()` text of the final/best update (not one evidence item per
+    update, to avoid an unbounded evidence list across a long search).
 """
 
 from __future__ import annotations
@@ -788,6 +809,29 @@ class AlphagenAdapter(BaseAdapter):
             source="alphagen.LinearAlphaPool.best_ic_ret / .eval_cnt",
         ))
 
+        # Recovered (previously entirely discarded): `pool.update_history` is
+        # a real, public attribute — LinearAlphaPool's own append-only log of
+        # every accepted add/remove decision during the RL search
+        # (`AddRemoveAlphas` records with real old_pool_ic/new_pool_ic/
+        # added_exprs, linear_alpha_pool.py:32,83-99), the closest real
+        # analogue this project has to a per-run search-quality trajectory.
+        # Surfaced as one evidence item (upstream's own real `.describe()`
+        # text for the final/best update) rather than one item per update
+        # (could be dozens across a run) plus the full structured trajectory
+        # in native_output.
+        update_history = list(getattr(pool, "update_history", []) or [])
+        if update_history:
+            last_update = update_history[-1]
+            evidence.append(EvidenceItem(
+                kind="pool_search_trajectory",
+                value=(
+                    f"Real upstream LinearAlphaPool.update_history: {len(update_history)} "
+                    f"accepted pool add/remove decisions during this RL search. Final "
+                    f"update (upstream's own .describe()): {last_update.describe()}"
+                ),
+                source="alphagen.LinearAlphaPool.update_history (real AddRemoveAlphas log)",
+            ))
+
         hedge_return = _hedge_return(calc_train, exprs, list(weights))
         if hedge_return is not None:
             evidence.append(EvidenceItem(
@@ -814,6 +858,16 @@ class AlphagenAdapter(BaseAdapter):
                 "pool_single_ics": [float(x) for x in pool.single_ics],
                 "pool_best_ic_ret": float(pool.best_ic_ret),
                 "pool_eval_cnt": int(pool.eval_cnt),
+                "pool_update_history": [
+                    {
+                        "added_exprs": [str(e) for e in u.added_exprs],
+                        "removed_count": len(u.removed_idx),
+                        "old_pool_ic": float(u.old_pool_ic) if u.old_pool_ic is not None else None,
+                        "new_pool_ic": float(u.new_pool_ic),
+                        "ic_increment": float(u.ic_increment),
+                    }
+                    for u in update_history
+                ],
                 "universe_used": list(stock_ids),
                 "asof": asof_str,
                 "ensemble_alpha_last_row": values,
@@ -890,4 +944,13 @@ class AlphagenAdapter(BaseAdapter):
             checks["strength_in_range"] = result.strength is None or 0.0 <= result.strength <= 1.0
             checks["evidence_nonempty"] = bool(result.evidence)
             checks["factor_expression_set"] = bool(result.factor_expression)
+            # Recovered-capability check: pool.update_history should be
+            # non-empty (the pool always accepts at least its first alpha
+            # if pool.size > 0, which is guaranteed by _run_rl_search's own
+            # zero-pool-size guard) and should now surface as evidence.
+            update_history = (self._last_native_output or {}).get("upstream", {}).get("pool_update_history", [])
+            checks["pool_update_history_native_output_present"] = bool(update_history)
+            checks["evidence_includes_pool_search_trajectory"] = any(
+                e.kind == "pool_search_trajectory" for e in (result.evidence or [])
+            )
         return checks

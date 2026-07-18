@@ -134,9 +134,16 @@ remain correctly UNSUPPORTED):
     parsed time_horizon but had nowhere canonical to put it either, and
     never touched price_target at all — this is a straightforward,
     low-effort recovery of a real field noted in PROJECT_SCHEMA_AUDIT.md).
-    Risk-debate content (aggressive/conservative/neutral) still has no
-    dedicated field in v2 either (a rejected OPTIONAL_EXTENSION candidate
-    per the audit, §9) and remains unmapped/MISSING, same as v1.
+    Risk-debate content (aggressive/conservative/neutral) has no dedicated
+    Q1Action field either (a rejected OPTIONAL_EXTENSION candidate per the
+    audit, §9), but RECOVERED in this capability-recovery pass (2026-07) as
+    three `EvidenceItem`s (kind="risk_debate_aggressive"/"_conservative"/
+    "_neutral") — the real transcript on
+    `final_state["risk_debate_state"]["{aggressive,conservative,neutral}_history"]`,
+    verified (managers/portfolio_manager.py) to be the direct input the
+    Portfolio Manager's own prompt synthesizes into final_trade_decision.
+    Previously discarded entirely despite being real and always computed;
+    same EvidenceItem container already used for time_horizon/price_target.
   - Q2 sentiment: the Sentiment Analyst's structured `SentimentReport`
     reports `overall_score` on a 0-10 scale (0=max bearish, 10=max bullish)
     rendered as a markdown header
@@ -360,6 +367,31 @@ class TradingAgentsAdapter(BaseAdapter):
         if m_price:
             evidence.append(EvidenceItem(kind="price_target", value=m_price.group(1).strip()))
 
+        # Recovered (previously discarded, category 2 — real, always computed,
+        # never surfaced anywhere): the 3-way risk debate (aggressive/
+        # conservative/neutral) is a real transcript on
+        # final_state["risk_debate_state"], the direct input the Portfolio
+        # Manager synthesizes into final_trade_decision (verified in
+        # managers/portfolio_manager.py: prompt includes
+        # `state["risk_debate_state"]["history"]`). There is no dedicated
+        # Q1Action field for it (same as v1/the prior audit found), but
+        # EvidenceItem is a real, general-purpose container already used the
+        # same way for bull_case/bear_case's sibling debate — so it is no
+        # longer dropped.
+        risk_debate = final_state.get("risk_debate_state") or {}
+        for key, kind in (
+            ("aggressive_history", "risk_debate_aggressive"),
+            ("conservative_history", "risk_debate_conservative"),
+            ("neutral_history", "risk_debate_neutral"),
+        ):
+            text = str(risk_debate.get(key) or "").strip()
+            if text:
+                evidence.append(EvidenceItem(
+                    kind=kind,
+                    value=text,
+                    source="TradingAgents risk_debate_state (real aggressive/conservative/neutral risk-debator transcript, verified read directly by managers/portfolio_manager.py's own prompt)",
+                ))
+
         return Q1Action(
             context=context,
             action=action,
@@ -483,6 +515,11 @@ class TradingAgentsAdapter(BaseAdapter):
         checks["action_is_valid"] = q1.action in ("BUY", "SELL", "HOLD")
         checks["bull_case_populated"] = bool(q1.bull_case)
         checks["bear_case_populated"] = bool(q1.bear_case)
+        # Recovered-capability check: real risk-debate transcript should now
+        # surface as evidence (at least one of the 3 debator kinds).
+        checks["q1_evidence_includes_risk_debate"] = any(
+            (e.kind or "").startswith("risk_debate_") for e in (q1.evidence or [])
+        )
 
         # Same context as above -> hits the _run() cache, no second real
         # graph execution.

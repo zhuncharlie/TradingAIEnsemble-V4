@@ -99,8 +99,11 @@ findings this migration follows):
     (title + real per-headline label) as EvidenceItem(kind="news_headline",
     value=..., source="Yahoo Finance news (yfinance)"), replacing v1's
     `drivers: List[str]` free-text field with the same real per-headline
-    information in the schema's structured evidence container. Kept to the
-    top 3 by |label| (ties broken by recency), same selection v1 used.
+    information in the schema's structured evidence container. RECOVERED
+    in the 2026-07 capability-recovery pass: previously truncated to the top
+    3 by |label| (matching v1's own selection); now keeps all real scored
+    headlines (MAX_HEADLINES=5 already bounds this, so truncation only
+    served to needlessly discard up to 2 real per-headline scores per call).
   - No-headlines path (FALLBACK BEHAVIOR DELETED per migration rubric): v1
     fed a fabricated string ("No recent news found for {ticker}.") into the
     real FinGPT model as if it were a real headline, then reported the
@@ -297,14 +300,18 @@ class FinGPTAdapter(BaseAdapter):
         avg = max(-1.0, min(1.0, sum(values) / len(values)))
         dispersion = statistics.pstdev(values) if len(values) > 1 else 0.0
 
-        top_evidence = sorted(scored, key=lambda s: abs(s["value"]), reverse=True)[:3]
+        # Recovered (previously discarded, category 2): all scored headlines
+        # are kept, not just the top 3 by |label| — MAX_HEADLINES caps this
+        # at 5 real per-headline model scores per call, so there is no
+        # unbounded-evidence-list risk (unlike e.g. a long RL search) that
+        # would justify truncating a small, already-bounded real result set.
         evidence = [
             EvidenceItem(
                 kind="news_headline",
                 value=f"{item['title']} ({item['label']})",
                 source="Yahoo Finance news (yfinance)",
             )
-            for item in top_evidence
+            for item in sorted(scored, key=lambda s: abs(s["value"]), reverse=True)
         ]
 
         sentiment_state = StateEstimate(
@@ -376,4 +383,11 @@ class FinGPTAdapter(BaseAdapter):
         checks["sentiment_state_present"] = sentiment is not None
         if sentiment is not None and sentiment.value_numeric is not None:
             checks["sentiment_value_in_range"] = -1.0 <= sentiment.value_numeric <= 1.0
+            # Recovered-capability check: evidence should cover every real
+            # scored headline (up to MAX_HEADLINES), not just the old top-3.
+            raw = self._cache.get((context.targets[0], context.as_of), {})
+            n_scored = len(raw.get("scored", []))
+            checks["evidence_covers_all_scored_headlines"] = (
+                n_scored == 0 or len(sentiment.evidence or []) == n_scored
+            )
         return checks

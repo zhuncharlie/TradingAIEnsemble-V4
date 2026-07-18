@@ -74,6 +74,35 @@ Design notes (translation choices made by this adapter, not upstream):
   - Per-ticker caching: Q1 and Q3 (and `run()`, which calls both) would
     otherwise retrain the ensemble redundantly for the same ticker within
     one process; cached in memory per ticker.
+
+============================================================================
+Capability-recovery pass (2026-07)
+============================================================================
+  - **Recovered (category 2 — real, public, previously discarded)**: this
+    adapter used to reimplement upstream's `model_agreement` formula by hand
+    instead of calling the real function that computes it.
+    `RealTimePredictionEngine.generate_predictions()` (realtime_prediction.py:448)
+    is real, public, and works with any `engine.models` dict — it doesn't
+    require the gitignored production joblib artifacts. `_train_ensemble()`
+    now populates `engine.models` with its own freshly-trained XGBoost/
+    LightGBM models and calls the real function directly, surfacing its real
+    `model_agreement` (mathematically identical to before, now genuinely
+    upstream-computed rather than duplicated) and its real
+    `confidence_interval` (lower/upper bound around the prediction) — the
+    latter was never read anywhere in the old adapter. `engine.model_scores`
+    is left empty since the real Sharpe-ratio-based scores come from a
+    Kaggle-pipeline CSV unavailable in this sandbox; real code's own
+    `.get(name, 1.0)` fallback gives equal weighting, disclosed above.
+  - **Declined (category 3-like — real capability, but its only public entry
+    point is scale-inconsistent under this adapter's real usage)**: upstream's
+    `predictions['primary']['confidence']` text label ('high'/'medium'/'low')
+    is computed against `Config.signal_threshold_pct()` (a percentage-POINT
+    threshold, e.g. 0.25 for 0.25%) while this adapter's predictions are
+    fractional returns (e.g. 0.012 for 1.2%) — verified via
+    `src/config.py:signal_threshold_pct() = signal_threshold_ratio() * 100`.
+    Surfacing it would label nearly every real prediction "low" regardless
+    of actual conviction. Not implemented; not a fabrication risk we're
+    willing to take.
 """
 
 from __future__ import annotations
@@ -141,12 +170,13 @@ def _horizon_days_from_context(context: QueryContext) -> int:
     return FORECAST_HORIZON_DAYS
 
 
-def _train_ensemble(ticker: str, horizon_days: int) -> Tuple[object, List[str], float, float]:
+def _train_ensemble(ticker: str, horizon_days: int) -> Tuple[object, List[str], float, float, Optional[dict]]:
     """
     Fetch real yfinance history, engineer features via upstream's own
     method, train upstream's own XGBoost+LightGBM models on this ticker's
     history, combine with upstream's own SimpleEnsemble.
-    Returns (xgb_model, feature_cols, latest_prediction, model_agreement).
+    Returns (xgb_model, feature_cols, latest_prediction, model_agreement,
+    confidence_interval).
 
     NOTE (pre-existing limitation, not introduced by this migration): this
     fetches "3y" of yfinance history ending at real wall-clock "now", not
@@ -206,15 +236,44 @@ def _train_ensemble(ticker: str, horizon_days: int) -> Tuple[object, List[str], 
     ensemble = SimpleEnsemble({"XGBoost": xgb_model, "LightGBM": lgb_model})
     ensemble.fit(X_train, y_train)
 
-    xgb_pred = float(xgb_model.predict(X_latest)[0])
-    lgb_pred = float(lgb_model.predict(X_latest)[0])
     prediction = float(ensemble.predict(X_latest)[0])
 
-    import numpy as np
-    dispersion = float(np.std([xgb_pred, lgb_pred]))
-    agreement = max(0.0, 1.0 - min(dispersion / 0.1, 1.0))
+    # Recovered (previously discarded, category 2 — real & public, but the
+    # old adapter reimplemented upstream's model_agreement formula by hand
+    # instead of calling it): upstream's own
+    # RealTimePredictionEngine.generate_predictions() computes model_agreement
+    # AND a real confidence_interval (lower/upper bound around the primary
+    # prediction, interval_width = max(dispersion, alert_thresholds['high_confidence']/2))
+    # from whatever models are populated on `engine.models` — it does not
+    # require the gitignored production joblib artifacts, only that the dict
+    # be populated, which this adapter can do with its own freshly-trained
+    # models. `engine.model_scores` stays empty since the real Sharpe-based
+    # scores come from a Kaggle-pipeline CSV not present in this sandbox;
+    # real code's own `.get(name, 1.0)` fallback then gives equal weighting
+    # (mathematically identical to SimpleEnsemble's plain average here) —
+    # disclosed honestly rather than presented as upstream's real
+    # risk-adjusted ranking.
+    engine.models = {"XGBoost": xgb_model, "LightGBM": lgb_model}
+    engine.model_scores = {}
+    real_predictions = engine.generate_predictions(X_latest.values, ticker)
+    agreement = float(real_predictions.get("model_agreement", 0.0))
+    confidence_interval = real_predictions.get("confidence_interval")
 
-    result = (xgb_model, feature_cols, prediction, agreement)
+    # NOT recovered, on purpose: upstream's own `predictions['primary']['confidence']`
+    # text label ('high'/'medium'/'low') is computed against
+    # `Config.signal_threshold_pct()` (== signal_threshold_ratio() * 100, a
+    # percentage-POINT-scaled threshold, e.g. 0.25 for 0.25%) while
+    # `primary_prediction` here is a fractional return (e.g. 0.012 for 1.2%)
+    # — verified via src/config.py:signal_threshold_pct(). Comparing a
+    # fractional value against a percentage-point threshold means the label
+    # would read "low" for nearly every real prediction regardless of actual
+    # conviction. This is a real upstream function producing a systematically
+    # misleading value when driven outside its original percent-scaled
+    # Kaggle training pipeline (category 3-like: the only public entry point
+    # can't be honestly used here without upstream code changes) — declined
+    # rather than surfaced, per CLAUDE.md's no-fabrication rule.
+
+    result = (xgb_model, feature_cols, prediction, agreement, confidence_interval)
     _TRAIN_CACHE[cache_key] = result
     return result
 
@@ -232,7 +291,7 @@ class DeepAlphaAdapter(BaseAdapter):
         ticker = _ticker_from_context(context)
         horizon_days = _horizon_days_from_context(context)
 
-        xgb_model, feature_cols, prediction, agreement = _train_ensemble(ticker, horizon_days)
+        xgb_model, feature_cols, prediction, agreement, confidence_interval = _train_ensemble(ticker, horizon_days)
         threshold = Config.signal_threshold_ratio()
 
         if prediction > threshold:
@@ -250,13 +309,19 @@ class DeepAlphaAdapter(BaseAdapter):
             kind=ConfidenceKind.MODEL_MARGIN,
             raw_value=agreement,
             method=(
-                "Upstream's own model_agreement formula: max(0, 1 - dispersion/0.1), "
-                "dispersion = std(xgboost_pred, lightgbm_pred), matching "
-                "RealTimePredictionEngine.generate_predictions()'s own convention. "
+                "Real upstream RealTimePredictionEngine.generate_predictions()'s own "
+                "model_agreement field: max(0, 1 - dispersion/0.1), dispersion = "
+                "std(xgboost_pred, lightgbm_pred) — called directly, not reimplemented. "
                 "Measures cross-model prediction agreement, not a calibrated probability."
             ),
         )
 
+        ci_text = ""
+        if confidence_interval:
+            ci_text = (
+                f" Real upstream confidence interval (generate_predictions()): "
+                f"[{confidence_interval['lower']:+.4%}, {confidence_interval['upper']:+.4%}]."
+            )
         explanation = (
             f"XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on "
             f"{ticker}'s own 3y trailing yfinance history ending at real run time — "
@@ -265,7 +330,8 @@ class DeepAlphaAdapter(BaseAdapter):
             f"pretrained Kaggle-sourced artifacts were available) predicts a "
             f"{horizon_days}-day forward return of {prediction:+.4%}, against a "
             f"transaction-cost-based signal threshold of {threshold:.4%}. Model "
-            f"agreement (1 - normalised prediction dispersion) is {agreement:.2f}."
+            f"agreement (upstream's own RealTimePredictionEngine.generate_predictions() "
+            f"model_agreement) is {agreement:.2f}.{ci_text}"
         )
 
         return Q1Action(
@@ -281,7 +347,7 @@ class DeepAlphaAdapter(BaseAdapter):
         ticker = _ticker_from_context(context)
         horizon_days = _horizon_days_from_context(context)
 
-        xgb_model, feature_cols, prediction, agreement = _train_ensemble(ticker, horizon_days)
+        xgb_model, feature_cols, prediction, agreement, confidence_interval = _train_ensemble(ticker, horizon_days)
 
         direction = Direction.LONG if prediction > 0 else Direction.SHORT if prediction < 0 else Direction.NEUTRAL
         strength = max(0.0, min(1.0, abs(prediction) / 0.05))
@@ -299,22 +365,37 @@ class DeepAlphaAdapter(BaseAdapter):
         else:
             evidence.append(EvidenceItem(kind="model_feature", value="XGBoost feature_importances_ unavailable"))
 
+        # Recovered (previously discarded, category 2): real confidence_interval
+        # from upstream's own RealTimePredictionEngine.generate_predictions()
+        # (see _train_ensemble docstring) — a genuine upstream-computed interval,
+        # not previously surfaced anywhere in this adapter.
+        if confidence_interval:
+            evidence.append(EvidenceItem(
+                kind="confidence_interval",
+                value=f"[{confidence_interval['lower']:+.4%}, {confidence_interval['upper']:+.4%}]",
+                source="RealTimePredictionEngine.generate_predictions() (real interval_width = max(model_dispersion, alert_thresholds['high_confidence']/2))",
+            ))
+
         confidence = ConfidenceEstimate(
             value=max(0.0, min(1.0, agreement)),
             kind=ConfidenceKind.MODEL_MARGIN,
             raw_value=agreement,
             method=(
-                "Same model_agreement measure as Q1Action.confidence (1 - normalised "
-                "XGBoost/LightGBM prediction dispersion) — reused here since it "
-                "applies to the same ensemble prediction underlying this signal."
+                "Same model_agreement measure as Q1Action.confidence — real upstream "
+                "RealTimePredictionEngine.generate_predictions()'s own model_agreement "
+                "(1 - normalised XGBoost/LightGBM prediction dispersion) — reused here "
+                "since it applies to the same ensemble prediction underlying this signal."
             ),
         )
 
+        ci_text = ""
+        if confidence_interval:
+            ci_text = f" Confidence interval: [{confidence_interval['lower']:+.4%}, {confidence_interval['upper']:+.4%}]."
         explanation = (
             f"Ensemble predicts a {horizon_days}-day forward return of {prediction:+.4%} "
             f"for {ticker} (model agreement {agreement:.2f}); same 3y-trailing, "
             f"real-run-time-windowed training data as Q1Action (see that method's "
-            f"docstring for the point-in-time limitation)."
+            f"docstring for the point-in-time limitation).{ci_text}"
         )
 
         return Q3Signal(
@@ -352,4 +433,9 @@ class DeepAlphaAdapter(BaseAdapter):
         if q3 is not None:
             checks["q3_direction_is_valid"] = q3.direction in ("LONG", "SHORT", "NEUTRAL")
             checks["q3_strength_in_range"] = q3.strength is not None and 0.0 <= q3.strength <= 1.0
+            # Recovered-capability check: real upstream generate_predictions()
+            # confidence_interval should now surface as evidence.
+            checks["q3_evidence_includes_confidence_interval"] = any(
+                e.kind == "confidence_interval" for e in (q3.evidence or [])
+            )
         return checks

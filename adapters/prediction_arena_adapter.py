@@ -199,6 +199,25 @@ Design notes (translation choices made by this adapter, not upstream):
   - Per-ticker caching: Q2's market lookup + real DeepSeek forecast are
     cached in-process per Kalshi market ticker so repeated harness calls
     don't redundantly re-query or re-call the LLM for the same market.
+
+============================================================================
+Capability-recovery pass (2026-07)
+============================================================================
+  - **Recovered (category 2 — real, computed, previously discarded)**: this
+    adapter had no `run()` override, so `BaseAdapter.run()`'s `native_output`
+    default of `{}` meant the real Kalshi market dict and real DeepSeek
+    forecast dict (`p_llm`, `rationale`, `cost_usd`) were never preserved
+    anywhere, unlike every sibling live-upstream adapter (ai_hedge_fund,
+    fingpt, tradingagents). Added a `run()` override that captures both,
+    reusing the same in-process caches `q2_state()` already hits — no extra
+    live calls.
+  - **Recovered (category 2)**: `forecast["cost_usd"]` (upstream
+    `report.price_estimate`, real litellm per-call cost tracking) was read
+    into a local dict but never surfaced on Q2State. `RunMetadata.cost_usd`
+    is envelope-level and fixed at 0.0 by `BaseAdapter.run()` (a known,
+    documented v2-migration gap shared by every adapter, not special-cased
+    here), so it is now surfaced as an `EvidenceItem(kind="llm_cost_usd")`
+    on the `forecast_probability` state instead of being silently dropped.
 """
 
 from __future__ import annotations
@@ -214,6 +233,7 @@ from dotenv import load_dotenv
 
 from CONTRACT.base_adapter import BaseAdapter
 from CONTRACT.schemas import (
+    AdapterResult,
     ConfidenceEstimate,
     ConfidenceKind,
     EvidenceItem,
@@ -221,6 +241,7 @@ from CONTRACT.schemas import (
     Q2State,
     QueryContext,
     StateEstimate,
+    TimeWindow,
 )
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "forecasting-tools"
@@ -481,6 +502,23 @@ class PredictionArenaAdapter(BaseAdapter):
                     source="DeepSeek deepseek-chat (via NoResearchOneShotBot)",
                 )
             )
+        # Recovered (previously discarded, category 2): forecasting-tools'
+        # own real per-call cost tracking (report.price_estimate, via
+        # litellm) was already being read into _run_llm_forecast()'s result
+        # dict but never surfaced anywhere — RunMetadata.cost_usd is
+        # envelope-level and fixed at 0.0 by BaseAdapter.run() (a known,
+        # documented v2-migration gap affecting every adapter uniformly, not
+        # something to special-case here), and Q2State has no dedicated cost
+        # field. EvidenceItem is the honest schema-provided home for this
+        # real, disclosed number rather than dropping it silently.
+        if forecast.get("cost_usd"):
+            forecast_evidence.append(
+                EvidenceItem(
+                    kind="llm_cost_usd",
+                    value=f"{forecast['cost_usd']:.6f}",
+                    source="forecasting-tools report.price_estimate (real litellm per-call cost tracking)",
+                )
+            )
 
         forecast_state = StateEstimate(
             dimension="forecast_probability",
@@ -543,6 +581,42 @@ class PredictionArenaAdapter(BaseAdapter):
             ),
         )
 
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window: Optional[TimeWindow] = None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ) -> AdapterResult:
+        """
+        Recovered (previously discarded, category 2): this adapter never
+        overrode run(), so BaseAdapter.run()'s native_output default of `{}`
+        meant the real Kalshi market dict and real DeepSeek forecast dict
+        (p_llm, rationale, cost_usd) were never preserved anywhere, unlike
+        every sibling adapter with a live upstream call (ai_hedge_fund,
+        fingpt, tradingagents all override run() for exactly this). Reuses
+        the same _MARKET_CACHE/_FORECAST_CACHE the subsequent q2_state()
+        call (made by super().run()) will hit, so this adds no extra live
+        Kalshi/DeepSeek calls.
+        """
+        if native_output is None and (context.targets or context.universe):
+            ticker = (context.targets or context.universe)[0]
+            market = _find_kalshi_market(ticker)
+            forecast = _run_llm_forecast(market)
+            native_output = {"ticker": ticker, "market": market, "forecast": forecast}
+        return super().run(
+            task_id,
+            context,
+            generation_window=generation_window,
+            native_output=native_output,
+            adapter_notes=adapter_notes,
+            field_mappings=field_mappings,
+            **kwargs,
+        )
+
     def smoke_test(self):
         checks = super().smoke_test()
 
@@ -566,4 +640,11 @@ class PredictionArenaAdapter(BaseAdapter):
             and 0.0 <= forecast_state.value_numeric <= 1.0
         )
         checks["context_echoed_unchanged"] = q2 is not None and q2.context == context
+
+        # Recovered-capability check: run() should now capture real
+        # native_output (market + forecast), not the {} default.
+        result = self.run("smoke_native_output_check", context)
+        checks["native_output_captures_market_and_forecast"] = bool(
+            result.native_output.get("market") and result.native_output.get("forecast")
+        )
         return checks

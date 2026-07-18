@@ -296,6 +296,35 @@ accurate — only the canonical field mapping below changed)
     adapter-derived token-resolution diagnostics under a separate
     `adapter_derived` key) and the real wall-clock `latency_sec` — no
     business logic changed.
+
+============================================================================
+Capability-recovery pass (this round)
+============================================================================
+  - **Recovered (category 2 — real, already-public, previously truncated)**:
+    `evidence` (kind="factor_expression") and `native_output.upstream.
+    accepted_formulas` now report upstream's own COMPLETE validation-accepted
+    individual set (`gp.run()`'s real `final_ind` return value, aliased
+    `accepted`/`ranked` here) — every formula that passed the real
+    Pareto-front selection + real validation-set accept/reject filter for
+    this run, not just the top-3 previously kept. This list was already
+    fully computed and already returned by the unmodified upstream call;
+    only the adapter's own reporting was truncated.
+  - **Limitation (category 3 — real, computed, but no public accessor)**:
+    upstream's own `GPProcess.run()` (genetic_process.py:332-431) builds a
+    real per-generation, per-batch DEAP `Logbook` (`tools.Statistics` over
+    both fitness objectives + tree size: avg/std/min/max per generation,
+    genetic_process.py:339-355,382-385) and a real per-batch
+    `best_individual`/`best_fitness` (genetic_process.py:394-397) — but both
+    are local variables inside `run()`, never assigned to `self` and never
+    part of `run()`'s return value (`return final_ind`, line 431); they only
+    ever reach a `print()` call. There is no documented/public API to
+    retrieve the logbook or per-batch best-individual history after
+    `run()` returns. Recovering this would require either monkey-patching
+    `GPProcess.run()` to stash `logbook`/per-batch bests onto `self` before
+    they go out of scope, or reimplementing `run()`'s own batch loop outside
+    upstream's method — both excluded by CLAUDE.md's "don't monkey-patch or
+    reimplement upstream trading/research logic" rule. Left unrecovered and
+    disclosed here rather than reached into via a private-internals hack.
 """
 
 from __future__ import annotations
@@ -490,11 +519,19 @@ class AtlasAdapter(BaseAdapter):
                 source="adapter_derived (percentile rank over gp.generate_factor output)",
             ))
 
-        for ind in ranked[1:3]:
+        # Recovered (previously truncated to top-3): `accepted` (aliased here
+        # as `ranked`) is the REAL, complete validation-accepted output of
+        # upstream's own `GPProcess.run()` -- every formula that passed its
+        # real Pareto-front selection + real validation-set accept/reject
+        # filter for this run, not just the best one. Reporting only the
+        # top 2 runner-ups discarded the rest of this same already-computed,
+        # already-public list for no reason -- report the full real
+        # per-run accepted-factor set here instead.
+        for ind in ranked[1:]:
             evidence.append(EvidenceItem(
                 kind="factor_expression",
                 value=f"Also accepted: '{str(ind)}' (train fitness={ind.fitness.values[0]:.4f})",
-                source="atlas GPProcess accepted individuals (Hall of Fame / NSGA-II Pareto front)",
+                source="atlas GPProcess accepted individuals (full real validation-accepted set for this run, Pareto front / Hall of Fame)",
             ))
 
         # Real upstream metric, unmodified, on the full scoped test window.
@@ -518,7 +555,9 @@ class AtlasAdapter(BaseAdapter):
             "upstream": {
                 "best_formula": str(best_ind),
                 "best_train_fitness": float(best_ind.fitness.values[0]),
-                "runner_up_formulas": [str(ind) for ind in ranked[1:3]],
+                "accepted_formulas": [
+                    {"formula": str(ind), "train_fitness": float(ind.fitness.values[0])} for ind in ranked
+                ],
                 "asof": asof_str,
                 "factor_snapshot": values,
                 "hedge_return": hedge_return,
@@ -594,4 +633,11 @@ class AtlasAdapter(BaseAdapter):
             checks["strength_in_range"] = result.strength is None or 0.0 <= result.strength <= 1.0
             checks["evidence_nonempty"] = bool(result.evidence)
             checks["factor_expression_set"] = bool(result.factor_expression)
+            # Recovered-capability check: the full accepted-formula set (not
+            # just a top-3 truncation) should now be present whenever more
+            # than one factor was accepted this run.
+            accepted_formulas = (self._last_native_output or {}).get("upstream", {}).get("accepted_formulas", [])
+            factor_expr_evidence = [e for e in (result.evidence or []) if e.kind == "factor_expression"]
+            checks["accepted_formulas_native_output_present"] = bool(accepted_formulas)
+            checks["evidence_covers_full_accepted_set"] = len(factor_expr_evidence) == max(0, len(accepted_formulas) - 1)
         return checks

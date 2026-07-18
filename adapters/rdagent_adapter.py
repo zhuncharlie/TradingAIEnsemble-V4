@@ -722,6 +722,32 @@ class RDAgentAdapter(BaseAdapter):
                 value=f"final_decision={fb.final_decision} -- {fb.final_feedback}",
                 source="RD-Agent QlibFactorCoSTEER real CoSTEERSingleFeedback (real LLM-as-judge call)",
             ))
+            # Recovered (previously discarded): upstream's real per-stage
+            # feedback fields on FactorSingleFeedback (= CoSTEERSingleFeedbackDeprecated)
+            # — execution_feedback (real local-execution stdout summary),
+            # value_feedback (real FactorValueEvaluator verdict on the
+            # generated factor's numeric output), and code_feedback (real
+            # FactorCodeEvaluator LLM code critique) — distinct from, and
+            # richer than, the single final_decision/final_feedback pair
+            # already captured above.
+            if getattr(fb, "execution_feedback", None):
+                evidence.append(EvidenceItem(
+                    kind="execution_feedback",
+                    value=fb.execution_feedback,
+                    source="RD-Agent FactorEvaluatorForCoder (real local subprocess execution of factor.py)",
+                ))
+            if getattr(fb, "value_feedback", None):
+                evidence.append(EvidenceItem(
+                    kind="value_feedback",
+                    value=fb.value_feedback,
+                    source="RD-Agent FactorValueEvaluator (real evaluator over the executed factor values)",
+                ))
+            if getattr(fb, "code_feedback", None):
+                evidence.append(EvidenceItem(
+                    kind="code_feedback",
+                    value=fb.code_feedback,
+                    source="RD-Agent FactorCodeEvaluator (real LLM code critique)",
+                ))
         if result.get("coder_error"):
             evidence.append(EvidenceItem(
                 kind="coder_feedback",
@@ -753,7 +779,15 @@ class RDAgentAdapter(BaseAdapter):
                 "factor_description": task.factor_description,
                 "factor_formulation": task.factor_formulation,
                 "coder_feedback": (
-                    {"final_decision": fb.final_decision, "final_feedback": fb.final_feedback}
+                    {
+                        "final_decision": fb.final_decision,
+                        "final_feedback": fb.final_feedback,
+                        "execution_feedback": getattr(fb, "execution_feedback", None),
+                        "value_feedback": getattr(fb, "value_feedback", None),
+                        "code_feedback": getattr(fb, "code_feedback", None),
+                        "value_generated_flag": getattr(fb, "value_generated_flag", None),
+                        "final_decision_based_on_gt": getattr(fb, "final_decision_based_on_gt", None),
+                    }
                     if fb is not None else None
                 ),
                 "coder_error": result.get("coder_error"),
@@ -845,6 +879,15 @@ class RDAgentAdapter(BaseAdapter):
                 checks["q3_evidence_includes_real_hypothesis"] = any(
                     (e.kind == "hypothesis" and e.value) for e in (q3.evidence or [])
                 )
+                # Recovered fields: if a real coder_feedback round happened (not a
+                # CoderError non-convergence), at least one of the richer per-stage
+                # feedback kinds (execution_feedback/value_feedback/code_feedback)
+                # should now be present alongside the pre-existing coder_feedback.
+                evidence_kinds = {e.kind for e in (q3.evidence or [])}
+                if "coder_feedback" in evidence_kinds:
+                    checks["q3_evidence_includes_richer_coder_feedback"] = bool(
+                        evidence_kinds & {"execution_feedback", "value_feedback", "code_feedback"}
+                    )
         except Exception:
             checks["q3_smoke_call_succeeds"] = False
         return checks

@@ -748,11 +748,33 @@ class FinRLXAdapter(BaseAdapter):
             evidence=evidence,
         )
 
+        # Capability recovery: cash_floor was previously only mentioned in
+        # this method's prose `explanation` and in Q4's own explanation text
+        # (adaptive_rotation.market_regime.detect_slow_regime's real
+        # `RegimeResult.cash_floor`) — never a structured, queryable value.
+        # It's a real, regime-derived recommendation (not a policy decision
+        # itself, since the actual portfolio cash allocation is Q4's to make),
+        # so it belongs as its own Q2 dimension alongside market_regime.
+        cash_floor_state = StateEstimate(
+            dimension="regime_recommended_cash_floor",
+            value_numeric=float(regime_result.cash_floor),
+            scale="[0,1] fraction of portfolio recommended to hold as cash, per this regime",
+            evidence=[
+                EvidenceItem(
+                    kind="model_feature",
+                    value=f"cash_floor={regime_result.cash_floor:.4f} for regime={regime_result.state.value}",
+                    source="adaptive_rotation.market_regime.detect_slow_regime (RegimeResult.cash_floor)",
+                    reference="same real regime computation that feeds Q4's cash-floor overlay (see q4_policy)",
+                )
+            ],
+        )
+
         explanation = (
             f"Upstream FinRL-Trading's own rule-based slow-regime detector "
             f"(adaptive_rotation.market_regime.detect_slow_regime, real weekly ^GSPC/^VIX "
             f"closes as of {asof_date}) reports '{regime_result.state.value}' "
-            f"(risk_score={signals.risk_score}/3, cash_floor={regime_result.cash_floor:.0%}). "
+            f"(risk_score={signals.risk_score}/3, cash_floor={regime_result.cash_floor:.0%}, "
+            f"also reported structurally as its own StateEstimate below). "
             f"This is the same real regime computation that feeds the cash-floor overlay on "
             f"this adapter's Q4 policy (see q4_policy) — v1 folded this into Q4's own `regime` "
             f"field; v2 routes it here since market_regime is a state of the world, not a "
@@ -761,7 +783,7 @@ class FinRLXAdapter(BaseAdapter):
 
         self._last_native["q2"] = _regime_native_dict(regime_result)
 
-        return Q2State(context=context, states=[state], explanation=explanation)
+        return Q2State(context=context, states=[state, cash_floor_state], explanation=explanation)
 
     # ------------------------------------------------------------------
     # Q3 — ML-factor stock-selection signal
@@ -1030,6 +1052,10 @@ class FinRLXAdapter(BaseAdapter):
         if q2 is not None:
             checks["q2_context_echoed_unchanged"] = q2.context == context
             checks["q2_has_market_regime_dimension"] = any(s.dimension == "market_regime" for s in q2.states)
+            cash_floor_states = [s for s in q2.states if s.dimension == "regime_recommended_cash_floor"]
+            checks["q2_has_cash_floor_dimension"] = len(cash_floor_states) == 1
+            if cash_floor_states:
+                checks["q2_cash_floor_in_range"] = 0.0 <= cash_floor_states[0].value_numeric <= 1.0
 
         q3 = self.q3_signal(context)
         checks["q3_returns_Q3Signal"] = q3 is not None

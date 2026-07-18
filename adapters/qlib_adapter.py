@@ -296,7 +296,23 @@ import numpy as np
 import pandas as pd
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Direction, EvidenceItem, OutputScope, Q3Signal, QueryContext
+from CONTRACT.schemas import (
+    DecisionPolicy,
+    Direction,
+    EvidenceItem,
+    ObservationPolicy,
+    OutputScope,
+    PolicyDecisionStep,
+    PolicyType,
+    PortfolioConstraints,
+    Q3Signal,
+    Q4Policy,
+    QueryContext,
+    TimeWindow,
+    UniversePolicy,
+    UpdateMode,
+    UpdatePolicy,
+)
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "qlib"
 SCRATCH_ROOT = VENDOR_DIR / "git_ignore_folder"
@@ -304,6 +320,16 @@ WORK_DIR = SCRATCH_ROOT / "work"
 CSV_DIR = WORK_DIR / "csvs"
 QLIB_BIN_DIR = WORK_DIR / "qlib_bin"
 MLRUNS_DIR = WORK_DIR / "mlruns"
+
+# Q4 uses its own scratch subtree (separate CSV/binary-provider/mlruns paths
+# from Q3's) so a Q4 pipeline run in the same process never rebuilds/
+# invalidates the exact directory Q3's already-`qlib.init()`-ed provider is
+# still reading from (both q3_signal() and q4_policy() can run in the same
+# process via a single `run()`/harness call — see q4_policy()'s module note).
+WORK_DIR_Q4 = SCRATCH_ROOT / "work_q4"
+CSV_DIR_Q4 = WORK_DIR_Q4 / "csvs"
+QLIB_BIN_DIR_Q4 = WORK_DIR_Q4 / "qlib_bin"
+MLRUNS_DIR_Q4 = WORK_DIR_Q4 / "mlruns"
 
 # `scripts/dump_bin.py` lives only in the GitHub source tree, not in the
 # `pyqlib` PyPI wheel (see module header "Environment setup") — put it on
@@ -345,6 +371,36 @@ EVIDENCE_FACTOR_NAMES = ["KMID", "KLEN", "ROC5", "ROC20", "ROC60", "MA5", "MA20"
 
 _PIPELINE_CACHE: Dict[Tuple[Tuple[str, ...], str], dict] = {}
 
+# ── Q4 — real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy +
+# qlib.backtest walk-forward wiring (see q4_policy() / _run_qlib_pipeline_window()
+# / _run_qlib_topk_backtest() below for the full real-capability trace) ───────
+Q4_FULL_START_BUFFER_DAYS = 90   # same rolling-feature warm-up buffer as Q3, applied
+                                 # before generation_window.start (raw-data fetch only —
+                                 # never expands the reported generation_window itself).
+Q4_TEST_FRACTION = 0.2
+Q4_TEST_DAYS_MIN = 20
+Q4_TEST_DAYS_MAX = 40
+Q4_VALID_FRACTION = 0.15
+Q4_VALID_DAYS_MIN = 15
+Q4_VALID_DAYS_MAX = 30
+Q4_TRAIN_DAYS_MIN = 30  # minimum real training-segment width, else raise (widen generation_window)
+Q4_CALENDAR_BUFFER_DAYS = 12  # real-data buffer PAST test_end so qlib's own TradeCalendarManager
+                               # has a next-trading-day entry to look up at the final rebalance step
+                               # (qlib/backtest/utils.py::get_step_time reads self._calendar[idx+1] —
+                               # real upstream bookkeeping requirement, not a policy/feature input:
+                               # Alpha158's own end_time stays pinned at test_end below, so no feature/
+                               # label ever sees data past test_end; only the raw calendar is widened).
+
+Q4_TOPK = 3        # real TopkDropoutStrategy(topk=...) — number of concentrated long positions held
+Q4_N_DROP = 1      # real TopkDropoutStrategy(n_drop=...) — max positions replaced per rebalance day
+Q4_RISK_DEGREE = 0.95  # real BaseSignalStrategy.risk_degree default (qlib/contrib/strategy/signal_strategy.py)
+Q4_INITIAL_CASH = 1_000_000.0
+Q4_OPEN_COST = 0.0005
+Q4_CLOSE_COST = 0.0015
+Q4_MIN_COST = 5.0
+
+_Q4_PIPELINE_CACHE: Dict[Tuple[Tuple[str, ...], str, str], dict] = {}
+
 
 def _clamp_asof(date: str) -> pd.Timestamp:
     asof = pd.Timestamp(date)
@@ -352,17 +408,46 @@ def _clamp_asof(date: str) -> pd.Timestamp:
     return min(asof, now)
 
 
-def _fetch_and_write_csvs(tickers: List[str], full_start: pd.Timestamp, asof: pd.Timestamp) -> List[str]:
+def _end_active_qlib_experiment() -> None:
+    """
+    Real, documented upstream lifecycle call (`qlib.workflow.R.end_exp()` —
+    see qlib/workflow/__init__.py's own docstring example: `R.start_exp(...)
+    ... R.end_exp(...)`), not a patch or monkeypatch. `LGBModel.fit()` calls
+    `R.log_metrics()` internally (see gbdt.py), which auto-starts a default
+    experiment/recorder if none is active but never closes it itself.
+    Left open, a SECOND real `qlib.init()` call later in the same process
+    (this adapter now makes two — one for Q3's `_run_qlib_pipeline()`, one
+    for Q4's `_run_qlib_pipeline_window()`/`_run_qlib_topk_backtest()`) trips
+    `RecorderWrapper.register()`'s own guard ("Please don't reinitialize
+    Qlib if QlibRecorder is already activated"). Calling real `R.end_exp()`
+    right after each real `model.fit()` closes that auto-started experiment
+    so the next real `qlib.init()` call in the same process succeeds. Wrapped
+    defensively: if no experiment is active (nothing to end), `end_exp()` is
+    a real no-op-safe call for Qlib's own default `MLflowExpManager`.
+    """
+    try:
+        from qlib.workflow import R
+
+        R.end_exp()
+    except Exception:
+        pass
+
+
+def _fetch_and_write_csvs(
+    tickers: List[str], full_start: pd.Timestamp, asof: pd.Timestamp, csv_dir: Path = CSV_DIR
+) -> List[str]:
     """Real yfinance OHLCV per ticker, written as plain CSVs in the exact
     schema upstream's own `scripts/dump_bin.py::DumpDataAll` expects
     (date, symbol, open, high, low, close, volume + an adapter-computed
     vwap column — see "VWAP" note below). Returns the list of tickers that
-    actually had usable data."""
+    actually had usable data. `csv_dir` defaults to Q3's scratch path
+    unchanged; q4_policy() passes `CSV_DIR_Q4` so the two pipelines never
+    clobber each other's on-disk CSVs within the same process."""
     import yfinance as yf
 
-    if CSV_DIR.exists():
-        shutil.rmtree(CSV_DIR, ignore_errors=True)
-    CSV_DIR.mkdir(parents=True, exist_ok=True)
+    if csv_dir.exists():
+        shutil.rmtree(csv_dir, ignore_errors=True)
+    csv_dir.mkdir(parents=True, exist_ok=True)
 
     ok: List[str] = []
     for t in tickers:
@@ -389,23 +474,27 @@ def _fetch_and_write_csvs(tickers: List[str], full_start: pd.Timestamp, asof: pd
         # never touches any evaluation/training logic).
         df["vwap"] = (df["high"] + df["low"] + df["close"]) / 3.0
         df["symbol"] = t
-        df.to_csv(CSV_DIR / f"{t}.csv", index=False)
+        df.to_csv(csv_dir / f"{t}.csv", index=False)
         ok.append(t)
     return ok
 
 
-def _build_qlib_bin(tickers_ok: List[str]) -> None:
+def _build_qlib_bin(
+    tickers_ok: List[str], csv_dir: Path = CSV_DIR, qlib_bin_dir: Path = QLIB_BIN_DIR
+) -> None:
     """Real, unmodified upstream `DumpDataAll` — converts the plain CSVs
-    above into Qlib's own binary feature-store format."""
+    above into Qlib's own binary feature-store format. `csv_dir`/
+    `qlib_bin_dir` default to Q3's scratch paths unchanged; q4_policy()
+    passes the Q4-specific paths (see `_fetch_and_write_csvs` note)."""
     from dump_bin import DumpDataAll  # upstream, unmodified (scripts/dump_bin.py)
 
-    if QLIB_BIN_DIR.exists():
-        shutil.rmtree(QLIB_BIN_DIR, ignore_errors=True)
-    QLIB_BIN_DIR.mkdir(parents=True, exist_ok=True)
+    if qlib_bin_dir.exists():
+        shutil.rmtree(qlib_bin_dir, ignore_errors=True)
+    qlib_bin_dir.mkdir(parents=True, exist_ok=True)
 
     dumper = DumpDataAll(
-        data_path=str(CSV_DIR),
-        qlib_dir=str(QLIB_BIN_DIR),
+        data_path=str(csv_dir),
+        qlib_dir=str(qlib_bin_dir),
         freq="day",
         max_workers=4,
         date_field_name="date",
@@ -497,6 +586,7 @@ def _run_qlib_pipeline(universe_tickers: Tuple[str, ...], date: str):
         feature_importance = model.get_feature_importance()
         feature_cols = dataset.prepare("train", col_set="feature").columns.tolist()
         test_feat = dataset.prepare("test", col_set="feature")
+        _end_active_qlib_experiment()
     finally:
         os.chdir(orig_cwd)
 
@@ -516,6 +606,237 @@ def _run_qlib_pipeline(universe_tickers: Tuple[str, ...], date: str):
     return result
 
 
+def _run_qlib_pipeline_window(universe_tickers: Tuple[str, ...], gen_start: str, gen_end: str):
+    """
+    Q4 counterpart of `_run_qlib_pipeline()` above — same real, unmodified
+    upstream mechanism (`qlib.init()` against a real Qlib binary data
+    directory built from real yfinance OHLCV, real `Alpha158` + `DatasetH` +
+    `LGBModel`), but the train/valid/test date split is derived from the
+    harness-supplied `generation_window` (`gen_start`/`gen_end`) rather than
+    Q3's own `data_cutoff`-relative offsets. Kept as a separate function
+    (small, deliberate duplication of the qlib.init/Alpha158/DatasetH/
+    LGBModel construction block — see module docstring "reuse rationale")
+    instead of refactoring `_run_qlib_pipeline` in place, to avoid any risk
+    of changing Q3's already-working behavior. `_fetch_and_write_csvs()` and
+    `_build_qlib_bin()` ARE reused unmodified (they were already generic
+    over an explicit date range).
+
+    The real test-segment prediction Series this returns spans MULTIPLE
+    real trading days (not a single day, unlike Q3's single-day slice) —
+    this is what makes a genuine multi-day `TopkDropoutStrategy` walk-forward
+    possible in q4_policy().
+    """
+    key = (universe_tickers, gen_start, gen_end)
+    if key in _Q4_PIPELINE_CACHE:
+        return _Q4_PIPELINE_CACHE[key]
+
+    gstart = pd.Timestamp(gen_start)
+    gend = _clamp_asof(gen_end)
+    if gend <= gstart:
+        raise RuntimeError(
+            f"generation_window end ({gend.date()}) must be after start ({gstart.date()})."
+        )
+    total_days = (gend - gstart).days
+
+    test_days = max(Q4_TEST_DAYS_MIN, min(Q4_TEST_DAYS_MAX, int(total_days * Q4_TEST_FRACTION)))
+    valid_days = max(Q4_VALID_DAYS_MIN, min(Q4_VALID_DAYS_MAX, int(total_days * Q4_VALID_FRACTION)))
+
+    test_end = gend
+    test_start = gend - pd.Timedelta(days=test_days - 1)
+    valid_end = test_start - pd.Timedelta(days=1)
+    valid_start = valid_end - pd.Timedelta(days=valid_days - 1)
+    train_end = valid_start - pd.Timedelta(days=1)
+    train_start = gstart  # harness's own start — never shortened
+    full_start = gstart - pd.Timedelta(days=Q4_FULL_START_BUFFER_DAYS)  # raw-data warm-up only
+
+    if (train_end - train_start).days < Q4_TRAIN_DAYS_MIN:
+        raise RuntimeError(
+            f"generation_window [{gen_start}, {gen_end}] ({total_days} calendar days) is too "
+            f"narrow for a real train/valid/test split with a {Q4_TRAIN_DAYS_MIN}-day minimum "
+            f"training segment — widen generation_window."
+        )
+
+    # Fetch real data slightly past test_end so the raw calendar (built from
+    # these CSVs via _build_qlib_bin -> scripts/dump_bin.py::DumpDataAll) has
+    # at least one real trading day beyond test_end. This is calendar
+    # bookkeeping only: Alpha158's own handler below is still constructed
+    # with end_time=test_end, so no feature/label computation ever sees data
+    # past test_end — only qlib's internal TradeCalendarManager (which needs
+    # calendar[step+1] to bound the final rebalance step) benefits from it.
+    csv_fetch_end = test_end + pd.Timedelta(days=Q4_CALENDAR_BUFFER_DAYS)
+    tickers_ok = _fetch_and_write_csvs(list(universe_tickers), full_start, csv_fetch_end, csv_dir=CSV_DIR_Q4)
+    if len(tickers_ok) < 2:
+        raise RuntimeError(
+            f"Insufficient real yfinance history for universe {universe_tickers} "
+            f"in generation_window [{gen_start}, {gen_end}] — need at least 2 tickers "
+            f"for Alpha158's cross-sectional CSZScoreNorm."
+        )
+
+    WORK_DIR_Q4.mkdir(parents=True, exist_ok=True)
+    _build_qlib_bin(tickers_ok, csv_dir=CSV_DIR_Q4, qlib_bin_dir=QLIB_BIN_DIR_Q4)
+
+    orig_cwd = os.getcwd()
+    os.chdir(WORK_DIR_Q4)
+    try:
+        import qlib
+        from qlib.constant import REG_US
+        from qlib.contrib.data.handler import Alpha158
+        from qlib.contrib.model.gbdt import LGBModel
+        from qlib.data.dataset import DatasetH
+
+        qlib.init(
+            provider_uri=str(QLIB_BIN_DIR_Q4),
+            region=REG_US,
+            exp_manager={
+                "class": "MLflowExpManager",
+                "module_path": "qlib.workflow.expm",
+                "kwargs": {"uri": f"file://{MLRUNS_DIR_Q4}", "default_exp_name": "ExperimentQ4"},
+            },
+            redis_port=-1,
+        )
+
+        handler = Alpha158(  # upstream, unmodified
+            instruments=tickers_ok,
+            start_time=train_start.strftime("%Y-%m-%d"),
+            end_time=test_end.strftime("%Y-%m-%d"),
+            fit_start_time=train_start.strftime("%Y-%m-%d"),
+            fit_end_time=train_end.strftime("%Y-%m-%d"),
+        )
+        dataset = DatasetH(  # upstream, unmodified
+            handler=handler,
+            segments={
+                "train": (train_start.strftime("%Y-%m-%d"), train_end.strftime("%Y-%m-%d")),
+                "valid": (valid_start.strftime("%Y-%m-%d"), valid_end.strftime("%Y-%m-%d")),
+                "test": (test_start.strftime("%Y-%m-%d"), test_end.strftime("%Y-%m-%d")),
+            },
+        )
+
+        model = LGBModel(  # upstream, unmodified
+            loss="mse",
+            num_boost_round=NUM_BOOST_ROUND,
+            num_leaves=NUM_LEAVES,
+            early_stopping_rounds=EARLY_STOPPING_ROUNDS,
+        )
+        model.fit(dataset)
+        pred = model.predict(dataset, segment="test")
+        best_iteration = getattr(model.model, "best_iteration", None)
+        feature_cols = dataset.prepare("train", col_set="feature").columns.tolist()
+        _end_active_qlib_experiment()
+    finally:
+        os.chdir(orig_cwd)
+
+    result = {
+        "pred": pred,
+        "tickers_ok": tickers_ok,
+        "train_window": (train_start, train_end),
+        "valid_window": (valid_start, valid_end),
+        "test_window": (test_start, test_end),
+        "best_iteration": best_iteration,
+        "feature_cols": feature_cols,
+    }
+    _Q4_PIPELINE_CACHE[key] = result
+    return result
+
+
+def _run_qlib_topk_backtest(
+    pipeline_result: dict,
+    universe_tickers: Tuple[str, ...],
+    topk: int,
+    n_drop: int,
+) -> Dict[pd.Timestamp, dict]:
+    """
+    Real, unmodified upstream Q4 capability:
+      - `qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy` (real
+        concrete `BaseSignalStrategy` subclass — see module header
+        "Q4 wiring") fed the real per-day predicted-score `pd.Series` from
+        `_run_qlib_pipeline_window()` above (the same kind of Series Q3's
+        `model.predict()` produces, just spanning the whole test segment
+        instead of one day).
+      - Driven end-to-end by real, unmodified `qlib.backtest.
+        get_strategy_executor()` + `qlib.backtest.backtest.backtest_loop()`
+        (the exact same two calls upstream's own `qlib.backtest.backtest()`
+        top-level entry point makes internally — see qlib/backtest/__init__.py
+        `backtest()`), executed against a real `SimulatorExecutor` + real
+        `Exchange` + real `Account`, all real Qlib classes, no reimplementation.
+      - `benchmark=<first resolved universe ticker>`: upstream's own
+        `Account`/`PortfolioMetrics.init_bench()` unconditionally resolves
+        SOME benchmark price series whenever `generate_portfolio_metrics=
+        True` (required below to populate `hist_positions` at all — see
+        `is_port_metr_enabled()`/`update_bar_end()`) — even `benchmark=None`
+        falls through `benchmark_config.get("benchmark", CSI300_BENCH)` to
+        upstream's own CSI300 default (`SH000300`), which doesn't exist in
+        this adapter's small custom US binary provider and raises. Passing
+        one of the resolved universe tickers is an arbitrary, unused
+        placeholder satisfying that real constructor requirement — this
+        function never reads `portfolio_metrics` or the resulting benchmark
+        series (only `hist_positions`), so no benchmark-relative
+        return/Sharpe-shaped value is ever extracted or reported.
+
+    Returns ONLY `Account.hist_positions` (real per-day post-trade `Position`
+    snapshots) as plain dicts of {ticker/"CASH": weight}. Deliberately never
+    reads `trade_account.get_portfolio_metrics()` / the returned
+    `indicator_dict` — those carry real Sharpe/return/turnover-cost/drawdown-
+    shaped fields that CLAUDE.md scopes out of every adapter (Q5 is
+    permanently out of scope). `generate_portfolio_metrics=True` is required
+    for upstream's own `Account.update_bar_end()` to populate
+    `hist_positions` at all (see qlib/backtest/account.py
+    `is_port_metr_enabled()`/`update_bar_end()`) — enabling it as a real,
+    necessary side effect does not mean this function extracts or reports
+    what it computes.
+    """
+    from qlib.backtest import get_strategy_executor
+    from qlib.backtest.backtest import backtest_loop
+
+    pred: pd.Series = pipeline_result["pred"]
+    test_start, test_end = pipeline_result["test_window"]
+
+    strategy_config = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy.signal_strategy",
+        "kwargs": {"signal": pred, "topk": topk, "n_drop": n_drop, "risk_degree": Q4_RISK_DEGREE},
+    }
+    executor_config = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+
+    orig_cwd = os.getcwd()
+    os.chdir(WORK_DIR_Q4)
+    try:
+        trade_strategy, trade_executor = get_strategy_executor(  # upstream, unmodified
+            start_time=test_start,
+            end_time=test_end,
+            strategy=strategy_config,
+            executor=executor_config,
+            benchmark=universe_tickers[0],  # arbitrary, unused placeholder — see docstring above
+            account=Q4_INITIAL_CASH,
+            exchange_kwargs={
+                "freq": "day",
+                "start_time": test_start,
+                "end_time": test_end,
+                "codes": list(universe_tickers),
+                "deal_price": "close",
+                "open_cost": Q4_OPEN_COST,
+                "close_cost": Q4_CLOSE_COST,
+                "min_cost": Q4_MIN_COST,
+            },
+        )
+        backtest_loop(test_start, test_end, trade_strategy, trade_executor)  # upstream, unmodified
+        hist_positions = trade_executor.trade_account.get_hist_positions()  # real per-day Position snapshots
+    finally:
+        os.chdir(orig_cwd)
+
+    out: Dict[pd.Timestamp, dict] = {}
+    for ts, position in hist_positions.items():
+        weights = position.get_stock_weight_dict(only_stock=False)  # real Position.get_stock_weight_dict()
+        cash_weight = position.get_cash() / position.calculate_value() if position.calculate_value() else 0.0
+        weights = dict(weights)
+        weights["CASH"] = float(cash_weight)
+        out[pd.Timestamp(ts)] = weights
+    return out
+
+
 def _resolve_universe(ticker: str) -> Tuple[str, ...]:
     """Requested ticker + up to 7 companions from a fixed liquid large-cap
     pool — see header 'Universe'."""
@@ -526,7 +847,7 @@ def _resolve_universe(ticker: str) -> Tuple[str, ...]:
 
 class QlibAdapter(BaseAdapter):
     name = "qlib"
-    questions_answered = ["Q3"]
+    questions_answered = ["Q3", "Q4"]
     upstream_repo = "https://github.com/microsoft/qlib"
     requires_env = "qlib_real"
 
@@ -696,7 +1017,9 @@ class QlibAdapter(BaseAdapter):
             f"forward return, not a plain 1-day return."
         )
 
-        self._last_native_output = {
+        if not hasattr(self, "_last_native"):
+            self._last_native: Dict[str, dict] = {}
+        self._last_native["q3"] = {
             "upstream": {
                 "predicted_scores": values,
                 "feature_importance_top5": [{"factor": n, "importance": v} for n, v in top5],
@@ -728,11 +1051,261 @@ class QlibAdapter(BaseAdapter):
             explanation="\n".join(notes),
         )
 
+    # ------------------------------------------------------------------
+    # Q4 — Policy: real TopkDropoutStrategy + qlib.backtest walk-forward
+    # ------------------------------------------------------------------
+    def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
+        """
+        Real, unmodified upstream Q4 capability recovered from
+        `adapters/vendor/qlib/qlib/contrib/strategy/signal_strategy.py`'s
+        `TopkDropoutStrategy` (a real, concrete `BaseSignalStrategy`) fed the
+        real per-day Alpha158/LGBModel predicted-score `pd.Series` (the same
+        real mechanism `q3_signal()` uses, retrained here over the
+        harness-supplied `generation_window` via `_run_qlib_pipeline_window()`
+        instead of Q3's own `data_cutoff`-relative window), driven end-to-end
+        by real, unmodified `qlib.backtest.get_strategy_executor()` +
+        `qlib.backtest.backtest.backtest_loop()` — see
+        `_run_qlib_topk_backtest()` for the exact real calls and the
+        `WeightStrategyBase` vs `TopkDropoutStrategy` fit assessment.
+
+        `policy_type=FROZEN_LEARNED_POLICY`: the real LGBModel is fit exactly
+        once (frozen — never refit inside the walk-forward loop); what
+        varies day to day is `TopkDropoutStrategy`'s real Account/Position
+        state (cash, holdings) as it mechanically applies the SAME fixed
+        rule (topk/n_drop) to the SAME frozen prediction table across many
+        real, causal rebalance days — `update_policy.mode=STATE_UPDATE`
+        follows directly (not ROLLING_REFIT, since the model itself is never
+        retrained within this call).
+        """
+        t0 = time.time()
+
+        if context.targets:
+            raw_ticker = context.targets[0]
+        elif context.universe:
+            raw_ticker = context.universe[0]
+        else:
+            raise ValueError(
+                "qlib q4_policy requires QueryContext.targets or QueryContext.universe "
+                "with at least one ticker."
+            )
+
+        normalized = (raw_ticker or "").strip().upper()
+        universe = _resolve_universe(normalized)
+
+        was_fallback = False
+        try:
+            pipeline_result = _run_qlib_pipeline_window(universe, generation_window.start, generation_window.end)
+            resolved_ticker = normalized if normalized in pipeline_result["tickers_ok"] else None
+        except Exception:
+            resolved_ticker = None
+
+        if resolved_ticker is None:
+            was_fallback = True
+            fb_universe = _resolve_universe(FALLBACK_TICKER)
+            pipeline_result = _run_qlib_pipeline_window(fb_universe, generation_window.start, generation_window.end)
+            resolved_ticker = (
+                FALLBACK_TICKER if FALLBACK_TICKER in pipeline_result["tickers_ok"] else pipeline_result["tickers_ok"][0]
+            )
+
+        tickers_ok: List[str] = pipeline_result["tickers_ok"]
+        pred: pd.Series = pipeline_result["pred"]
+        if pred.empty:
+            raise RuntimeError(
+                f"Real Qlib/Alpha158/LGBModel produced no test-segment predictions for "
+                f"universe {tickers_ok} over generation_window "
+                f"[{generation_window.start}, {generation_window.end}] — cannot honestly "
+                f"populate Q4Policy.decisions without fabricating a placeholder."
+            )
+
+        topk = min(Q4_TOPK, len(tickers_ok))
+        n_drop = min(Q4_N_DROP, max(0, topk - 1))
+
+        hist_positions = _run_qlib_topk_backtest(pipeline_result, tuple(tickers_ok), topk, n_drop)
+
+        # Real, causal `information_cutoff` per decision day: TopkDropoutStrategy's
+        # own `generate_trade_decision()` fetches the signal at `shift=1` (the
+        # PREVIOUS trading step's date) — see signal_strategy.py, confirmed by
+        # reading the code, not assumed. Reconstructed here from the real sorted
+        # dates the frozen `pred` Series actually carries (the same dates
+        # `Signal.get_signal()` resolves against internally).
+        pred_dates = sorted(pred.index.get_level_values("datetime").unique())
+
+        decisions: List[PolicyDecisionStep] = []
+        for ts in sorted(hist_positions.keys()):
+            if ts not in pred_dates:
+                continue
+            idx = pred_dates.index(ts)
+            if idx == 0:
+                # First real backtest day has no prior-day signal available
+                # (TopkDropoutStrategy's own get_signal(shift=1) returns None
+                # for it) — upstream's own real code produces an empty
+                # TradeDecisionWO that day, not a fabricated cutoff.
+                continue
+            info_cutoff = pred_dates[idx - 1]
+            weights = hist_positions[ts]
+            decisions.append(PolicyDecisionStep(
+                timestamp=ts.strftime("%Y-%m-%d"),
+                information_cutoff=info_cutoff.strftime("%Y-%m-%d"),
+                selected_universe=list(tickers_ok),
+                target_weights={k: float(v) for k, v in weights.items()},
+                explanation=(
+                    f"Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy."
+                    f"generate_trade_decision() rebalance using the real LGBModel "
+                    f"predicted score as of {info_cutoff.strftime('%Y-%m-%d')} "
+                    f"(topk={topk}, n_drop={n_drop}); target_weights are the real "
+                    f"post-trade Account.Position.get_stock_weight_dict(only_stock=False) "
+                    f"snapshot for {ts.strftime('%Y-%m-%d')}."
+                ),
+            ))
+
+        if not decisions:
+            raise RuntimeError(
+                f"No real causal TopkDropoutStrategy decision could be formed over "
+                f"generation_window [{generation_window.start}, {generation_window.end}] "
+                f"(test segment too narrow) — cannot honestly populate Q4Policy.decisions "
+                f"without fabricating a placeholder; widen generation_window."
+            )
+
+        was_fallback_note = (
+            f"Requested ticker '{raw_ticker}' had no usable real yfinance history over "
+            f"generation_window [{generation_window.start}, {generation_window.end}]; "
+            f"reporting the real qlib Q4 policy for fallback ticker '{resolved_ticker}' "
+            f"instead (see module header, 'Universe')."
+            if was_fallback else None
+        )
+
+        train_start, train_end = pipeline_result["train_window"]
+        valid_start, valid_end = pipeline_result["valid_window"]
+        test_start, test_end = pipeline_result["test_window"]
+
+        universe_policy = UniversePolicy(
+            mode="fixed",
+            fixed_assets=list(tickers_ok),
+            selector_description=(
+                "Requested ticker + up to 7 fixed liquid large-cap US companions "
+                "(same COMPANION_POOL/_resolve_universe() fixed-pool resolution as "
+                "q3_signal()) — TopkDropoutStrategy performs no asset-universe "
+                "selection of its own; it only ranks/selects WITHIN this fixed "
+                "universe via its real topk/n_drop rule."
+            ),
+        )
+
+        observation_policy = ObservationPolicy(
+            lookback_window=f"train=[{train_start.date()},{train_end.date()}]",
+            features=pipeline_result.get("feature_cols") if isinstance(pipeline_result.get("feature_cols"), list) else None,
+            data_sources=["real yfinance OHLCV via upstream scripts/dump_bin.py::DumpDataAll into a real Qlib binary provider"],
+            observation_description=(
+                f"Real Alpha158 158-factor set (same feature library q3_signal() uses), "
+                f"real LGBModel fit once on train=[{train_start.date()},{train_end.date()}], "
+                f"validated on [{valid_start.date()},{valid_end.date()}]; "
+                f"TopkDropoutStrategy.generate_trade_decision() observes the frozen "
+                f"per-day predicted score at each rebalance via real "
+                f"Signal.get_signal(shift=1) (previous trading day's score only — "
+                f"causal by construction, verified by reading "
+                f"qlib/contrib/strategy/signal_strategy.py)."
+            ),
+        )
+
+        decision_policy = DecisionPolicy(
+            decision_rule=(
+                f"qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy."
+                f"generate_trade_decision(): at each real rebalance day, hold the "
+                f"top {topk} tickers by real LGBModel-predicted score "
+                f"(method_buy='top'), replacing at most n_drop={n_drop} position(s) "
+                f"per day (method_sell='bottom'), executed through real "
+                f"qlib.backtest.get_strategy_executor()+backtest_loop() "
+                f"(SimulatorExecutor + Exchange + Account, all real upstream classes)."
+            ),
+            output_semantics=(
+                "target_weights: per-ticker fraction of total real Account value "
+                "(stock+cash), from real Position.get_stock_weight_dict(only_stock=False) "
+                "after that day's real order execution; 'CASH' key is the real residual "
+                "cash fraction (Position.get_cash()/calculate_value())."
+            ),
+            rebalance_frequency="DAILY",
+            holding_horizon=f"hold_thresh=1 trading day minimum (real TopkDropoutStrategy default)",
+        )
+
+        update_policy = UpdatePolicy(
+            mode=UpdateMode.STATE_UPDATE,
+            update_frequency="per rebalance day (real Account/Position state only)",
+            update_description=(
+                "The real LGBModel is fit exactly once (frozen — never refit inside "
+                "this walk-forward loop); only TopkDropoutStrategy's real Account/"
+                "Position state (cash, holdings, hold-count) evolves day to day as "
+                "real buy/sell orders execute via qlib.backtest.backtest_loop()."
+            ),
+        )
+
+        constraints = PortfolioConstraints(
+            long_only=True,   # verified: TopkDropoutStrategy only ever issues Order.BUY/Order.SELL
+                              # against non-negative Position amounts — no short-sale path exists
+                              # in signal_strategy.py's generate_trade_decision().
+            cash_allowed=True,
+            additional_constraints=[
+                f"topk={topk} concentrated long positions, at most n_drop={n_drop} "
+                f"position(s) replaced per rebalance day (real code constraint — "
+                f"qlib/contrib/strategy/signal_strategy.py::TopkDropoutStrategy."
+                f"generate_trade_decision()).",
+                f"risk_degree={Q4_RISK_DEGREE}: at most {Q4_RISK_DEGREE*100:.0f}% of "
+                f"account value invested at each buy step (real "
+                f"BaseSignalStrategy.get_risk_degree() default); remainder held as cash.",
+            ],
+        )
+
+        explanation = (
+            f"Real qlib TopkDropoutStrategy (topk={topk}, n_drop={n_drop}) over "
+            f"{len(tickers_ok)} real tickers ({', '.join(tickers_ok)}), driven by "
+            f"qlib.backtest.get_strategy_executor()+backtest_loop() across "
+            f"{len(decisions)} real causal rebalance day(s) in test segment "
+            f"[{test_start.date()},{test_end.date()}], fed by a real LGBModel fit "
+            f"once on train=[{train_start.date()},{train_end.date()}] "
+            f"(generation_window=[{generation_window.start},{generation_window.end}])."
+            + (f" {was_fallback_note}" if was_fallback_note else "")
+        )
+
+        result = Q4Policy(
+            context=context,
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            universe_policy=universe_policy,
+            observation_policy=observation_policy,
+            decision_policy=decision_policy,
+            update_policy=update_policy,
+            constraints=constraints,
+            initial_weights=None,
+            artifact=None,
+            decisions=decisions,
+            explanation=explanation,
+        )
+
+        if not hasattr(self, "_last_native"):
+            self._last_native: Dict[str, dict] = {}
+        self._last_native["q4"] = {
+            "upstream": {
+                "hist_position_weights": {ts.strftime("%Y-%m-%d"): w for ts, w in hist_positions.items()},
+                "train_window": [train_start.strftime("%Y-%m-%d"), train_end.strftime("%Y-%m-%d")],
+                "valid_window": [valid_start.strftime("%Y-%m-%d"), valid_end.strftime("%Y-%m-%d")],
+                "test_window": [test_start.strftime("%Y-%m-%d"), test_end.strftime("%Y-%m-%d")],
+                "best_iteration": pipeline_result["best_iteration"],
+                "tickers_ok": tickers_ok,
+                "topk": topk,
+                "n_drop": n_drop,
+            },
+            "adapter_derived": {
+                "requested_ticker": raw_ticker,
+                "resolved_ticker": resolved_ticker,
+                "was_fallback": was_fallback,
+                "num_decisions": len(decisions),
+            },
+        }
+        return result
+
     def run(
         self,
         task_id: str,
         context: QueryContext,
-        generation_window=None,
+        generation_window: Optional[TimeWindow] = None,
         native_output: Optional[dict] = None,
         adapter_notes: Optional[str] = None,
         field_mappings=None,
@@ -740,17 +1313,21 @@ class QlibAdapter(BaseAdapter):
     ):
         """Delegates to BaseAdapter.run() for the real context/generation_window
         checks and RunMetadata construction — only attaches a faithful
-        native_output captured as a side effect of the real q3_signal() call
-        BaseAdapter.run() makes internally (same pattern used by this
-        session's other migrated Q3 adapters, e.g. alphagen/rdagent)."""
-        self._last_native_output = None
+        native_output captured as a side effect of the real q3_signal()/
+        q4_policy() calls BaseAdapter.run() makes internally (same
+        per-question-keyed `_last_native` merge pattern as finrl_x_adapter.py,
+        since a single `run()` call with `generation_window` supplied invokes
+        BOTH q3_signal() and q4_policy(), and a flat single-dict attribute
+        would let whichever ran second silently clobber the other's
+        native_output)."""
+        self._last_native: Dict[str, dict] = {}
         result = super().run(
             task_id=task_id, context=context, generation_window=generation_window,
             native_output=native_output, adapter_notes=adapter_notes, field_mappings=field_mappings,
             **kwargs,
         )
-        if native_output is None and self._last_native_output:
-            result = result.model_copy(update={"native_output": self._last_native_output})
+        if native_output is None and self._last_native:
+            result = result.model_copy(update={"native_output": self._last_native})
         return result
 
     def smoke_test(self):
@@ -769,4 +1346,19 @@ class QlibAdapter(BaseAdapter):
             checks["strength_in_range"] = result.strength is None or 0.0 <= result.strength <= 1.0
             checks["values_nonempty"] = len(result.values) > 0
             checks["context_echoed"] = result.context == context
+
+        generation_window = TimeWindow(start="2023-06-01", end="2024-01-15")
+        q4 = self.q4_policy(context, generation_window)
+        checks["q4_returns_Q4Policy"] = q4 is not None
+        if q4 is not None:
+            checks["q4_context_echoed"] = q4.context == context
+            checks["q4_generation_window_echoed"] = q4.generation_window == generation_window
+            checks["q4_decisions_nonempty"] = bool(q4.decisions)
+            if q4.decisions:
+                all_weights = [w for step in q4.decisions for w in (step.target_weights or {}).values()]
+                checks["q4_weights_nonnegative"] = all(v >= -1e-6 for v in all_weights)
+                checks["q4_causal_information_cutoff"] = all(
+                    step.information_cutoff <= step.timestamp for step in q4.decisions
+                )
+            checks["q4_policy_type_is_frozen_learned_policy"] = q4.policy_type == "FROZEN_LEARNED_POLICY"
         return checks
