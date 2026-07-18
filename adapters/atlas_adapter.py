@@ -236,6 +236,66 @@ not upstream)
   - **`signal_type`**: `FACTOR` (CONTRACT's designation for a discovered
     quantitative factor signal — matches the target description's "alpha
     factors" framing exactly).
+
+============================================================================
+v1 -> v2.0.0 schema migration notes (added during migration; the mechanism/
+verification narrative above is from the original v1 build and is still
+accurate — only the canonical field mapping below changed)
+============================================================================
+  - `SignalType` no longer exists in v2 at all; deleted. `signal_semantics`
+    (free text) replaces it, describing the real `gp.generate_factor()`
+    output as a continuous, unitless compiled-formula-tree score.
+  - **`values: Dict[ticker, float]` (new, required)**: the real full
+    cross-sectional snapshot from `gp.generate_factor(best_ind)` on the
+    requested date (`factor_series.xs(asof_str, level="date").dropna()`),
+    i.e. every real crypto-perpetual token's real factor value that day —
+    upstream's own unmodified per-token output, NATIVE. Previously only the
+    single resolved token's value was surfaced; the rest of this same real
+    cross-section (up to ~236 tokens) was computed and then discarded.
+  - `direction`/`strength` unchanged in derivation (same real percentile
+    rank against the same real cross-section, matching upstream's own
+    top/bottom-20% `hedge_return_std_cal` convention) but now computed
+    directly from the new `values` dict and are `Optional` per v2.
+  - `factor_expression` (new): `str(best_ind)`, the real DEAP formula-tree
+    string for the best (highest train-fitness) accepted individual — a
+    single top-level slot (v2 has no list), so the two runner-up formulas
+    that were previously appended to `supporting_evidence` stay as
+    `evidence` items (kind="factor_expression") rather than being folded
+    into this field.
+  - `supporting_evidence: List[str]` -> `evidence: Optional[List[EvidenceItem]]`:
+    typed as `kind="universe_fallback"` (ticker/token-universe mismatch
+    disclosure), `kind="cross_sectional_rank"` (the percentile-rank fact),
+    `kind="factor_expression"` (each runner-up formula), and
+    `kind="expected_return_diagnostic"` (the real `Hedge_Return` metric —
+    see next bullet).
+  - `expected_return: float` (v1) has no home in v2's
+    `Q3Signal.expected_returns: Optional[Dict[str, float]]`: the real
+    `evaluate_func.evaluate(..., ["Hedge_Return"])` value is a
+    **universe/test-window-level** statistic (top-20%-vs-bottom-20% average
+    forward return across the whole scoped test window), not a per-token
+    expected return — populating a per-token dict with one shared aggregate
+    number would misrepresent it as token-specific. Left out of
+    `expected_returns` (stays `None`), disclosed instead as an `evidence`
+    item.
+  - `expected_horizon` (v1 top-level field) no longer exists in v2's
+    `Q3Signal` — the "1d" cadence inference is disclosed in
+    `signal_semantics`/`explanation` text instead of a dedicated field.
+  - `explanation` (new): the same real, concrete percentile-rank fact
+    string previously appended to `supporting_evidence` — not a fabricated
+    template.
+  - `confidence`: left `None` — no native or reliably-derivable confidence
+    distinct from `strength` exists for this GP search.
+  - `q3_signal(ticker, date)` -> `q3_signal(context: QueryContext)`: ticker
+    now read from `context.targets[0]` (fed into the same
+    `_resolve_token()` mapping onto the real bundled crypto-token universe),
+    date from `context.data_cutoff`. `context` is echoed back unchanged into
+    `Q3Signal(context=context, ...)` per the v2 contract.
+  - `run()` is now overridden solely to attach a faithful `native_output`
+    (the real best/runner-up formula strings, real train fitness values,
+    the real factor snapshot, the real `Hedge_Return` metric, plus
+    adapter-derived token-resolution diagnostics under a separate
+    `adapter_derived` key) and the real wall-clock `latency_sec` — no
+    business logic changed.
 """
 
 from __future__ import annotations
@@ -243,12 +303,12 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Direction, Q3Signal, SignalType
+from CONTRACT.schemas import Direction, EvidenceItem, OutputScope, Q3Signal, QueryContext
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "atlas-alpha-mining"
 if str(VENDOR_DIR) not in sys.path:
@@ -358,10 +418,13 @@ class AtlasAdapter(BaseAdapter):
     upstream_repo = "https://github.com/Yitong-Guo/Genetic-Algorithm-for-quantitative-alpha-factors-mining"
     requires_env = "atlas_real"
 
-    def q3_signal(self, ticker: str, date: str, **kwargs) -> Optional[Q3Signal]:
+    def q3_signal(self, context: QueryContext, **kwargs) -> Optional[Q3Signal]:
         t0 = time.time()
 
         from evaluate_func import evaluate  # upstream, unmodified
+
+        requested_ticker = (context.targets[0] if context.targets else FALLBACK_TOKEN) or FALLBACK_TOKEN
+        date = context.data_cutoff or context.as_of
 
         gp, accepted, asof = _run_ga(date)
         asof_str = asof.strftime("%Y-%m-%d")
@@ -373,27 +436,37 @@ class AtlasAdapter(BaseAdapter):
         snap = factor_series.xs(asof_str, level="date").dropna()
         universe = set(snap.index)
 
-        token, exact_match = _resolve_token(ticker, universe)
+        token, exact_match = _resolve_token(requested_ticker, universe)
 
-        notes: List[str] = []
+        # `values`: the real full cross-sectional snapshot for the requested
+        # date — upstream's own unmodified per-token output, NATIVE.
+        values: Dict[str, float] = {t: float(v) for t, v in snap.items()}
+
+        evidence: List[EvidenceItem] = []
         if not exact_match:
-            notes.append(
-                f"Requested ticker '{ticker}' is not one of the real "
-                f"tokens in this project's own bundled crypto-perpetuals "
-                f"panel; reporting the real evolved factor's signal for "
-                f"'{FALLBACK_TOKEN}' instead (see adapters/atlas_adapter.py "
-                f"header, 'Ticker-universe mismatch')."
-            )
+            evidence.append(EvidenceItem(
+                kind="universe_fallback",
+                value=(
+                    f"Requested ticker '{requested_ticker}' is not one of the real "
+                    f"tokens in this project's own bundled crypto-perpetuals "
+                    f"panel; reporting the real evolved factor's signal for "
+                    f"'{FALLBACK_TOKEN}' instead (see adapters/atlas_adapter.py "
+                    f"header, 'Ticker-universe mismatch')."
+                ),
+                source="adapter (token universe membership check)",
+            ))
         token = token if token in universe else FALLBACK_TOKEN
-        if token not in universe:
+
+        if token not in values:
             # Even the fallback has no value for this exact date (thin
-            # cross-section day) — fall back further to the whole snapshot.
+            # cross-section day).
             direction = Direction.NEUTRAL
             strength = 0.0
-            notes.append(
+            explanation = (
                 f"No valid (non-NaN) cross-sectional factor value for "
-                f"'{token}' on {asof_str} in this run — reporting NEUTRAL."
+                f"'{token}' on {asof_str} in this run — reporting NEUTRAL/0 strength."
             )
+            evidence.append(EvidenceItem(kind="missing_value", value=explanation, source="adapter"))
         else:
             n = len(snap)
             rank_position = int(snap.rank(ascending=False, method="min")[token])
@@ -402,43 +475,123 @@ class AtlasAdapter(BaseAdapter):
             is_bottom = pct <= TOP_PCT
             direction = Direction.LONG if is_top else Direction.SHORT if is_bottom else Direction.NEUTRAL
             strength = max(0.0, min(1.0, abs(pct - 0.5) * 2))
-            notes.append(
-                f"'{token}' real factor value {snap[token]:.4f} ranks "
+            explanation = (
+                f"'{token}' real evolved-factor value {snap[token]:.4f} ranks "
                 f"{rank_position}/{n} ({pct:.0%} percentile) on {asof_str} "
-                f"for formula '{str(best_ind)}' "
-                f"(train fitness={best_ind.fitness.values[0]:.4f})."
+                f"for formula '{str(best_ind)}' (train fitness="
+                f"{best_ind.fitness.values[0]:.4f}). direction/strength are this "
+                f"adapter's percentile-rank translation, matching upstream's own "
+                f"top/bottom-20% hedge_return_std_cal convention, not an "
+                f"upstream-native label."
             )
+            evidence.append(EvidenceItem(
+                kind="cross_sectional_rank",
+                value=explanation,
+                source="adapter_derived (percentile rank over gp.generate_factor output)",
+            ))
+
+        for ind in ranked[1:3]:
+            evidence.append(EvidenceItem(
+                kind="factor_expression",
+                value=f"Also accepted: '{str(ind)}' (train fitness={ind.fitness.values[0]:.4f})",
+                source="atlas GPProcess accepted individuals (Hall of Fame / NSGA-II Pareto front)",
+            ))
 
         # Real upstream metric, unmodified, on the full scoped test window.
         new_factor = gp.toolbox_multi.compile_test(expr=best_ind)
-        hedge_return = evaluate(new_factor, gp.returns_test.clone(), ["Hedge_Return"])[0]
+        hedge_return = float(evaluate(new_factor, gp.returns_test.clone(), ["Hedge_Return"])[0])
+        evidence.append(EvidenceItem(
+            kind="expected_return_diagnostic",
+            value=(
+                f"Real upstream Hedge_Return metric (top-20%-vs-bottom-20% average "
+                f"forward return) for the best factor over the full scoped test "
+                f"window: {hedge_return:.4f}. Universe-level statistic, not a "
+                f"per-token expected return, so not populated into `expected_returns`."
+            ),
+            source="atlas evaluate_func.evaluate() (upstream, unmodified)",
+        ))
 
-        for ind in ranked[1:3]:
-            notes.append(f"Also accepted: '{str(ind)}' (train fitness={ind.fitness.values[0]:.4f})")
+        if not values:
+            values = {token: 0.0}
+
+        self._last_native_output = {
+            "upstream": {
+                "best_formula": str(best_ind),
+                "best_train_fitness": float(best_ind.fitness.values[0]),
+                "runner_up_formulas": [str(ind) for ind in ranked[1:3]],
+                "asof": asof_str,
+                "factor_snapshot": values,
+                "hedge_return": hedge_return,
+            },
+            "adapter_derived": {
+                "requested_ticker": requested_ticker,
+                "resolved_token": token,
+                "was_fallback": not exact_match,
+            },
+        }
+        self._last_latency_sec = time.time() - t0
 
         return Q3Signal(
-            signal_type=SignalType.FACTOR,
+            context=context,
+            signal_semantics=(
+                "factor_value — real GP-evolved formula tree's cross-sectional output "
+                "value (atlas GPProcess.generate_factor), a continuous factor score, "
+                "not a return prediction or probability."
+            ),
+            values=values,
+            score_scale="continuous, unitless (compiled DEAP formula-tree output over technical/statistical columns)",
             direction=direction,
             strength=strength,
-            supporting_evidence=notes,
-            expected_horizon="1d",
-            expected_return=float(hedge_return),
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+            factor_expression=str(best_ind),
+            evidence=evidence or None,
+            explanation=explanation,
         )
+
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window=None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ):
+        """Delegates to BaseAdapter.run() for the real context/generation_window
+        checks and RunMetadata construction — only attaches a faithful
+        native_output (and real wall-clock latency) captured as a side effect
+        of the real q3_signal() call BaseAdapter.run() makes internally."""
+        self._last_native_output = None
+        self._last_latency_sec = 0.0
+        result = super().run(
+            task_id=task_id, context=context, generation_window=generation_window,
+            native_output=native_output, adapter_notes=adapter_notes, field_mappings=field_mappings,
+            **kwargs,
+        )
+        updates = {}
+        if native_output is None and self._last_native_output:
+            updates["native_output"] = self._last_native_output
+        if self._last_latency_sec:
+            updates["run"] = result.run.model_copy(update={"latency_sec": self._last_latency_sec})
+        if updates:
+            result = result.model_copy(update=updates)
+        return result
 
     def smoke_test(self):
         checks = super().smoke_test()
-        result = self.q3_signal(FALLBACK_TOKEN, "2024-01-15")
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.CROSS_SECTION,
+            targets=[FALLBACK_TOKEN],
+        )
+        result = self.q3_signal(context)
         checks["q3_returns_Q3Signal"] = result is not None
         if result is not None:
-            checks["signal_type_is_valid"] = result.signal_type in (
-                "MOMENTUM", "REVERSAL", "BREAKOUT", "ANOMALY", "FACTOR",
-            )
-            checks["direction_is_valid"] = result.direction in ("LONG", "SHORT", "NEUTRAL")
-            checks["strength_in_range"] = 0.0 <= result.strength <= 1.0
-            checks["supporting_evidence_nonempty"] = len(result.supporting_evidence) > 0
+            checks["context_echoed_unchanged"] = result.context == context
+            checks["values_nonempty"] = len(result.values) > 0
+            checks["direction_is_valid"] = result.direction in ("LONG", "SHORT", "NEUTRAL", None)
+            checks["strength_in_range"] = result.strength is None or 0.0 <= result.strength <= 1.0
+            checks["evidence_nonempty"] = bool(result.evidence)
+            checks["factor_expression_set"] = bool(result.factor_expression)
         return checks

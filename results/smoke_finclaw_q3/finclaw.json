@@ -1,0 +1,72 @@
+{
+  "task_id": "smoke_finclaw_q3",
+  "run": {
+    "adapter": "finclaw",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": null,
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "ranking_score",
+    "values": {
+      "AAPL": 5.563426204987464
+    },
+    "score_scale": "[0, 10] (upstream score_stock() composite entry score)",
+    "direction": "NEUTRAL",
+    "strength": 0.11268524099749282,
+    "expected_returns": null,
+    "factor_expression": null,
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "score",
+        "value": "score_stock()=5.56/10 for 'AAPL' as of last point-in-time trading day on/before 2024-01-15",
+        "source": "finclaw.evolution.auto_evolve.score_stock() (upstream, unmodified)",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_mean_reversion = 0.1229",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_roc = 0.1097",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_cci = 0.0922",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      }
+    ],
+    "explanation": "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code — NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...'). Backtest/walk-forward performance metrics for this genome (annual_return/sharpe/win_rate) are deliberately not surfaced here — see code comment on the Q5 exclusion rule."
+  },
+  "q4": null,
+  "native_output": {},
+  "field_mappings": null,
+  "adapter_notes": null
+}

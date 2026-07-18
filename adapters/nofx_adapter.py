@@ -220,7 +220,15 @@ from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Q2Sentiment, RiskLevel
+from CONTRACT.schemas import (
+    ConfidenceEstimate,
+    ConfidenceKind,
+    EvidenceItem,
+    OutputScope,
+    Q2State,
+    QueryContext,
+    StateEstimate,
+)
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "QuantMuse"
 import sys  # noqa: E402
@@ -341,8 +349,13 @@ class NofxAdapter(BaseAdapter):
     upstream_repo = "https://github.com/0xemmkty/QuantMuse"
     requires_env = "nofx_real"
 
-    def q2_sentiment(self, ticker: str, date: str, **kwargs) -> Optional[Q2Sentiment]:
+    def q2_state(self, context: QueryContext, **kwargs) -> Optional[Q2State]:
         t0 = time.time()
+
+        if not context.targets:
+            raise ValueError("nofx q2_state requires context.targets[0] (single-asset only).")
+        ticker = context.targets[0]
+        date = context.data_cutoff or context.as_of
 
         from data_service.ai.llm_integration import LLMIntegration
         from data_service.ai.sentiment_analyzer import SentimentAnalyzer
@@ -409,62 +422,133 @@ class NofxAdapter(BaseAdapter):
         overall_risk = str(fusion.get("overall_risk", "")).strip().lower()
         risk_factors = fusion.get("risk_factors") or []
 
+        # Open-vocabulary risk category (v2 has no closed RiskLevel enum —
+        # "EXTREME" here is the same adapter-authored disagreement-escalation
+        # rule as v1, just no longer forced into a fixed 4-value enum).
         if overall_risk == "high" and (
             abs(sentiment_score) >= 0.6 or sentiment_volatility >= 0.6
         ):
-            risk = RiskLevel.EXTREME
+            risk_category = "EXTREME"
         elif overall_risk == "high":
-            risk = RiskLevel.HIGH
+            risk_category = "HIGH"
         elif overall_risk == "medium":
-            risk = RiskLevel.MEDIUM
+            risk_category = "MEDIUM"
         elif overall_risk == "low":
-            risk = RiskLevel.LOW
+            risk_category = "LOW"
         else:
-            risk = RiskLevel.MEDIUM  # unparseable fusion response — defensive default
+            risk_category = "MEDIUM"  # unparseable fusion response — defensive default
 
-        drivers: List[str] = []
-        for sd in scored:
-            label = (
-                "positive" if sd.sentiment_score > 0.15
-                else "negative" if sd.sentiment_score < -0.15
-                else "neutral"
+        sentiment_evidence = [
+            EvidenceItem(
+                kind="news",
+                value=(
+                    f"{sd.text} ("
+                    + ("positive" if sd.sentiment_score > 0.15 else "negative" if sd.sentiment_score < -0.15 else "neutral")
+                    + f", score={sd.sentiment_score:.2f})"
+                ),
+                source="Yahoo Finance news (yfinance) + QuantMuse SentimentAnalyzer per-headline LLM sentiment",
             )
-            drivers.append(f"{sd.text} ({label}, score={sd.sentiment_score:.2f})")
-        for rf in risk_factors[:3]:
-            drivers.append(f"Fusion risk factor: {rf}")
-        if not drivers:
-            drivers = ["No drivers available — degraded fallback."]
+            for sd in scored
+        ]
 
-        return Q2Sentiment(
-            sentiment_score=sentiment_score,
-            risk_level=risk,
-            drivers=drivers,
-            sources=[
-                "Yahoo Finance news + price history (yfinance)",
-                "QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
-                f"DeepSeek ({DEEPSEEK_MODEL}) via QuantMuse SentimentAnalyzer "
-                "(per-headline LLM sentiment) + LLMIntegration.assess_risk "
-                "(LLM fusion of quant + sentiment -> risk verdict)",
-            ],
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+        risk_evidence = [
+            EvidenceItem(kind="model_output", value=f"Fusion risk factor: {rf}", source="QuantMuse LLMIntegration.assess_risk()")
+            for rf in risk_factors[:3]
+        ]
+        if technical_factors:
+            risk_evidence.append(
+                EvidenceItem(
+                    kind="technical_indicator",
+                    value=", ".join(f"{k}={v:.3f}" for k, v in list(technical_factors.items())[:5]),
+                    source="QuantMuse FactorCalculator (real RSI/MACD/Bollinger/momentum technical factors)",
+                )
+            )
+
+        states = [
+            StateEstimate(
+                dimension="sentiment",
+                value_numeric=sentiment_score,
+                scale="[-1,1]",
+                confidence=ConfidenceEstimate(
+                    value=max(0.0, min(1.0, 1.0 - sentiment_volatility)),
+                    kind=ConfidenceKind.HEURISTIC,
+                    raw_value=sentiment_volatility,
+                    method="1 - sentiment_volatility (adapter heuristic, not an upstream-native confidence)",
+                ),
+                evidence=sentiment_evidence or None,
+            ),
+            StateEstimate(
+                dimension="risk",
+                value_category=risk_category,
+                evidence=risk_evidence or None,
+            ),
+        ]
+
+        result = Q2State(context=context, states=states)
+
+        self._last_native_output = {
+            "upstream": {
+                "sentiment_metrics": sentiment_metrics,
+                "technical_factors": technical_factors,
+                "fusion_overall_risk": overall_risk,
+                "fusion_risk_factors": risk_factors,
+                "fusion_raw_content": insight.content,
+            },
+            "adapter_derived": {"ticker": ticker, "date": date, "risk_category": risk_category},
+        }
+        self._last_latency_sec = time.time() - t0
+        return result
+
+    # ------------------------------------------------------------------
+    # run() override — attach faithful native_output, same pattern as this
+    # session's other migrated adapters.
+    # ------------------------------------------------------------------
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window=None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ):
+        self._last_native_output = None
+        self._last_latency_sec = 0.0
+        result = super().run(
+            task_id=task_id, context=context, generation_window=generation_window,
+            native_output=native_output, adapter_notes=adapter_notes, field_mappings=field_mappings,
+            **kwargs,
         )
+        updates = {}
+        if native_output is None and self._last_native_output:
+            updates["native_output"] = self._last_native_output
+        if self._last_latency_sec:
+            updates["run"] = result.run.model_copy(update={"latency_sec": self._last_latency_sec})
+        if updates:
+            result = result.model_copy(update=updates)
+        return result
 
     def smoke_test(self):
         checks = super().smoke_test()
-        result = self.q2_sentiment("AAPL", "2024-01-15")
-        checks["q2_returns_Q2Sentiment"] = result is not None
-        checks["sentiment_score_in_range"] = (
-            result is not None and -1.0 <= result.sentiment_score <= 1.0
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.ASSET,
+            targets=["AAPL"],
+            universe=["AAPL"],
         )
-        checks["risk_level_is_valid"] = result is not None and result.risk_level in (
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "EXTREME",
-        )
-        checks["drivers_non_empty"] = result is not None and len(result.drivers) > 0
+        result = self.q2_state(context)
+        checks["q2_returns_Q2State"] = result is not None
+        if result is not None:
+            checks["q2_context_echoed"] = result.context == context
+            checks["q2_states_nonempty"] = len(result.states) >= 1
+            sentiment_states = [s for s in result.states if s.dimension == "sentiment"]
+            checks["sentiment_state_present"] = len(sentiment_states) == 1
+            if sentiment_states:
+                checks["sentiment_score_in_range"] = -1.0 <= sentiment_states[0].value_numeric <= 1.0
+            risk_states = [s for s in result.states if s.dimension == "risk"]
+            checks["risk_state_present"] = len(risk_states) == 1
+            if risk_states:
+                checks["risk_category_is_valid"] = risk_states[0].value_category in ("LOW", "MEDIUM", "HIGH", "EXTREME")
         return checks

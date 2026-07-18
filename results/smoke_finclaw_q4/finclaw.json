@@ -1,0 +1,103 @@
+{
+  "task_id": "smoke_finclaw_q4",
+  "run": {
+    "adapter": "finclaw",
+    "adapter_version": "0.1.0",
+    "schema_version": "2.0.0",
+    "run_id": null,
+    "upstream_project": null,
+    "upstream_version": null,
+    "upstream_commit": null,
+    "model_name": null,
+    "config_hash": null,
+    "cost_usd": 0.0,
+    "latency_sec": 0.0
+  },
+  "q1": null,
+  "q2": null,
+  "q3": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": null,
+      "universe_id": null,
+      "horizon": null
+    },
+    "signal_semantics": "ranking_score",
+    "values": {
+      "AAPL": 5.325289969205743
+    },
+    "score_scale": "[0, 10] (upstream score_stock() composite entry score)",
+    "direction": "NEUTRAL",
+    "strength": 0.06505799384114859,
+    "expected_returns": null,
+    "factor_expression": null,
+    "confidence": null,
+    "evidence": [
+      {
+        "kind": "score",
+        "value": "score_stock()=5.33/10 for 'AAPL' as of last point-in-time trading day on/before 2024-01-15",
+        "source": "finclaw.evolution.auto_evolve.score_stock() (upstream, unmodified)",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_r_squared = 0.2374",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_cci = 0.0753",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      },
+      {
+        "kind": "factor",
+        "value": "w_profit_qoq = 0.0693",
+        "source": "evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+        "reference": null
+      }
+    ],
+    "explanation": "Evolved over 41 real factor weights (technical + fundamental) in a 74-field DNA genome, per upstream's own code — NOT the 484 figure in upstream's marketing README, which does not match the actual executed engine (see adapter header, 'the marketed 484 factors figure...'). Backtest/walk-forward performance metrics for this genome (annual_return/sharpe/win_rate) are deliberately not surfaced here — see code comment on the Q5 exclusion rule."
+  },
+  "q4": {
+    "context": {
+      "as_of": "2024-01-15",
+      "data_cutoff": "2024-01-15",
+      "scope": "ASSET",
+      "targets": [
+        "AAPL"
+      ],
+      "universe": null,
+      "universe_id": null,
+      "horizon": null
+    },
+    "policy_type": "FROZEN_LEARNED_POLICY",
+    "generation_window": {
+      "start": "2023-01-01",
+      "end": "2023-12-31"
+    },
+    "universe_policy": null,
+    "observation_policy": null,
+    "decision_policy": null,
+    "update_policy": null,
+    "constraints": null,
+    "initial_weights": null,
+    "artifact": {
+      "artifact_type": "serialized_policy",
+      "reference": "{\"bear_hold_days_mult\": 1.0, \"bear_min_score_add\": 0.09696070223433728, \"bear_stop_loss_mult\": 0.9139066173334677, \"bear_take_profit_mult\": 0.9968125162039394, \"capital_utilization\": 0.7509180958332565, \"consecutive_pattern\": 0.0, \"dip_threshold_pct\": 9.136272649441668, \"factor_momentum\": 0.21420668625509748, \"gap_momentum\": 0.0062, \"hold_days\": 2, \"kelly_fraction\": 0.0, \"market_regime_sensitivity\": 0.0, \"max_positions\": 3, \"min_breadth_to_trade\": 0.0, \"min_score\": 4, \"position_sizing_power\": 0.366838493109362, \"price_efficiency\": 0.0385, \"profit_target_scaling\": 0.0, \"r2_min\": 0.5027186408489693, \"r2_trend_min\": 0.6630033425720099, \"range_contraction\": 0.0, \"rsi_buy_threshold\": 39.30768292165634, \"rsi_sell_threshold\": 79.087875885508, \"scale_in_tranches\": 1, \"sector_max_pct\": 0.7708661019906271, \"slope_min\": 1.0140084196466617, \"smart_money_divergence\": 0.0, \"stop_loss_pct\": 4.682024165404599, \"stop_loss_per_day\": 0.0, \"take_profit_pct\": 13.392728544381422, \"time_decay_exit\": 0.0, \"trailing_activation_pct\": 2.0, \"trailing_stop_enabled\": 0.0021323494612689453, \"trailing_stop_pct\": 3.040341781115594, \"trend_exit_enabled\": 0.09611571903665302, \"volume_acceleration\": 0.0038, \"volume_ratio_min\": 0.5, \"w_adx\": 0.0077, \"w_aroon\": 0.0, \"w_atr\": 0.0, \"w_beta\": 0.0544, \"w_bollinger\": 0.02, \"w_cashflow\": 0.0433, \"w_cci\": 0.0446, \"w_debt_ratio\": 0.0664, \"w_donchian\": 0.0016, \"w_elder_ray\": 0.0, \"w_gross_margin\": 0.0564, \"w_ichimoku\": 0.0, \"w_kdj\": 0.0, \"w_macd\": 0.0, \"w_mean_reversion\": 0.0301, \"w_mfi\": 0.0076, \"w_momentum\": 0.0593, \"w_obv\": 0.0856, \"w_pattern\": 0.0223, \"w_pb\": 0.0, \"w_pe\": 0.0137, \"w_peg\": 0.0262, \"w_price_volume_corr\": 0.001, \"w_profit_qoq\": 0.0463, \"w_profit_yoy\": 0.0258, \"w_ps\": 0.0, \"w_quantile_lower\": 0.0, \"w_quantile_upper\": 0.0322, \"w_r_squared\": 0.0217, \"w_residual\": 0.0122, \"w_revenue_growth\": 0.0052, \"w_revenue_qoq\": 0.0812, \"w_revenue_yoy\": 0.059, \"w_roc\": 0.0126, \"w_roe\": 0.0161, \"w_support\": 0.0107, \"w_trend\": 0.0, \"w_volume\": 0.0017, \"w_volume_profile\": 0.0111, \"w_vwap\": 0.003, \"w_williams_r\": 0.0723, \"weekly_trend_confirm\": 0.2241230116338485}",
+      "hash": null,
+      "description": "Real evolved finclaw StrategyDNA genome (74 fields: min_score entry threshold, position sizing, stop_loss_pct/take_profit_pct/trailing-stop rules, hold_days, max_positions, kelly_fraction, and 41 w_* technical+fundamental factor weights) for 'AAPL', from upstream AutoEvolver.evolve() (population=24, generations=30, seed=42) over generation_window [2023-01-01, 2023-12-31]. Selected internally by upstream's own walk-forward-based GA fitness ranking; the genome's backtest performance metrics (annual_return/sharpe/win_rate) are not reported here — see the 'No Q5' exclusion rule this migration follows (those belong to an evaluation layer, not to Q4's policy artifact)."
+    },
+    "decisions": null,
+    "explanation": "Q3 exposes this same GA's live per-day score_stock() reading; Q4 exposes the underlying evolved StrategyDNA genome itself as a frozen, serializable policy artifact — evolved once over the harness-supplied generation_window and not updated online by this adapter (upstream's own re-evolution is a separate, explicit CLI invocation, not something this adapter triggers automatically)."
+  },
+  "native_output": {},
+  "field_mappings": null,
+  "adapter_notes": null
+}

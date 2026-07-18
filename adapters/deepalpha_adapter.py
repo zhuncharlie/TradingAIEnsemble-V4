@@ -84,7 +84,17 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Action, Direction, Q1Decision, Q3Signal, SignalType
+from CONTRACT.schemas import (
+    Action,
+    ConfidenceEstimate,
+    ConfidenceKind,
+    Direction,
+    EvidenceItem,
+    OutputScope,
+    Q1Action,
+    Q3Signal,
+    QueryContext,
+)
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "stock-market-prediction-engine"
 if str(VENDOR_DIR) not in sys.path:
@@ -96,20 +106,60 @@ RAW_COLS = {
 }
 TARGET_RELATED = {"target_1d", "target_5d", "return_1d", "return_5d", "sharpe_5d"}
 EXCLUDE_COLS = RAW_COLS | TARGET_RELATED
-FORECAST_HORIZON_DAYS = 5
+FORECAST_HORIZON_DAYS = 5  # upstream Config.FORECAST_HORIZON_DAYS default; overridable via context.horizon (see _horizon_days_from_context)
 
 _TRAIN_CACHE: dict = {}
 
 
-def _train_ensemble(ticker: str) -> Tuple[object, "object", List[str], float]:
+def _ticker_from_context(context: QueryContext) -> str:
+    """This adapter is single-asset only (one ticker per call). Read it from
+    the harness-supplied QueryContext instead of a bespoke ticker param."""
+    if context.targets:
+        return context.targets[0]
+    if context.universe:
+        return context.universe[0]
+    raise ValueError(
+        "deepalpha_adapter requires context.targets or context.universe to "
+        "contain at least one ticker (this adapter is single-asset only)."
+    )
+
+
+def _horizon_days_from_context(context: QueryContext) -> int:
+    """v2: replace the old hardcoded FORECAST_HORIZON_DAYS constant with
+    context.horizon when the harness supplies a parseable '<N>d' horizon;
+    otherwise fall back to upstream's own Config.FORECAST_HORIZON_DAYS
+    default (5) as a documented adapter-internal constant (per migration
+    rubric: "it's fine to keep an adapter-internal constant... that the CLI
+    caller is expected to pass in via --horizon")."""
+    if context.horizon:
+        h = context.horizon.strip().lower()
+        if h.endswith("d"):
+            try:
+                return int(h[:-1])
+            except ValueError:
+                pass
+    return FORECAST_HORIZON_DAYS
+
+
+def _train_ensemble(ticker: str, horizon_days: int) -> Tuple[object, List[str], float, float]:
     """
     Fetch real yfinance history, engineer features via upstream's own
     method, train upstream's own XGBoost+LightGBM models on this ticker's
     history, combine with upstream's own SimpleEnsemble.
-    Returns (ensemble, latest_feature_row, feature_cols, latest_prediction).
+    Returns (xgb_model, feature_cols, latest_prediction, model_agreement).
+
+    NOTE (pre-existing limitation, not introduced by this migration): this
+    fetches "3y" of yfinance history ending at real wall-clock "now", not
+    windowed to end at the requested QueryContext.as_of/data_cutoff — same
+    behavior as the v1 adapter. Left unchanged per the migration rubric's
+    scope rule (preserve existing data-fetching/business logic; only the
+    canonical field mapping is being migrated here). Disclosed honestly in
+    Q1Action.explanation / Q3Signal.explanation below rather than silently
+    passed through.
     """
-    if ticker in _TRAIN_CACHE:
-        return _TRAIN_CACHE[ticker]
+    cache_key = (ticker, horizon_days)
+    if cache_key in _TRAIN_CACHE:
+        return _TRAIN_CACHE[cache_key]
 
     import pandas as pd
     import yfinance as yf
@@ -133,16 +183,18 @@ def _train_ensemble(ticker: str) -> Tuple[object, "object", List[str], float]:
     if df_feat.empty:
         raise RuntimeError(f"upstream engineer_realtime_features() returned empty frame for {ticker}")
 
-    df_feat["target_5d"] = df_feat["Close"].shift(-FORECAST_HORIZON_DAYS) / df_feat["Close"] - 1
+    target_col = f"target_{horizon_days}d"
+    df_feat[target_col] = df_feat["Close"].shift(-horizon_days) / df_feat["Close"] - 1
 
+    exclude = EXCLUDE_COLS | {target_col}
     feature_cols = [
         c for c in df_feat.columns
-        if c not in EXCLUDE_COLS and pd.api.types.is_numeric_dtype(df_feat[c])
+        if c not in exclude and pd.api.types.is_numeric_dtype(df_feat[c])
     ]
 
-    df_train = df_feat.iloc[:-FORECAST_HORIZON_DAYS]
+    df_train = df_feat.iloc[:-horizon_days]
     X_train = df_train[feature_cols]
-    y_train = df_train["target_5d"]
+    y_train = df_train[target_col]
     X_latest = df_feat[feature_cols].iloc[[-1]]
 
     adv = AdvancedMLFramework()
@@ -163,7 +215,7 @@ def _train_ensemble(ticker: str) -> Tuple[object, "object", List[str], float]:
     agreement = max(0.0, 1.0 - min(dispersion / 0.1, 1.0))
 
     result = (xgb_model, feature_cols, prediction, agreement)
-    _TRAIN_CACHE[ticker] = result
+    _TRAIN_CACHE[cache_key] = result
     return result
 
 
@@ -173,11 +225,14 @@ class DeepAlphaAdapter(BaseAdapter):
     upstream_repo = "https://github.com/LeoRigasaki/stock-market-prediction-engine"
     requires_env = "deepalpha_real"
 
-    def q1_decision(self, ticker: str, date: str, **kwargs) -> Optional[Q1Decision]:
+    def q1_action(self, context: QueryContext, **kwargs) -> Optional[Q1Action]:
         t0 = time.time()
         from src.config import Config
 
-        xgb_model, feature_cols, prediction, agreement = _train_ensemble(ticker)
+        ticker = _ticker_from_context(context)
+        horizon_days = _horizon_days_from_context(context)
+
+        xgb_model, feature_cols, prediction, agreement = _train_ensemble(ticker, horizon_days)
         threshold = Config.signal_threshold_ratio()
 
         if prediction > threshold:
@@ -187,66 +242,114 @@ class DeepAlphaAdapter(BaseAdapter):
         else:
             action = Action.HOLD
 
-        confidence = max(0.0, min(1.0, agreement))
-        reasoning = (
-            f"XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on "
-            f"{ticker}'s own 3y yfinance history — no pretrained Kaggle-sourced artifacts "
-            f"were available) predicts a {FORECAST_HORIZON_DAYS}-day forward return of "
-            f"{prediction:+.4%}, against a transaction-cost-based signal threshold of "
-            f"{threshold:.4%}. Model agreement (1 - normalised prediction dispersion) is "
-            f"{agreement:.2f}."
+        # Real upstream model_agreement measure (1 - normalised cross-model
+        # prediction dispersion) — this is NOT a calibrated probability, so
+        # it is tagged MODEL_MARGIN, not PROBABILITY (see migration rubric).
+        confidence = ConfidenceEstimate(
+            value=max(0.0, min(1.0, agreement)),
+            kind=ConfidenceKind.MODEL_MARGIN,
+            raw_value=agreement,
+            method=(
+                "Upstream's own model_agreement formula: max(0, 1 - dispersion/0.1), "
+                "dispersion = std(xgboost_pred, lightgbm_pred), matching "
+                "RealTimePredictionEngine.generate_predictions()'s own convention. "
+                "Measures cross-model prediction agreement, not a calibrated probability."
+            ),
         )
 
-        return Q1Decision(
+        explanation = (
+            f"XGBoost+LightGBM ensemble (upstream's SimpleEnsemble, freshly trained on "
+            f"{ticker}'s own 3y trailing yfinance history ending at real run time — "
+            f"not windowed to context.as_of={context.as_of!r}, see adapter header/"
+            f"_train_ensemble docstring for this pre-existing limitation — no "
+            f"pretrained Kaggle-sourced artifacts were available) predicts a "
+            f"{horizon_days}-day forward return of {prediction:+.4%}, against a "
+            f"transaction-cost-based signal threshold of {threshold:.4%}. Model "
+            f"agreement (1 - normalised prediction dispersion) is {agreement:.2f}."
+        )
+
+        return Q1Action(
+            context=context,
             action=action,
             confidence=confidence,
-            reasoning=reasoning,
-            time_horizon=f"{FORECAST_HORIZON_DAYS}d",
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+            explanation=explanation,
         )
 
-    def q3_signal(self, ticker: str, date: str, **kwargs) -> Optional[Q3Signal]:
+    def q3_signal(self, context: QueryContext, **kwargs) -> Optional[Q3Signal]:
         t0 = time.time()
 
-        xgb_model, feature_cols, prediction, agreement = _train_ensemble(ticker)
+        ticker = _ticker_from_context(context)
+        horizon_days = _horizon_days_from_context(context)
+
+        xgb_model, feature_cols, prediction, agreement = _train_ensemble(ticker, horizon_days)
 
         direction = Direction.LONG if prediction > 0 else Direction.SHORT if prediction < 0 else Direction.NEUTRAL
         strength = max(0.0, min(1.0, abs(prediction) / 0.05))
 
+        evidence: List[EvidenceItem] = []
         importances = getattr(xgb_model, "feature_importances_", None)
         if importances is not None:
             ranked = sorted(zip(feature_cols, importances), key=lambda x: x[1], reverse=True)[:3]
-            supporting_evidence = [f"{name} (importance={val:.4f})" for name, val in ranked]
+            for fname, fval in ranked:
+                evidence.append(EvidenceItem(
+                    kind="model_feature",
+                    value=f"{fname} (importance={fval:.4f})",
+                    source="XGBoost feature_importances_ (upstream AdvancedMLFramework.create_xgboost_model(), freshly trained this run)",
+                ))
         else:
-            supporting_evidence = ["XGBoost feature importances unavailable"]
+            evidence.append(EvidenceItem(kind="model_feature", value="XGBoost feature_importances_ unavailable"))
+
+        confidence = ConfidenceEstimate(
+            value=max(0.0, min(1.0, agreement)),
+            kind=ConfidenceKind.MODEL_MARGIN,
+            raw_value=agreement,
+            method=(
+                "Same model_agreement measure as Q1Action.confidence (1 - normalised "
+                "XGBoost/LightGBM prediction dispersion) — reused here since it "
+                "applies to the same ensemble prediction underlying this signal."
+            ),
+        )
+
+        explanation = (
+            f"Ensemble predicts a {horizon_days}-day forward return of {prediction:+.4%} "
+            f"for {ticker} (model agreement {agreement:.2f}); same 3y-trailing, "
+            f"real-run-time-windowed training data as Q1Action (see that method's "
+            f"docstring for the point-in-time limitation)."
+        )
 
         return Q3Signal(
-            signal_type=SignalType.FACTOR,
+            context=context,
+            signal_semantics="predicted_return",
+            values={ticker: prediction},
+            score_scale="fractional forward return (e.g. 0.01 = +1%)",
             direction=direction,
             strength=strength,
-            supporting_evidence=supporting_evidence,
-            expected_horizon=f"{FORECAST_HORIZON_DAYS}d",
-            expected_return=prediction,
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+            expected_returns={ticker: prediction},
+            confidence=confidence,
+            evidence=evidence,
+            explanation=explanation,
         )
 
     def smoke_test(self):
         checks = super().smoke_test()
-        result = self.q1_decision("AAPL", "2024-01-15")
-        checks["q1_returns_Q1Decision"] = result is not None
-        checks["action_is_valid"] = result.action in ("BUY", "SELL", "HOLD")
-        checks["confidence_in_range"] = 0.0 <= result.confidence <= 1.0
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.ASSET,
+            targets=["AAPL"],
+        )
 
-        q3 = self.q3_signal("AAPL", "2024-01-15")
+        result = self.q1_action(context)
+        checks["q1_returns_Q1Action"] = result is not None
+        if result is not None:
+            checks["action_is_valid"] = result.action in ("BUY", "SELL", "HOLD")
+            checks["confidence_in_range"] = (
+                result.confidence is not None and 0.0 <= result.confidence.value <= 1.0
+            )
+
+        q3 = self.q3_signal(context)
         checks["q3_returns_Q3Signal"] = q3 is not None
-        checks["q3_direction_is_valid"] = q3.direction in ("LONG", "SHORT", "NEUTRAL")
-        checks["q3_strength_in_range"] = 0.0 <= q3.strength <= 1.0
+        if q3 is not None:
+            checks["q3_direction_is_valid"] = q3.direction in ("LONG", "SHORT", "NEUTRAL")
+            checks["q3_strength_in_range"] = q3.strength is not None and 0.0 <= q3.strength <= 1.0
         return checks

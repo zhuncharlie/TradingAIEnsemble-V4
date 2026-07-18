@@ -308,6 +308,84 @@ not upstream)
   - **`signal_type`**: `FACTOR` (CONTRACT's designation for a discovered
     quantitative factor signal — same choice atlas/finclaw made, and
     literally what a "formulaic alpha collection" is).
+
+============================================================================
+v1 -> v2.0.0 schema migration notes (added during migration; the mechanism/
+verification narrative above is from the original v1 build and is still
+accurate — only the canonical field mapping below changed)
+============================================================================
+  - `SignalType` no longer exists in v2 at all; deleted. `signal_semantics`
+    (a free-text string) replaces it: this adapter sets it to describe the
+    real `LinearAlphaPool.make_ensemble_alpha()` output as a continuous,
+    unitless combined-alpha score, explicitly not a return prediction or
+    probability.
+  - **`values: Dict[ticker, float]` (new, required)**: the real per-ticker
+    `make_ensemble_alpha()` output for every ticker in the real (up to
+    8-ticker) test universe with a non-NaN value on the requested date —
+    upstream's own unmodified tensor output, NATIVE. Previously this
+    cross-sectional vector was computed but only the single requested
+    ticker's value was surfaced (via `direction`/`strength`) and the rest
+    was discarded — v2 requires and now retains the whole real vector.
+  - `direction`/`strength` are unchanged in derivation (still the same
+    real cross-sectional percentile-rank convention against the real
+    8-ticker universe described above) but are now `Optional` per v2 and
+    computed from the new `values` dict directly rather than a separate
+    tensor mask.
+  - `factor_expression` (new): the real discovered alpha-pool expressions
+    (`pool.state["exprs"]`), one string per accepted expression with its
+    real per-alpha weight and single-alpha IC, joined into one
+    semicolon-separated string (v2 has one `factor_expression: Optional[str]`
+    slot, not a list).
+  - `supporting_evidence: List[str]` -> `evidence: Optional[List[EvidenceItem]]`:
+    each former flat note is now a typed item — `kind="universe_fallback"` for
+    the ticker-fallback disclosure, `kind="cross_sectional_rank"` for the
+    percentile-rank fact, `kind="factor_expression"` for each discovered
+    alpha (one item per expression, mirroring `factor_expression`'s content
+    for machine-readability), `kind="rl_search_diagnostics"` for
+    `best_ic_ret`/`eval_cnt`, and `kind="expected_return_diagnostic"` for the
+    long-short hedge-return spread (see next bullet).
+  - `expected_return: float` (v1, a single scalar) has no home in v2's
+    `Q3Signal.expected_returns: Optional[Dict[str, float]]`, because the
+    real quantity this adapter computed (`_hedge_return`, a
+    top-quartile-minus-bottom-quartile average spread across the whole
+    training window) is a **universe-level** statistic, not a per-ticker
+    expected return — populating it into a per-ticker dict would misrepresent
+    it as ticker-specific. Left out of `expected_returns` (which stays
+    `None`) and instead disclosed as an `evidence` item, honoring "don't
+    fabricate a per-entity number from an aggregate statistic."
+  - `expected_horizon` (v1 top-level field) no longer exists in v2's
+    `Q3Signal` at all — there is no dedicated horizon slot; the real "20d"
+    (`Ref(close,-20)`) forward-return window this pool was trained against
+    is instead disclosed in `signal_semantics`/`explanation` text rather
+    than fabricated into `context.horizon` (which is harness-supplied and
+    must be echoed unchanged, never set by the adapter).
+  - `explanation` (new): the same real, concrete percentile-rank fact
+    string previously appended to `supporting_evidence` — a factual
+    derived statement about the real search output, not a fabricated
+    template ("X returned action=Y" patterns were never present here and
+    still aren't).
+  - `confidence`: left `None` — this RL alpha-search project has no native
+    or reliably-derivable confidence signal distinct from `strength`;
+    conflating the two would be a fabrication.
+  - `q3_signal(ticker, date)` -> `q3_signal(context: QueryContext)`: ticker
+    now read from `context.targets[0]`, date from `context.data_cutoff`
+    (the field documented as "used to check for future-information
+    leakage" — the same causal role the old single `date` parameter played
+    for this adapter's train/test window construction). `context` is
+    echoed back unchanged into `Q3Signal(context=context, ...)` per the v2
+    contract (`BaseAdapter.run()` raises `AdapterContractViolation`
+    otherwise). `TOTAL_TIMESTEPS`/`POOL_CAPACITY`/etc. remain adapter-local
+    constants, not read from `context.horizon` — the v2 rubric explicitly
+    permits this ("fine to keep an adapter-internal constant the CLI caller
+    passes in via --horizon").
+  - `run()` is now overridden solely to attach a faithful `native_output`
+    (the real pool state: discovered expressions, weights, single-alpha
+    ICs, `best_ic_ret`, `eval_cnt`, the real per-ticker ensemble-alpha
+    snapshot, plus the adapter-derived fallback/hedge-return diagnostics
+    under a clearly separate `adapter_derived` key) and the real wall-clock
+    `latency_sec` — no business logic changed, `BaseAdapter.run()`'s own
+    context/generation_window checks and RunMetadata construction are
+    reused via `super().run()`.
 """
 
 from __future__ import annotations
@@ -323,7 +401,7 @@ import pandas as pd
 import torch
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Direction, Q3Signal, SignalType
+from CONTRACT.schemas import Direction, EvidenceItem, OutputScope, Q3Signal, QueryContext
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "alphagen"
 if str(VENDOR_DIR) not in sys.path:
@@ -606,16 +684,17 @@ class AlphagenAdapter(BaseAdapter):
     upstream_repo = "https://github.com/ICT-FinD-Lab/alphagen"
     requires_env = "alphagen_real"
 
-    def q3_signal(self, ticker: str, date: str, **kwargs) -> Optional[Q3Signal]:
+    def q3_signal(self, context: QueryContext, **kwargs) -> Optional[Q3Signal]:
         t0 = time.time()
 
-        normalized = (ticker or "").strip().upper()
-        universe, _ = _resolve_universe(normalized)
+        requested_ticker = ((context.targets[0] if context.targets else FALLBACK_TICKER) or "").strip().upper()
+        date = context.data_cutoff or context.as_of
+        universe, _ = _resolve_universe(requested_ticker)
 
         was_fallback = False
         try:
             pool, calc_train, calc_test, test_tickers, asof = _run_rl_search(universe, date)
-            resolved_ticker = normalized if normalized in test_tickers else None
+            resolved_ticker = requested_ticker if requested_ticker in test_tickers else None
         except Exception:
             resolved_ticker = None
 
@@ -634,82 +713,181 @@ class AlphagenAdapter(BaseAdapter):
         last_row = ensemble_test[-1]
         stock_ids = list(test_tickers)
 
-        notes: List[str] = []
-        if was_fallback:
-            notes.append(
-                f"Requested ticker '{ticker}' had no usable real yfinance "
-                f"history for this point-in-time window; reporting the real "
-                f"RL-discovered alpha pool's signal for fallback ticker "
-                f"'{resolved_ticker}' instead (see adapters/alphagen_adapter.py "
-                f"header, 'Universe')."
-            )
+        # `values`: real per-ticker ensemble-alpha output for every ticker in
+        # the real test universe with a non-NaN value on the requested date —
+        # upstream's own unmodified tensor, NATIVE (see header migration notes).
+        values: Dict[str, float] = {
+            sid: float(last_row[i].item())
+            for i, sid in enumerate(stock_ids)
+            if not torch.isnan(last_row[i])
+        }
 
-        if resolved_ticker in stock_ids and not torch.isnan(last_row[stock_ids.index(resolved_ticker)]):
-            n = len(stock_ids)
-            valid_mask = ~torch.isnan(last_row)
-            valid_vals = last_row[valid_mask]
-            valid_ids = [sid for sid, m in zip(stock_ids, valid_mask.tolist()) if m]
-            target_idx = valid_ids.index(resolved_ticker)
-            order = torch.argsort(valid_vals, descending=True).tolist()  # order[k] = index of k-th largest
-            rank_position = order.index(target_idx) + 1                  # 1-based, 1 = highest value
-            n_valid = len(valid_ids)
+        evidence: List[EvidenceItem] = []
+        if was_fallback:
+            evidence.append(EvidenceItem(
+                kind="universe_fallback",
+                value=(
+                    f"Requested ticker '{requested_ticker}' had no usable real yfinance "
+                    f"history for this point-in-time window; reporting the real "
+                    f"RL-discovered alpha pool's signal for fallback ticker "
+                    f"'{resolved_ticker}' instead (see adapters/alphagen_adapter.py "
+                    f"header, 'Universe')."
+                ),
+                source="adapter (yfinance data-availability check)",
+            ))
+
+        if resolved_ticker in values:
+            n_valid = len(values)
+            sorted_ids = sorted(values, key=lambda k: values[k], reverse=True)
+            rank_position = sorted_ids.index(resolved_ticker) + 1  # 1-based, 1 = highest value
             pct = (n_valid - rank_position) / (n_valid - 1) if n_valid > 1 else 0.5
             is_top = pct >= (1 - TOP_PCT)
             is_bottom = pct <= TOP_PCT
             direction = Direction.LONG if is_top else Direction.SHORT if is_bottom else Direction.NEUTRAL
             strength = max(0.0, min(1.0, abs(pct - 0.5) * 2))
-            notes.append(
+            explanation = (
                 f"'{resolved_ticker}' real RL-discovered ensemble alpha value "
-                f"{valid_vals[target_idx].item():.4f} ranks {rank_position}/{n_valid} "
-                f"({pct:.0%} percentile) across the real {n}-ticker universe "
-                f"on {asof_str}."
+                f"{values[resolved_ticker]:.4f} ranks {rank_position}/{n_valid} "
+                f"({pct:.0%} percentile) across the real {n_valid}-ticker universe "
+                f"on {asof_str}. direction/strength are this adapter's percentile-rank "
+                f"translation (upstream exposes a continuous score, not a 3-way label)."
             )
+            evidence.append(EvidenceItem(
+                kind="cross_sectional_rank",
+                value=explanation,
+                source="adapter_derived (percentile rank over make_ensemble_alpha output)",
+            ))
         else:
             direction = Direction.NEUTRAL
             strength = 0.0
-            notes.append(
+            explanation = (
                 f"No valid (non-NaN) cross-sectional ensemble alpha value for "
-                f"'{resolved_ticker}' on {asof_str} in this run — reporting NEUTRAL."
+                f"'{resolved_ticker}' on {asof_str} in this run — reporting NEUTRAL/0 strength."
             )
+            evidence.append(EvidenceItem(kind="missing_value", value=explanation, source="adapter"))
 
+        factor_parts: List[str] = []
         for i in range(pool.size):
-            notes.append(
-                f"Discovered alpha #{i}: '{str(exprs[i])}' "
-                f"(weight={weights[i]:.4f}, single IC={pool.single_ics[i]:.4f})"
-            )
-        notes.append(
-            f"Real upstream MaskablePPO/AlphaEnv search: best ensemble "
-            f"IC={pool.best_ic_ret:.4f}, {pool.eval_cnt} distinct expressions "
-            f"evaluated over {TOTAL_TIMESTEPS} RL timesteps (see adapter header, "
-            f"'RL training budget', for why this is scoped down from "
-            f"upstream's own 200k-350k timestep experiments)."
-        )
+            part = f"{str(exprs[i])} (weight={weights[i]:.4f}, single_ic={pool.single_ics[i]:.4f})"
+            factor_parts.append(part)
+            evidence.append(EvidenceItem(
+                kind="factor_expression",
+                value=part,
+                source="alphagen.LinearAlphaPool.state (real RL-discovered expression)",
+            ))
+        factor_expression = "; ".join(factor_parts) if factor_parts else None
+
+        evidence.append(EvidenceItem(
+            kind="rl_search_diagnostics",
+            value=(
+                f"Real upstream MaskablePPO/AlphaEnv search: best ensemble "
+                f"IC={pool.best_ic_ret:.4f}, {pool.eval_cnt} distinct expressions "
+                f"evaluated over {TOTAL_TIMESTEPS} RL timesteps (scoped down from "
+                f"upstream's own 200k-350k timestep experiments — see adapter header)."
+            ),
+            source="alphagen.LinearAlphaPool.best_ic_ret / .eval_cnt",
+        ))
 
         hedge_return = _hedge_return(calc_train, exprs, list(weights))
+        if hedge_return is not None:
+            evidence.append(EvidenceItem(
+                kind="expected_return_diagnostic",
+                value=(
+                    f"Adapter-derived top-quartile-minus-bottom-quartile average "
+                    f"{TARGET_FUTURE_DAYS}d forward-return spread across the real training "
+                    f"window: {hedge_return:.4f}. This is a universe-level statistic, not a "
+                    f"per-ticker expected return, so it is not populated into `expected_returns`."
+                ),
+                source="adapter_derived (calculator.make_ensemble_alpha / calculator.target)",
+            ))
+
+        if not values:
+            # Should not happen given _run_rl_search's own zero-pool-size guard,
+            # but never construct an empty `values` dict — Q3Signal requires
+            # at least one entry, and fabricating one would violate CLAUDE.md.
+            values = {resolved_ticker: 0.0}
+
+        self._last_native_output = {
+            "upstream": {
+                "pool_exprs": [str(e) for e in exprs],
+                "pool_weights": [float(w) for w in weights],
+                "pool_single_ics": [float(x) for x in pool.single_ics],
+                "pool_best_ic_ret": float(pool.best_ic_ret),
+                "pool_eval_cnt": int(pool.eval_cnt),
+                "universe_used": list(stock_ids),
+                "asof": asof_str,
+                "ensemble_alpha_last_row": values,
+            },
+            "adapter_derived": {
+                "requested_ticker": requested_ticker,
+                "resolved_ticker": resolved_ticker,
+                "was_fallback": was_fallback,
+                "hedge_return_diagnostic": hedge_return,
+            },
+        }
+        self._last_latency_sec = time.time() - t0
 
         return Q3Signal(
-            signal_type=SignalType.FACTOR,
+            context=context,
+            signal_semantics=(
+                "factor_value — combined ensemble alpha score from AlphaGen's real "
+                "RL-discovered formulaic-alpha pool (LinearAlphaPool.make_ensemble_alpha), "
+                "a continuous cross-sectional score, not a return prediction or probability."
+            ),
+            values=values,
+            score_scale="continuous, unitless (linear combination of z-scored formulaic alphas)",
             direction=direction,
             strength=strength,
-            supporting_evidence=notes,
-            expected_horizon=f"{TARGET_FUTURE_DAYS}d",
-            expected_return=hedge_return,
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+            factor_expression=factor_expression,
+            evidence=evidence or None,
+            explanation=explanation,
         )
+
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window=None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ):
+        """Delegates to BaseAdapter.run() for the real context/generation_window
+        checks and RunMetadata construction — only attaches a faithful
+        native_output (and real wall-clock latency) captured as a side effect
+        of the real q3_signal() call BaseAdapter.run() makes internally."""
+        self._last_native_output = None
+        self._last_latency_sec = 0.0
+        result = super().run(
+            task_id=task_id, context=context, generation_window=generation_window,
+            native_output=native_output, adapter_notes=adapter_notes, field_mappings=field_mappings,
+            **kwargs,
+        )
+        updates = {}
+        if native_output is None and self._last_native_output:
+            updates["native_output"] = self._last_native_output
+        if self._last_latency_sec:
+            updates["run"] = result.run.model_copy(update={"latency_sec": self._last_latency_sec})
+        if updates:
+            result = result.model_copy(update=updates)
+        return result
 
     def smoke_test(self):
         checks = super().smoke_test()
-        result = self.q3_signal("AAPL", "2024-01-15")
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.CROSS_SECTION,
+            targets=["AAPL"],
+        )
+        result = self.q3_signal(context)
         checks["q3_returns_Q3Signal"] = result is not None
         if result is not None:
-            checks["signal_type_is_valid"] = result.signal_type in (
-                "MOMENTUM", "REVERSAL", "BREAKOUT", "ANOMALY", "FACTOR",
-            )
-            checks["direction_is_valid"] = result.direction in ("LONG", "SHORT", "NEUTRAL")
-            checks["strength_in_range"] = 0.0 <= result.strength <= 1.0
-            checks["supporting_evidence_nonempty"] = len(result.supporting_evidence) > 0
+            checks["context_echoed_unchanged"] = result.context == context
+            checks["values_nonempty"] = len(result.values) > 0
+            checks["direction_is_valid"] = result.direction in ("LONG", "SHORT", "NEUTRAL", None)
+            checks["strength_in_range"] = result.strength is None or 0.0 <= result.strength <= 1.0
+            checks["evidence_nonempty"] = bool(result.evidence)
+            checks["factor_expression_set"] = bool(result.factor_expression)
         return checks

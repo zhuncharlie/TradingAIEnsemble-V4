@@ -1,6 +1,62 @@
 """
 adapters/prediction_arena_adapter.py — wraps github.com/Metaculus/forecasting-tools
-(Q2, Q5), paired with real public Kalshi market data.
+(Q2), paired with real public Kalshi market data.
+
+============================================================================
+v1 -> v2 schema migration notes (2026-07-18)
+============================================================================
+  - v1 answered Q2 + Q5. v2 has no Q5 (backtest/evaluation layer removed from
+    the adapter contract entirely) — the old `q5_backtest` method and its
+    Sharpe/drawdown/win_rate/equity_curve computation have been deleted
+    outright, not just hidden. `questions_answered = ["Q2"]` only.
+  - No real Q1 or Q4 capability exists in this vendor code: Kalshi event
+    markets are not equity positions (no BUY/SELL/HOLD/quantity concept),
+    and there is no portfolio/policy/rebalancing logic anywhere in this
+    adapter or in `forecasting-tools` — so neither is claimed.
+  - Q2 mapping change (the main semantic fix in this migration): v1 rescaled
+    the real model P(yes) into a signed [-1,1] "sentiment_score" via
+    `(p_llm - 0.5) * 2.0`, and this file's own v1 docstring already disclosed
+    that doing so silently assumes a fixed question-valence direction that
+    is not actually true for Kalshi's real event-market inventory (a "DOJ
+    wins" YES is bad news for the company; a "will X IPO" YES is neutral-to-
+    good). Rather than carry that acknowledged-lossy rescaling forward, v2
+    keeps the real, untransformed P(yes) as a `StateEstimate` (see
+    `dimension="forecast_probability"` below) plus a real `value_distribution`
+    over {"yes","no"} — no valence assumption is made or needed.
+  - Q2-vs-Q3 ambiguity: `report.prediction` (the real model's own P(yes)) can
+    honestly be read either as a Q2 belief-state ("what does the model
+    believe about this event") or a Q3 predictive signal ("directional
+    forecast to trade on"). This migration keeps it on Q2 per the schema's
+    own documented semantics (Q2 = "what state is the object/market in",
+    which a subjective probability estimate about a real-world event
+    literally is), and states that ambiguity explicitly in `adapter_notes`
+    rather than silently resolving it. Downstream consumers that want a
+    tradeable Q3-style signal should be aware this same number could be
+    read that way instead.
+  - The `risk`-style divergence dimension v1 called `risk_level` (a coarse
+    LOW/MEDIUM/HIGH/EXTREME bucket derived from |P(yes)_llm - P(yes)_market|)
+    is preserved as a second, honestly-labeled `StateEstimate` — it is a
+    real, disclosed derivation from two real numbers (not a native model
+    output), so it is marked DERIVED, not NATIVE.
+  - Interface change: `q2_state(self, context: QueryContext, **kwargs)`
+    replaces the old `q2_sentiment(self, ticker: str, date: str, **kwargs)`.
+    `ticker` now comes from `context.targets[0]` (falling back to
+    `context.universe[0]`); `context` is echoed back unchanged into
+    `Q2State(context=context, ...)` per `BaseAdapter.run()`'s contract check.
+  - Genuine causality caveat (disclosed, not silently patched): both the
+    Kalshi market lookup and the DeepSeek forecast call are always *live*
+    queries — they reflect real-world state at the moment this adapter runs,
+    not a simulated historical replay pinned to `context.as_of`/
+    `context.data_cutoff`. If a caller supplies a `context.as_of` materially
+    in the past, this adapter cannot honor that as a true information
+    cutoff (the live Kalshi quote and live LLM call may reflect information
+    from after that date) — this is reported honestly in `adapter_notes`
+    rather than faked with a backdated timestamp.
+
+============================================================================
+Original v1 repo-choice / security-screening record (unchanged by this
+migration — kept verbatim below for provenance)
+============================================================================
 
 REPO CHOICE (target brief: "Prediction Arena" — LLMs tested on real prediction
 markets, Kalshi/Polymarket, 57-day live comparison):
@@ -126,32 +182,23 @@ Design notes (translation choices made by this adapter, not upstream):
     real match is found, it falls back to a fixed, verified-real,
     actively-traded default market (Apple DOJ antitrust case,
     `APPLEUS-29DEC31`) and says so plainly in Q2's `drivers`.
-  - Q2 `sentiment_score`: the real LLM's own P(yes) conviction on the
-    tracked real-world question, rescaled linearly to [-1, 1]. This is
-    deliberately NOT a bullish/bearish valence judgment — Kalshi's
-    event-market questions vary in valence per question (a "DOJ wins"
-    market resolving YES is bad news for the company; a "will X IPO" market
-    resolving YES is neutral-to-good), and automatically inferring valence
-    would require additional analysis this adapter does not perform (and
-    upstream doesn't provide).
-  - Q2 `risk_level`: derived from the real divergence between the LLM's
-    forecast and the real Kalshi market-implied probability (mid of
-    yes_bid/yes_ask) — larger disagreement between model and market wisdom
-    is treated as higher uncertainty/risk. Same "dispersion implies risk"
-    pattern `fingpt_adapter.py` uses for its own risk_level derivation.
-  - Q5 scope reduction: a genuine 57-day live, real-money, multi-model
-    Kalshi/Polymarket comparison cannot be reproduced here — it requires
-    funded exchange accounts (disallowed) and 57 real days of wall-clock
-    time (incompatible with a single harness call). Instead, Q5 is a real
-    backtest of "buy-and-hold the YES side" on one real Kalshi market, using
-    its full available public daily-candlestick price history (typically
-    ~1+ year, fetched live from Kalshi's public, keyless candlestick API —
-    no synthetic/fabricated prices). total_return / sharpe / max_drawdown /
-    win_rate / equity_curve are computed directly from that real price path.
+  - Q2 `forecast_probability` (v2): the real LLM's own P(yes) on the tracked
+    real-world question, kept as-is on a genuine `[0,1]` probability scale —
+    no rescaling to a signed sentiment axis, and therefore no implicit
+    valence assumption. See the v1->v2 migration note at the top of this
+    file for why the old signed-rescaling approach was dropped rather than
+    ported forward.
+  - Q2 `forecast_market_divergence` (v2, DERIVED): the real divergence
+    between the LLM's forecast and the real Kalshi market-implied
+    probability (mid of yes_bid/yes_ask) — larger disagreement between model
+    and market wisdom is treated as higher uncertainty. Same "dispersion
+    implies risk" pattern `fingpt_adapter.py` uses for its own risk_level
+    derivation; carried forward from v1's `risk_level` field, now expressed
+    as an explicit open-vocabulary Q2 `StateEstimate` instead of a dedicated
+    schema field (v2 has no `risk_level` field/enum).
   - Per-ticker caching: Q2's market lookup + real DeepSeek forecast are
-    cached in-process per Kalshi market ticker so `run()` (which can call
-    both q2 and q5) and repeated harness calls don't redundantly re-query or
-    re-call the LLM for the same market.
+    cached in-process per Kalshi market ticker so repeated harness calls
+    don't redundantly re-query or re-call the LLM for the same market.
 """
 
 from __future__ import annotations
@@ -159,14 +206,22 @@ from __future__ import annotations
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from dotenv import load_dotenv
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Q2Sentiment, Q5Backtest, RiskLevel
+from CONTRACT.schemas import (
+    ConfidenceEstimate,
+    ConfidenceKind,
+    EvidenceItem,
+    OutputScope,
+    Q2State,
+    QueryContext,
+    StateEstimate,
+)
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "forecasting-tools"
 if str(VENDOR_DIR) not in sys.path:
@@ -286,30 +341,6 @@ def _find_kalshi_market(ticker: str) -> dict:
     return found
 
 
-def _fetch_candlesticks(market: dict, start_ts: Optional[int], end_ts: Optional[int]) -> List[dict]:
-    now_ts = int(time.time())
-    if end_ts is None:
-        end_ts = now_ts
-    if start_ts is None:
-        open_time = market.get("open_time")
-        if open_time:
-            try:
-                start_ts = int(
-                    datetime.fromisoformat(open_time.replace("Z", "+00:00")).timestamp()
-                )
-            except Exception:
-                start_ts = now_ts - 2 * 365 * 24 * 3600
-        else:
-            start_ts = now_ts - 2 * 365 * 24 * 3600
-
-    series_ticker = market.get("series_ticker") or DEFAULT_SERIES_TICKER
-    data = _kalshi_get(
-        f"/series/{series_ticker}/markets/{market['market_ticker']}/candlesticks",
-        params={"start_ts": start_ts, "end_ts": end_ts, "period_interval": 1440},
-    )
-    return data.get("candlesticks", [])
-
-
 def _build_llm():
     from forecasting_tools.ai_models.general_llm import GeneralLlm
 
@@ -403,29 +434,24 @@ def _run_llm_forecast(market: dict) -> dict:
 
 class PredictionArenaAdapter(BaseAdapter):
     name = "prediction_arena"
-    questions_answered = ["Q2", "Q5"]
+    questions_answered = ["Q2"]
     upstream_repo = "https://github.com/Metaculus/forecasting-tools"
     requires_env = "prediction_arena_real"
 
-    def q2_sentiment(self, ticker: str, date: str, **kwargs) -> Optional[Q2Sentiment]:
+    def q2_state(self, context: QueryContext, **kwargs) -> Optional[Q2State]:
         t0 = time.time()
+
+        ticker = (context.targets or context.universe or [None])[0]
+        if not ticker:
+            raise ValueError(
+                "prediction_arena q2_state requires context.targets[0] or "
+                "context.universe[0] (a ticker) to look up a real Kalshi market"
+            )
 
         market = _find_kalshi_market(ticker)
         p_market = _implied_probability(market)
         forecast = _run_llm_forecast(market)
         p_llm = forecast["p_llm"]
-
-        sentiment_score = max(-1.0, min(1.0, (p_llm - 0.5) * 2.0))
-
-        divergence = abs(p_llm - p_market)
-        if divergence < 0.05:
-            risk = RiskLevel.LOW
-        elif divergence < 0.15:
-            risk = RiskLevel.MEDIUM
-        elif divergence < 0.30:
-            risk = RiskLevel.HIGH
-        else:
-            risk = RiskLevel.EXTREME
 
         fallback_note = (
             f" — no real Kalshi market matched '{ticker}'; using a fixed, verified real "
@@ -433,142 +459,111 @@ class PredictionArenaAdapter(BaseAdapter):
             if market["used_fallback"]
             else ""
         )
-        drivers = [
-            f"Real Kalshi market '{market['title']}' (ticker {market['market_ticker']}"
-            f"{fallback_note}): live market-implied P(yes)={p_market:.1%} "
-            f"(mid of real yes_bid/yes_ask quotes)",
-            f"Real DeepSeek forecast (via upstream forecasting-tools' NoResearchOneShotBot, "
-            f"zero-research single-shot prompt): P(yes)={p_llm:.1%}",
+
+        forecast_evidence = [
+            EvidenceItem(
+                kind="market_quote",
+                value=f"live market-implied P(yes)={p_market:.4f} (mid of real yes_bid/yes_ask quotes)",
+                source="Kalshi public API (api.elections.kalshi.com) — read-only, no account/auth used",
+                reference=f"kalshi:{market['event_ticker']}/{market['market_ticker']}{fallback_note}",
+            ),
+            EvidenceItem(
+                kind="model_forecast",
+                value=f"P(yes)={p_llm:.4f} via NoResearchOneShotBot zero-research single-shot prompt",
+                source="Metaculus/forecasting-tools NoResearchOneShotBot + DeepSeek (deepseek-chat)",
+            ),
         ]
         if forecast.get("rationale"):
-            drivers.append(f"LLM rationale excerpt: {str(forecast['rationale'])[:300]}")
+            forecast_evidence.append(
+                EvidenceItem(
+                    kind="llm_rationale_excerpt",
+                    value=str(forecast["rationale"])[:300],
+                    source="DeepSeek deepseek-chat (via NoResearchOneShotBot)",
+                )
+            )
 
-        return Q2Sentiment(
-            sentiment_score=sentiment_score,
-            risk_level=risk,
-            drivers=drivers,
-            sources=[
-                "Kalshi public API (api.elections.kalshi.com) — read-only, no account/auth used",
-                "Metaculus/forecasting-tools NoResearchOneShotBot + DeepSeek (deepseek-chat)",
-            ],
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=forecast["cost_usd"],
-            latency_sec=time.time() - t0,
+        forecast_state = StateEstimate(
+            dimension="forecast_probability",
+            value_numeric=p_llm,
+            value_distribution={"yes": p_llm, "no": 1.0 - p_llm},
+            scale="probability",
+            confidence=ConfidenceEstimate(
+                value=p_llm,
+                kind=ConfidenceKind.PROBABILITY,
+                method="Real DeepSeek P(yes) from upstream forecasting-tools' NoResearchOneShotBot, used directly as both the state value and its own confidence (this is a genuine belief-state probability, not a separate self-reported certainty score).",
+            ),
+            evidence=forecast_evidence,
         )
 
-    def q5_backtest(
-        self, tickers: List[str], start: str, end: str, **kwargs
-    ) -> Optional[Q5Backtest]:
-        t0 = time.time()
-
-        ticker = tickers[0] if tickers else "AAPL"
-        market = _find_kalshi_market(ticker)
-
-        start_ts = end_ts = None
-        try:
-            if start:
-                start_ts = int(
-                    datetime.fromisoformat(start).replace(tzinfo=timezone.utc).timestamp()
-                )
-            if end:
-                end_ts = int(
-                    datetime.fromisoformat(end).replace(tzinfo=timezone.utc).timestamp()
-                )
-        except Exception:
-            start_ts = end_ts = None
-
-        candles = _fetch_candlesticks(market, start_ts, end_ts)
-        # The caller's requested window may predate the real market's open_time
-        # or simply be narrower than what Kalshi has for this market. If too
-        # few real data points fall inside it, widen to the market's full real
-        # history rather than fabricate points.
-        if len(candles) < 5:
-            candles = _fetch_candlesticks(market, None, None)
-
-        closes: List[float] = []
-        for c in candles:
-            price = c.get("price", {})
-            mid = price.get("mean_dollars") or price.get("close_dollars")
-            if mid is None:
-                continue
-            try:
-                closes.append(float(mid))
-            except (TypeError, ValueError):
-                continue
-
-        if len(closes) < 2:
-            # Extremely defensive fallback; shouldn't trigger given the
-            # verified-real default market's ~1+ year of daily history.
-            p = _implied_probability(market)
-            closes = [p, p]
-
-        equity_curve = [c / closes[0] for c in closes]
-        total_return = equity_curve[-1] - 1.0
-
-        daily_returns = [
-            (equity_curve[i] / equity_curve[i - 1]) - 1.0
-            for i in range(1, len(equity_curve))
-            if equity_curve[i - 1] != 0
-        ]
-        if daily_returns:
-            mean_r = sum(daily_returns) / len(daily_returns)
-            var_r = sum((r - mean_r) ** 2 for r in daily_returns) / len(daily_returns)
-            std_r = var_r ** 0.5
-            sharpe = (mean_r / std_r) * (252 ** 0.5) if std_r > 0 else None
-            win_rate = sum(1 for r in daily_returns if r > 0) / len(daily_returns)
+        # DERIVED (not native): coarse bucket over the real |P_llm - P_market|
+        # divergence, same "dispersion implies risk" pattern as v1's
+        # risk_level and fingpt_adapter.py's own risk_level derivation.
+        divergence = abs(p_llm - p_market)
+        if divergence < 0.05:
+            risk_bucket = "LOW"
+        elif divergence < 0.15:
+            risk_bucket = "MEDIUM"
+        elif divergence < 0.30:
+            risk_bucket = "HIGH"
         else:
-            sharpe = None
-            win_rate = None
+            risk_bucket = "EXTREME"
 
-        peak = equity_curve[0]
-        max_dd = 0.0
-        for v in equity_curve:
-            peak = max(peak, v)
-            max_dd = min(max_dd, (v / peak) - 1.0)
+        divergence_state = StateEstimate(
+            dimension="forecast_market_divergence",
+            value_numeric=divergence,
+            value_category=risk_bucket,
+            scale="[0,1] absolute probability difference; category is a fixed threshold bucket over that value",
+            evidence=[
+                EvidenceItem(
+                    kind="derived_divergence",
+                    value=(
+                        f"|P(yes)_llm - P(yes)_market| = |{p_llm:.4f} - {p_market:.4f}| = {divergence:.4f}"
+                    ),
+                    source="derived from the same two real values as forecast_probability's evidence",
+                )
+            ],
+        )
 
-        def _fmt(ts):
-            try:
-                return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
-            except Exception:
-                return None
-
-        first_ts = candles[0].get("end_period_ts") if candles else None
-        last_ts = candles[-1].get("end_period_ts") if candles else None
-
-        return Q5Backtest(
-            total_return=total_return,
-            sharpe=sharpe,
-            max_drawdown=max_dd,
-            win_rate=win_rate,
-            equity_curve=equity_curve,
-            benchmark="buy_and_hold_yes_kalshi_contract",
-            train_period=None,
-            test_period=f"{_fmt(first_ts)}/{_fmt(last_ts)}" if first_ts and last_ts else None,
-            adapter=self.name,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+        return Q2State(
+            context=context,
+            states=[forecast_state, divergence_state],
+            explanation=(
+                "Q2-vs-Q3 ambiguity (disclosed, not silently resolved): "
+                "`forecast_probability` is the real model's own P(yes) on a "
+                "real, currently open Kalshi event market. It can honestly be "
+                "read either as a Q2 belief state (what the model believes "
+                "about this real-world event right now) or as a Q3 "
+                "predictive/tradeable signal (a directional forecast). This "
+                "adapter reports it on Q2 per the schema's documented "
+                "semantics ('what state is the object/market in'), but a "
+                "downstream consumer treating it as a Q3-style signal instead "
+                "would not be misusing the number — the ambiguity is in the "
+                "underlying quantity itself, not in this adapter's choice of "
+                "which Q layer to attach it to."
+            ),
         )
 
     def smoke_test(self):
         checks = super().smoke_test()
 
-        q2 = self.q2_sentiment("AAPL", "2024-01-15")
-        checks["q2_returns_Q2Sentiment"] = q2 is not None
-        checks["sentiment_score_in_range"] = q2 is not None and -1.0 <= q2.sentiment_score <= 1.0
-        checks["risk_level_is_valid"] = q2 is not None and q2.risk_level in (
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "EXTREME",
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.ASSET,
+            targets=["AAPL"],
+            universe=["AAPL"],
         )
-        checks["drivers_non_empty"] = q2 is not None and len(q2.drivers) > 0
-
-        q5 = self.q5_backtest(["AAPL"], "2024-01-01", "2024-03-31")
-        checks["q5_returns_Q5Backtest"] = q5 is not None
-        checks["q5_total_return_is_float"] = q5 is not None and isinstance(q5.total_return, float)
-        checks["q5_max_drawdown_non_positive"] = q5 is not None and (
-            q5.max_drawdown is None or q5.max_drawdown <= 0
+        q2 = self.q2_state(context)
+        checks["q2_returns_Q2State"] = q2 is not None
+        checks["states_non_empty"] = q2 is not None and len(q2.states) >= 1
+        forecast_state = next(
+            (s for s in q2.states if s.dimension == "forecast_probability"), None
+        ) if q2 is not None else None
+        checks["forecast_probability_present"] = forecast_state is not None
+        checks["forecast_probability_in_range"] = (
+            forecast_state is not None
+            and forecast_state.value_numeric is not None
+            and 0.0 <= forecast_state.value_numeric <= 1.0
         )
+        checks["context_echoed_unchanged"] = q2 is not None and q2.context == context
         return checks

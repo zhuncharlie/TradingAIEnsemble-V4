@@ -55,7 +55,9 @@ Run the harness with that env active:
 No upstream source was patched — only environment/dependency setup was
 needed, so there is no patches/FinGPT.diff.
 
-Design notes (translation choices made by this adapter, not upstream):
+Schema v2.0.0 migration notes (this adapter still answers Q2 only, same as
+v1 — no new Q layer claimed; see PROJECT_SCHEMA_AUDIT.md §4.1/§7 for prior
+findings this migration follows):
   - Model: FinGPT v3.1 (ChatGLM2-6B base), loaded fp16 (no 8-bit
     quantization — see below). Downgraded from v3.3 (Llama-2-13B, best
     reported F1) mid-session purely for download size/time in this sandbox's
@@ -75,31 +77,68 @@ Design notes (translation choices made by this adapter, not upstream):
   - yfinance's news feed only exposes the *current* latest headlines, not an
     arbitrary historical date's headlines — same kind of real-world API
     limitation ai_hedge_fund_adapter.py documents for its own data source.
-    The requested `date` is recorded on the output but headline recency is
-    whatever yfinance has "now".
-  - sentiment_score: mean of per-headline labels (positive=+1, neutral=0,
-    negative=-1) across the headlines scored, clipped to [-1, 1].
-  - risk_level: FinGPT has no native risk concept, so this adapter derives a
-    bucket from the aggregate score and cross-headline disagreement (a
-    population stdev of the per-headline labels): consistently very negative
-    -> EXTREME, negative-or-highly-disagreeing -> HIGH, near-neutral ->
-    MEDIUM, net positive -> LOW.
-  - drivers: the top 3 headlines ranked by |individual label|, ties broken by
-    recency, formatted as "<title> (<label>)".
+    The requested `context.as_of` is recorded on the output but headline
+    recency is whatever yfinance has "now".
+  - Q2State.states[0] (dimension="sentiment"): value_numeric is the mean of
+    per-headline labels (positive=+1, neutral=0, negative=-1) across the
+    headlines scored by the real model, clipped to [-1, 1]. This is the same
+    aggregation v1 called `sentiment_score`; only the canonical container
+    changed.
+  - Q2State.states[1] (dimension="sentiment_dispersion", RECOVERED
+    presentation — see migration rubric / PROJECT_SCHEMA_AUDIT.md): v1 fed
+    this same population-stdev-of-per-headline-labels statistic into a
+    hand-tuned `risk_level` enum ladder (LOW/MEDIUM/HIGH/EXTREME) that only
+    existed to satisfy v1's forced RiskLevel field. That ladder is deleted
+    in this migration — FinGPT has no native risk concept, and forcing a
+    real dispersion number through an invented bucket function is exactly
+    the kind of derived-heuristic-dressed-as-native-risk pattern the v2
+    schema's open-vocabulary StateEstimate is designed to avoid. The real
+    number itself is preserved honestly as its own open-vocabulary
+    dimension instead of being thrown away or miscategorized.
+  - evidence: each StateEstimate carries the individual scored headlines
+    (title + real per-headline label) as EvidenceItem(kind="news_headline",
+    value=..., source="Yahoo Finance news (yfinance)"), replacing v1's
+    `drivers: List[str]` free-text field with the same real per-headline
+    information in the schema's structured evidence container. Kept to the
+    top 3 by |label| (ties broken by recency), same selection v1 used.
+  - No-headlines path (FALLBACK BEHAVIOR DELETED per migration rubric): v1
+    fed a fabricated string ("No recent news found for {ticker}.") into the
+    real FinGPT model as if it were a real headline, then reported the
+    resulting neutral-ish score as if it meant something. That is deleted.
+    When yfinance returns zero headlines, this adapter no longer calls the
+    model at all — it returns a single honest StateEstimate(value_numeric=
+    0.0, confidence=ConfidenceEstimate(value=0.0, kind=HEURISTIC,
+    method="no headlines available")) and sets Q2State.explanation to say
+    plainly that no headlines were found and sentiment was not evaluated.
+  - confidence on the real (headlines-found) sentiment StateEstimate is left
+    None: this adapter greedily decodes one label token per headline and
+    never captures the model's per-class logits/probabilities, so there is
+    no honest numeric confidence to report — reporting one anyway would be
+    exactly the "default confidence=0.5" fabrication CLAUDE.md and the
+    migration rubric prohibit.
 """
 
 from __future__ import annotations
 
 import os
 import statistics
-import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 from dotenv import load_dotenv
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Q2Sentiment, RiskLevel
+from CONTRACT.schemas import (
+    AdapterResult,
+    ConfidenceEstimate,
+    ConfidenceKind,
+    EvidenceItem,
+    OutputScope,
+    Q2State,
+    QueryContext,
+    StateEstimate,
+    TimeWindow,
+)
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "FinGPT"
 load_dotenv(dotenv_path=VENDOR_DIR / ".env")
@@ -195,50 +234,146 @@ class FinGPTAdapter(BaseAdapter):
     upstream_repo = "https://github.com/AI4Finance-Foundation/FinGPT"
     requires_env = "fingpt_real"
 
-    def q2_sentiment(self, ticker: str, date: str, **kwargs) -> Optional[Q2Sentiment]:
-        t0 = time.time()
+    def __init__(self):
+        super().__init__()
+        # Cache keyed by (ticker, as_of): the run() override's native_output
+        # capture reuses the same real scoring pass q2_state() performs,
+        # instead of re-running the GPU model a second time.
+        self._cache: dict[tuple[str, str], dict] = {}
+
+    def _run(self, ticker: str, date: str) -> dict:
+        key = (ticker, date)
+        if key in self._cache:
+            return self._cache[key]
 
         headlines = _fetch_headlines(ticker)
+
         if not headlines:
-            headlines = [f"No recent news found for {ticker}."]
+            raw = {"ticker": ticker, "date": date, "headlines": [], "scored": []}
+            self._cache[key] = raw
+            return raw
 
-        scored = [(title, *_score_text(title)) for title in headlines]
-        # scored: List[(title, label, value)]
+        scored = [(title, *_score_text(title)) for title in headlines]  # (title, label, value)
+        raw = {
+            "ticker": ticker,
+            "date": date,
+            "headlines": headlines,
+            "scored": [{"title": t, "label": l, "value": v} for t, l, v in scored],
+        }
+        self._cache[key] = raw
+        return raw
 
-        values = [v for _, _, v in scored]
-        avg = sum(values) / len(values)
-        avg = max(-1.0, min(1.0, avg))
+    def q2_state(self, context: QueryContext, **kwargs) -> Optional[Q2State]:
+        if not context.targets:
+            raise ValueError("fingpt q2_state requires context.targets == [ticker]")
+        ticker = context.targets[0]
+        date = context.as_of
+
+        raw = self._run(ticker, date)
+        scored = raw["scored"]
+
+        if not scored:
+            no_headline_state = StateEstimate(
+                dimension="sentiment",
+                value_numeric=0.0,
+                scale="[-1,1]",
+                confidence=ConfidenceEstimate(
+                    value=0.0,
+                    kind=ConfidenceKind.HEURISTIC,
+                    method="no headlines available",
+                ),
+            )
+            return Q2State(
+                context=context,
+                states=[no_headline_state],
+                explanation=(
+                    f"No recent Yahoo Finance headlines were available for {ticker} "
+                    "via yfinance; the real FinGPT model was not run on fabricated "
+                    "input, so sentiment could not be evaluated."
+                ),
+            )
+
+        values = [s["value"] for s in scored]
+        avg = max(-1.0, min(1.0, sum(values) / len(values)))
         dispersion = statistics.pstdev(values) if len(values) > 1 else 0.0
 
-        if avg <= -0.66 and dispersion < 0.5:
-            risk = RiskLevel.EXTREME
-        elif avg <= -0.2 or dispersion >= 0.8:
-            risk = RiskLevel.HIGH
-        elif avg <= 0.2:
-            risk = RiskLevel.MEDIUM
-        else:
-            risk = RiskLevel.LOW
+        top_evidence = sorted(scored, key=lambda s: abs(s["value"]), reverse=True)[:3]
+        evidence = [
+            EvidenceItem(
+                kind="news_headline",
+                value=f"{item['title']} ({item['label']})",
+                source="Yahoo Finance news (yfinance)",
+            )
+            for item in top_evidence
+        ]
 
-        top_drivers = sorted(scored, key=lambda s: abs(s[2]), reverse=True)[:3]
-        drivers = [f"{title} ({label})" for title, label, _ in top_drivers]
+        sentiment_state = StateEstimate(
+            dimension="sentiment",
+            value_numeric=avg,
+            scale="[-1,1]",
+            evidence=evidence,
+        )
+        dispersion_state = StateEstimate(
+            dimension="sentiment_dispersion",
+            value_numeric=dispersion,
+            scale="population_stdev_of_per_headline_labels_in_{-1,0,1}",
+        )
 
-        return Q2Sentiment(
-            sentiment_score=avg,
-            risk_level=risk,
-            drivers=drivers,
-            sources=["Yahoo Finance news (yfinance)"],
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+        return Q2State(
+            context=context,
+            states=[sentiment_state, dispersion_state],
+            explanation=(
+                f"Aggregated real FinGPT v3.1 (ChatGLM2-6B) sentiment across "
+                f"{len(scored)} Yahoo Finance headline(s) for {ticker}: mean "
+                f"per-headline label {avg:.3f} (range [-1,1]), dispersion "
+                f"(population stdev of per-headline labels) {dispersion:.3f}."
+            ),
+        )
+
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window: Optional[TimeWindow] = None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ) -> AdapterResult:
+        """
+        Overridden solely to attach a faithful `native_output` (the real
+        per-headline FinGPT labels/scores this run produced, or an empty
+        scored list if yfinance had no headlines). No business logic
+        changes; context checks and RunMetadata construction are still done
+        by super().run(). Pre-populating self._cache here means the
+        subsequent q2_state() call super().run() makes internally reuses
+        this same real result instead of invoking the model a second time.
+        """
+        if native_output is None and context.targets:
+            native_output = self._run(context.targets[0], context.as_of)
+        return super().run(
+            task_id,
+            context,
+            generation_window=generation_window,
+            native_output=native_output,
+            adapter_notes=adapter_notes,
+            field_mappings=field_mappings,
+            **kwargs,
         )
 
     def smoke_test(self):
         checks = super().smoke_test()
-        result = self.q2_sentiment("AAPL", "2024-01-15")
-        checks["q2_returns_Q2Sentiment"] = result is not None
-        checks["sentiment_score_in_range"] = -1.0 <= result.sentiment_score <= 1.0
-        checks["risk_level_is_valid"] = result.risk_level in ("LOW", "MEDIUM", "HIGH", "EXTREME")
-        checks["drivers_non_empty"] = len(result.drivers) > 0
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.ASSET,
+            targets=["AAPL"],
+        )
+        result = self.q2_state(context)
+        checks["q2_returns_Q2State"] = result is not None
+        checks["states_non_empty"] = len(result.states) >= 1
+        sentiment = next((s for s in result.states if s.dimension == "sentiment"), None)
+        checks["sentiment_state_present"] = sentiment is not None
+        if sentiment is not None and sentiment.value_numeric is not None:
+            checks["sentiment_value_in_range"] = -1.0 <= sentiment.value_numeric <= 1.0
         return checks

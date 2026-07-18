@@ -1,7 +1,7 @@
 """
 adapters/finrl_x_adapter.py — wraps github.com/AI4Finance-Foundation/FinRL-Trading
-(Q3 ML-factor stock-selection signal, Q4 DRL portfolio allocation with
-regime-aware cash overlay).
+(Q2 real rule-based regime state, Q3 ML-factor stock-selection signal, Q4 DRL
+portfolio allocation with regime-aware cash overlay).
 
 ============================================================================
 Repo search / vetting process (target was "FinRL-X", NOT confirmed to exist
@@ -132,7 +132,7 @@ Environment setup (one-time, outside this file)
 
 Run the harness with that env active:
     conda activate finrl_x_real
-    python CONTRACT/test_harness.py --adapter adapters/finrl_x_adapter.py
+    python CONTRACT/adapter_runner.py --adapter adapters/finrl_x_adapter.py ...
 
 ============================================================================
 A real, sandbox-specific crash found and worked around (documented per
@@ -153,30 +153,92 @@ patch to any vendor file, so no patches/*.diff was needed for it)
   `loky` (process) backend and a `threading` backend, and independent of
   `OMP_NUM_THREADS`/`LOKY_START_METHOD` tuning — i.e. an environment-level
   fork+OpenMP fragility in this sandbox, not a bug in upstream's modeling
-  code. Root-caused by testing `RandomForestRegressor`/`XGBRegressor`/
-  `LGBMRegressor`/`StackingRegressor` fits individually and finding it's
-  specifically triggered by nested nested Parallel() workers that
-  themselves invoke an OpenMP-parallel `.fit()`; confirmed
-  `loky.cpu_count()` (what joblib's `n_jobs=-1` resolves against) tracks
-  `os.sched_getaffinity(0)` on Linux. Fix applied entirely in this
-  adapter's own process, around the `run_bucket()` call only: temporarily
-  restrict this process's own CPU affinity to a single core
-  (`os.sched_setaffinity(0, {0})`) for the duration of that one call, then
-  restore the original affinity immediately after. With affinity=1,
-  `loky.cpu_count()` resolves to 1, joblib's `Parallel(n_jobs=-1)` takes
-  its "n_jobs==1 ⇒ run sequentially in-process, never fork" fast path, and
-  `run_bucket()` completes in ~3s with zero crashes. This changes nothing
-  about upstream's modeling logic or results (still the same 6-model
-  competition, same Stacking ensemble, same feature importances) — it only
-  forces those calls to execute sequentially rather than in parallel, and
-  only for the few seconds `run_bucket()` runs; DRL training afterwards
-  runs with this process's normal, unrestricted affinity. `lightgbm` was
-  also left out of the conda env for the same reason (upstream's own
-  `build_models()` already treats it as optional via
-  `try/except ImportError`), rather than fighting the segfault twice.
+  code. Fix applied entirely in this adapter's own process, around the
+  `run_bucket()` call only: temporarily restrict this process's own CPU
+  affinity to a single core (`os.sched_setaffinity(0, {0})`) for the
+  duration of that one call, then restore the original affinity
+  immediately after. This changes nothing about upstream's modeling logic
+  or results (still the same 6-model competition, same Stacking ensemble,
+  same feature importances) — it only forces those calls to execute
+  sequentially rather than in parallel, and only for the few seconds
+  `run_bucket()` runs; DRL training afterwards runs with this process's
+  normal, unrestricted affinity. `lightgbm` was also left out of the conda
+  env for the same reason (upstream's own `build_models()` already treats
+  it as optional via `try/except ImportError`), rather than fighting the
+  segfault twice.
 
 ============================================================================
-Design notes (translation choices made by this adapter, not upstream)
+Schema v2.0.0 migration notes (this file was originally written against a
+v1 five-question contract; this is a structural v1 -> v2 migration, not a
+rename — see PROJECT_SCHEMA_AUDIT.md §4.3/§5/§7/§8 for the audit findings
+this migration implements)
+============================================================================
+  - **Q2 ADDED (recovered field-semantics fix, not a new capability)**: v1
+    folded upstream's real rule-based regime detector
+    (`adaptive_rotation.market_regime.detect_slow_regime()` — real
+    `RISK_ON`/`NEUTRAL`/`RISK_OFF` state + `risk_score` + `cash_floor`,
+    fed real weekly `^GSPC`/`^VIX` closes) into the old Q4 schema's
+    `regime` field. v2's `Q4Policy` has no `regime` field at all by design
+    (see `CONTRACT/schemas.py::Q4Policy` docstring: "Market regime is
+    deliberately not a field here — it lives on Q2 as an open
+    StateEstimate"). This migration adds `q2_state()`, calling the exact
+    same real `detect_slow_regime()` the Q4 path already calls (via the
+    shared `_get_regime()` cache — never computed twice), and returns its
+    real `state.value` (`"risk_on"`/`"neutral"`/`"risk_off"`, used verbatim
+    as `value_category` — no lossy remapping onto an invented BULL/BEAR/
+    SIDEWAYS enum, since v2's `StateEstimate.dimension` is open-vocabulary)
+    plus the real integer `risk_score` (0-3) as `value_numeric`. The same
+    real `cash_floor` this produces still feeds Q4's cash overlay (see
+    below) — Q2 and Q4 read one real computation, not two.
+  - **Q3 `values`/`expected_returns`**: upstream's real
+    `predicted_return` per ticker (a genuine out-of-sample model forecast
+    of `log(next_quarter_close/current_quarter_close)`, not a historical
+    correlation — confirmed by reading `run_bucket()`'s own training
+    target `y_return`) is used directly for both `values` and
+    `expected_returns`. `direction`/`strength` (singular fields in v2,
+    unlike a per-ticker triple) are only populated when exactly one target
+    ticker is requested and in-scope, using the same top/bottom-25%-based
+    convention as before; for multi-ticker/cross-sectional requests they
+    are left `None` rather than forcing an arbitrary single label onto a
+    ranking that spans many assets — a judgment call, not an upstream
+    limitation. `evidence` is upstream's own real per-run
+    `importance_records` (feature/importance/model/rank), never hardcoded.
+  - **Q4 `generation_window`**: now a required, harness-supplied
+    `TimeWindow` parameter (same fix as `adapters/finrl_adapter.py`'s own
+    migration) — the adapter no longer computes its own
+    `fetch_start = date - HISTORY_DAYS` internally. `generation_window.
+    start`/`.end` are used directly as the real DRL price-fetch/training
+    range (`_train_and_allocate()`), then echoed back unchanged in the
+    returned `Q4Policy.generation_window`.
+  - **Q4 `universe_policy.mode="dynamic"`**: the real ML-selected top-25%
+    subset of the scoped universe genuinely varies by call (it depends on
+    the live-fetched fundamentals ranking), unlike plain FinRL's fixed
+    caller-supplied ticker list — `"dynamic"`, not `"fixed"`, is the
+    honest value here.
+  - **Q4 `constraints`**: `long_only=True` is code-verified (the DRL
+    policy's own softmax weights are `max(0.0, ...)`-clipped before any
+    regime adjustment, and the regime cash-floor overlay only ever scales
+    the remaining weights down by a `[0,1]` factor — never negative).
+    `net_exposure_min=net_exposure_max=1.0` reflects that the policy is
+    always fully invested (DRL weights + `CASH` sum to 1 by construction),
+    with `CASH` able to be non-zero whenever the real regime cash floor
+    exceeds the DRL policy's own (usually ~0) cash allocation — unlike
+    plain FinRL, which is always ~fully invested with ~0 cash. This is a
+    materially different, correct value, not copied from
+    `finrl_adapter.py`.
+  - **Known limitation preserved, not silently fixed**: this adapter's
+    fundamentals data (yfinance `quarterly_financials`/
+    `quarterly_balance_sheet`) is NOT point-in-time — it always returns
+    the latest available reported quarters regardless of the requested
+    `context.as_of`/`data_cutoff`, unlike upstream's own FMP-backed
+    point-in-time SQLite database (avoided here — see security section).
+    This is documented honestly in `adapter_notes` on every result, not
+    silently patched over. Price-based inputs (Q4's DRL training window,
+    Q2's regime detector) ARE correctly point-in-time.
+
+============================================================================
+Design notes (translation choices made by this adapter, not upstream) —
+carried over from the original build, still accurate post-migration
 ============================================================================
   - **Q3 universe**: upstream's real NASDAQ-100 constituent fetch
     (`fetch_nasdaq100_tickers()`) calls FMP, which this adapter avoids (see
@@ -193,122 +255,60 @@ Design notes (translation choices made by this adapter, not upstream)
     `quarterly_balance_sheet` (free, public, no account) for each name in
     `NASDAQ_UNIVERSE`. Of upstream's 28 `FEATURE_COLS`, this adapter
     computes the 9 that map cleanly onto fields yfinance actually exposes
-    (`FEATURE_COLS` below: pe, ps, pb, roe, gross_margin, operating_margin,
-    debt_to_equity, cur_ratio, EPS) — same names/semantics as upstream's
-    own column list, just a smaller subset, passed as the `feature_cols`
-    *argument* to upstream's own `run_bucket(bucket, bdf, feature_cols,
-    val_cutoff, val_quarters)` (a real parameter of that function, not a
-    hardcoded constant this adapter had to bypass). PE/PS/PB are computed
-    as `price / (4 × quarterly_metric)` (crude quarterly-to-annualized
+    (`FEATURE_COLS` below), passed as the `feature_cols` *argument* to
+    upstream's own `run_bucket(bucket, bdf, feature_cols, val_cutoff,
+    val_quarters)` (a real parameter of that function, not a hardcoded
+    constant this adapter had to bypass). PE/PS/PB are computed as
+    `price / (4 × quarterly_metric)` (crude quarterly-to-annualized
     conversion) rather than upstream's true TTM/annual-filing figures — a
     documented simplification, not upstream logic reimplemented (the
     *model* that consumes these features, and the ranking/ensemble/
     stacking logic around them, is still 100% upstream's own code).
     Missing values are filled with the column's global median and ±inf
     clipped to NaN before filling — matching the data-hygiene step
-    upstream's own `ML_STOCK_SELECTION.md` documents ("Fill missing with
-    global median, replace inf with 0"), reimplemented here only because
-    it's adapter-side glue to get this adapter's own live-fetched data into
-    upstream's expected shape (same category as `finrl_adapter.py`'s
-    `cov_list` construction).
+    upstream's own `ML_STOCK_SELECTION.md` documents.
   - **Fiscal-quarter calendar alignment (adapter-side glue, not upstream
-    logic)**: yfinance reports each company's own fiscal quarter-end dates
-    (e.g. NVDA's ~Jan/Apr/Jul/Oct cycle vs. AAPL's calendar-quarter cycle),
+    logic)**: yfinance reports each company's own fiscal quarter-end dates,
     whereas upstream's own point-in-time system assumes a single shared
-    `datadate` grid (Compustat/FMP-style calendar-quarter convention).
-    Without alignment, `run_bucket()`'s date-based train/val/infer split
-    (which groups rows by exact `datadate` match) fragments the universe
-    across dozens of near-but-not-identical dates instead of comparing all
-    30 tickers side by side. This adapter snaps each ticker's actual
-    fiscal quarter-end to the *nearest* standard calendar quarter-end
+    `datadate` grid. This adapter snaps each ticker's actual fiscal
+    quarter-end to the *nearest* standard calendar quarter-end
     (03-31/06-30/09-30/12-31) before calling `run_bucket()` — pure date
     bucketing, not a change to the ranking/selection logic itself.
-  - **`val_cutoff`/inference window**: because different tickers have
-    already-reported as of different numbers of (aligned) quarters, this
-    adapter sets `val_cutoff` to the third-most-recent aligned quarter
-    (`val_quarters=1`), so `infer_dates` covers the two most recent aligned
-    quarters combined — this reproduces upstream's own documented
-    "mixed-vintage" idea (`ML_STOCK_SELECTION.md`: "use latest available
-    data per ticker") using upstream's own `run_bucket()` unmodified, then
-    de-duplicates to one row per ticker (keeping the latest available
-    quarter) as a simple adapter-side post-processing step.
-  - **Q3 direction/strength**: `direction` = LONG if the ticker's
-    `predicted_return` rank places it in upstream's own "top 25%" cutoff
-    (mirroring the target description exactly), SHORT if in the bottom
-    25%, else NEUTRAL. `strength` = `abs(percentile - 0.5) * 2`, i.e. 0 at
-    the median forecast and 1 at either extreme of the cross-sectional
-    ranking — an adapter-side confidence proxy (analogous to
-    `deepalpha_adapter.py`'s ensemble-dispersion-based `strength`), not an
-    upstream-native confidence score (upstream doesn't expose one).
-    `supporting_evidence` is upstream's own real per-run
-    `feature_importances_`/coefficients for that quarter's best model (top
-    3, by upstream's own `importance_records` output), never hardcoded.
-  - **Q3 `date` parameter caveat**: yfinance's quarterly statements always
-    return the *latest available* reported quarters as of when this
-    adapter runs, not "as of the requested `date`" — unlike upstream's own
-    point-in-time SQLite database, which can apply an exact
-    `--infer-date`/`--val-cutoff` filter to arbitrarily old dates. This
-    adapter's fundamentals therefore reflect current data regardless of
-    the `date` argument; `date` is passed through to the output for
-    labeling only. This is a known limitation of avoiding the paid-FMP
-    point-in-time database (see security section) — genuine point-in-time
-    historical fundamentals are exactly the "data you don't have access
-    to" case the brief anticipates. Price-based inputs (Q4's DRL training
-    window) ARE correctly point-in-time (fetched up to `date`).
-  - **Q4 universe**: the DRL allocator always trades upstream's own
-    ML-selected top-25% subset of `NASDAQ_UNIVERSE` (computed via the same
-    cached `run_bucket()` call Q3 uses) — reflecting the target
-    description's fixed 2-stage pipeline ("selects the top 25% of NASDAQ
-    stocks using ML factors, then allocates via DRL"), not an arbitrary
-    caller-supplied ticker basket. The `tickers` argument `q4_portfolio()`
-    receives (e.g. the harness's `["AAPL","MSFT","NVDA"]`) is intersected
-    with the ML-selected set only as an informational overlap check
-    logged into `rationale`; if none of the caller's tickers made the
-    cut, the full ML-selected set is used regardless. This mirrors how
-    other adapters this session have documented deliberate reinterpretations
-    of a CONTRACT argument when the upstream project's own paradigm is
-    "select, then allocate" rather than "allocate over exactly what I hand
-    you".
+  - **`val_cutoff`/inference window**: this adapter sets `val_cutoff` to
+    the third-most-recent aligned quarter (`val_quarters=1`), so
+    `infer_dates` covers the two most recent aligned quarters combined —
+    reproducing upstream's own documented "mixed-vintage" idea using
+    upstream's own `run_bucket()` unmodified, then de-duplicating to one
+    row per ticker (keeping the latest available quarter).
   - **Q4 DRL training**: same real-upstream-FinRL building blocks and same
     "train live, scoped down" budget `adapters/finrl_adapter.py` already
     validated this session (`FeatureEngineer`, `YahooDownloader`-equivalent
     yfinance fetch, `StockPortfolioEnv`, `DRLAgent` wrapping real
     `stable_baselines3.A2C`, `TOTAL_TIMESTEPS=3000`,
-    `COV_LOOKBACK_DAYS=60`, `HISTORY_DAYS=550`) rather than
-    `rl_model.py`'s own `train_a2c`/`train_ppo`/`train_ddpg` helpers, whose
-    `total_timesteps` (50000/80000/50000) are hardcoded literals with no
-    override parameter — training even one of those three at upstream's
-    own hardcoded budget would blow well past the harness's timeouts, let
-    alone competing all three as `rl_model.run_models()` does. Using
-    upstream FinRL's own `DRLAgent`/`StockPortfolioEnv` API directly (the
-    same API `rl_model.py` itself calls) with a documented, reduced
-    timestep budget is the same category of scope reduction
-    `finrl_adapter.py` already used and documented for its own Q4 — not a
+    `COV_LOOKBACK_DAYS=60`) rather than `rl_model.py`'s own
+    `train_a2c`/`train_ppo`/`train_ddpg` helpers, whose hardcoded
+    `total_timesteps` (50000/80000/50000) have no override parameter and
+    would blow well past the harness's timeouts. Using upstream FinRL's own
+    `DRLAgent`/`StockPortfolioEnv` API directly (the same API `rl_model.py`
+    itself calls) with a documented, reduced timestep budget is the same
+    category of scope reduction `finrl_adapter.py` already used — not a
     reimplementation of the reward/environment/policy logic itself (100%
     upstream `stable_baselines3`/`StockPortfolioEnv`).
-  - **Q4 `regime`**: computed from upstream's own
-    `adaptive_rotation.market_regime.detect_slow_regime()`, fed real
-    weekly `^GSPC`/`^VIX` closes (via `yfinance`) and upstream's own
-    shipped `AdaptiveRotationConf_v1.2.2.yaml` (loaded via upstream's own
-    `config_loader.load_config()`, unmodified). Upstream's
-    `SlowRegimeState` (`RISK_ON`/`NEUTRAL`/`RISK_OFF`) is mapped to
-    CONTRACT's `Regime` enum as `RISK_ON→BULL`, `NEUTRAL→SIDEWAYS`,
-    `RISK_OFF→BEAR` — an adapter-side label mapping, not a change to
-    upstream's regime-detection logic. Upstream's own `effective_cash_floor`
-    output (from the same regime result) is blended with the DRL policy's
-    own (usually ~0) cash allocation via `cash_ratio = max(drl_cash,
-    regime_cash_floor)`, rescaling the DRL weights down proportionally if
-    the regime's floor is higher — i.e. the regime genuinely modulates the
-    final allocation (matching the target description's "switches between
-    ...regimes"), using upstream's own regime/cash-floor numbers, not an
-    invented rule.
-  - Per-(universe) and per-(selected tickers, date) in-memory caching:
-    the ML panel/ranking (fundamentals-based, doesn't vary with `date` per
-    the caveat above) is fetched and ranked once per process; DRL training
-    is cached per (selected-ticker-set, date), matching
-    `finrl_adapter.py`'s own caching rationale (the harness calls each Q
-    method directly AND again via `adapter.run()` with identical
-    arguments).
+  - **Q4 universe**: the DRL allocator always trades upstream's own
+    ML-selected top-25% subset of `NASDAQ_UNIVERSE` (computed via the same
+    cached `run_bucket()` call Q3 uses) — reflecting the target
+    description's fixed 2-stage pipeline ("selects the top 25% of NASDAQ
+    stocks using ML factors, then allocates via DRL"), not an arbitrary
+    caller-supplied ticker basket. `context.targets`/`context.universe` are
+    intersected with the ML-selected set only as an informational overlap
+    check logged into `explanation`; if none of the caller's targets made
+    the cut, the full ML-selected set is used regardless.
+  - Per-(universe) and per-(selected tickers, generation_window) in-memory
+    caching: the ML panel/ranking (fundamentals-based, doesn't vary with
+    `as_of` per the caveat above) is fetched and ranked once per process;
+    DRL training is cached per (selected-ticker-set, generation_window)
+    (harness callers may invoke a q* method directly AND again via
+    `adapter.run()` with identical arguments).
 """
 
 from __future__ import annotations
@@ -325,11 +325,22 @@ import pandas as pd
 
 from CONTRACT.base_adapter import BaseAdapter
 from CONTRACT.schemas import (
+    DecisionPolicy,
     Direction,
+    EvidenceItem,
+    ObservationPolicy,
+    OutputScope,
+    PolicyType,
+    PortfolioConstraints,
+    Q2State,
     Q3Signal,
-    Q4Portfolio,
-    Regime,
-    SignalType,
+    Q4Policy,
+    QueryContext,
+    StateEstimate,
+    TimeWindow,
+    UniversePolicy,
+    UpdateMode,
+    UpdatePolicy,
 )
 
 STRATEGIES_DIR = Path(__file__).resolve().parent / "vendor" / "FinRL-Trading" / "src" / "strategies"
@@ -358,16 +369,25 @@ FEATURE_COLS = ["pe", "ps", "pb", "roe", "gross_margin", "operating_margin",
 TOP_QUANTILE = 0.25          # "top 25%" per the target description
 TOTAL_TIMESTEPS = 3000        # DRL training budget — "train live", not paper-scale
 COV_LOOKBACK_DAYS = 60        # rolling-covariance window (reduced from upstream tutorial's 252)
-HISTORY_DAYS = 550            # ~1.5 calendar years of price history for DRL training windows
 MODEL_NAME = "a2c"
 INITIAL_AMOUNT = 1_000_000
 HMAX = 100
 TRANSACTION_COST_PCT = 0.001
 REWARD_SCALING = 1e-1
 
+KNOWN_LIMITATIONS_NOTE = (
+    "Known limitation (yfinance fundamentals are NOT point-in-time): Q3's predicted_return "
+    "and Q4's ML-selected universe are both driven by yfinance quarterly_financials/"
+    "quarterly_balance_sheet, which always return the latest available reported quarters as "
+    "of process run time, regardless of context.as_of/data_cutoff. Upstream's own point-in-time "
+    "FMP-backed SQLite database is not used here (avoided to keep this adapter free of a paid "
+    "API key — see module header). Price-based inputs (Q4's DRL training window over "
+    "generation_window, Q2's regime detector as of data_cutoff) ARE correctly point-in-time."
+)
+
 _ML_CACHE: Optional[Tuple[pd.DataFrame, List[dict], List[dict]]] = None
 _REGIME_CACHE: Dict[str, object] = {}
-_DRL_CACHE: Dict[Tuple[tuple, str], "Q4Portfolio"] = {}
+_DRL_CACHE: Dict[Tuple[tuple, str, str], Dict[str, float]] = {}
 
 
 @contextmanager
@@ -529,7 +549,9 @@ def _get_ml_selection() -> Tuple[pd.DataFrame, List[dict], List[dict]]:
 
 def _get_regime(date: str):
     """Cached: upstream's own slow-regime detector, fed real weekly
-    ^GSPC/^VIX closes and upstream's own shipped YAML config."""
+    ^GSPC/^VIX closes and upstream's own shipped YAML config. Shared by
+    both q2_state() and q4_policy() so the real detect_slow_regime() call
+    happens once per (process, date), never duplicated."""
     if date in _REGIME_CACHE:
         return _REGIME_CACHE[date]
 
@@ -555,11 +577,40 @@ def _get_regime(date: str):
     return result
 
 
-_REGIME_TO_CONTRACT = {
-    "risk_on": Regime.BULL,
-    "neutral": Regime.SIDEWAYS,
-    "risk_off": Regime.BEAR,
-}
+def _regime_native_dict(regime_result) -> dict:
+    """Faithful, JSON-safe representation of upstream's real SlowRegimeResult
+    dataclass (state/signals/group_cap/cash_floor/is_persistent/metadata)."""
+    s = regime_result.signals
+    return {
+        "state": regime_result.state.value,
+        "group_cap": float(regime_result.group_cap),
+        "cash_floor": float(regime_result.cash_floor),
+        "is_persistent": bool(regime_result.is_persistent),
+        "signals": {
+            "trend_deterioration": bool(s.trend_deterioration),
+            "drawdown_stress": bool(s.drawdown_stress),
+            "volatility_stress": bool(s.volatility_stress),
+            "risk_score": int(s.risk_score),
+            "spx_price": float(s.spx_price),
+            "spx_ma_26w": float(s.spx_ma_26w),
+            "spx_drawdown_13w": float(s.spx_drawdown_13w),
+            "vix_z_score": float(s.vix_z_score),
+        },
+    }
+
+
+def _ranking_native_records(ranking: pd.DataFrame) -> List[dict]:
+    cols = ["tic", "datadate", "predicted_return", "best_model", "rank_position"]
+    out = []
+    for _, r in ranking[cols].iterrows():
+        out.append({
+            "tic": str(r["tic"]),
+            "datadate": str(r["datadate"]),
+            "predicted_return": float(r["predicted_return"]),
+            "best_model": str(r["best_model"]),
+            "rank_position": int(r["rank_position"]),
+        })
+    return out
 
 
 def _fetch_and_engineer(tickers: List[str], fetch_start: str, fetch_end: str) -> pd.DataFrame:
@@ -589,7 +640,7 @@ def _fetch_and_engineer(tickers: List[str], fetch_start: str, fetch_end: str) ->
     if len(unique_dates) <= COV_LOOKBACK_DAYS + 5:
         raise RuntimeError(
             f"Not enough trading days ({len(unique_dates)}) for a "
-            f"{COV_LOOKBACK_DAYS}-day covariance lookback — widen the date range."
+            f"{COV_LOOKBACK_DAYS}-day covariance lookback — widen generation_window."
         )
 
     cov_list, dates_out = [], []
@@ -606,23 +657,29 @@ def _fetch_and_engineer(tickers: List[str], fetch_start: str, fetch_end: str) ->
     return df
 
 
-def _train_and_allocate(tickers: List[str], date: str) -> Dict[str, float]:
+def _train_and_allocate(tickers: List[str], fetch_start: str, fetch_end: str) -> Dict[str, float]:
     """Real upstream FinRL DRL training (StockPortfolioEnv + DRLAgent
     wrapping real stable_baselines3.A2C), scoped down per header "Q4 DRL
-    training". Returns the final-day softmax-normalized weights."""
-    from finrl import config
+    training". [fetch_start, fetch_end] is the harness-supplied
+    generation_window, used directly as the real price-fetch/training
+    range (v2: no adapter-computed window). Returns the final-day
+    softmax-normalized weights."""
     from finrl.agents.stablebaselines3.models import DRLAgent
-    from finrl.meta.env_portfolio_allocation.env_portfolio import StockPortfolioEnv
     from finrl.meta.preprocessor.preprocessors import data_split
 
-    end_ts = pd.Timestamp(date)
-    fetch_start = (end_ts - pd.DateOffset(days=HISTORY_DAYS)).strftime("%Y-%m-%d")
-    fetch_end = (end_ts + pd.DateOffset(days=1)).strftime("%Y-%m-%d")
+    # yfinance's own fetch end is exclusive; widen by one day so the last
+    # calendar day of the harness-supplied window is actually included in
+    # the real price fetch. Does not change the recorded generation_window
+    # itself (see q4_policy) — only this network call's end-exclusive quirk.
+    fetch_end_inclusive = (pd.Timestamp(fetch_end) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
-    df = _fetch_and_engineer(tickers, fetch_start, fetch_end)
-    train_df = data_split(df, fetch_start, fetch_end)
+    df = _fetch_and_engineer(tickers, fetch_start, fetch_end_inclusive)
+    train_df = data_split(df, fetch_start, fetch_end_inclusive)
 
     stock_dim = len(tickers)
+    from finrl import config
+    from finrl.meta.env_portfolio_allocation.env_portfolio import StockPortfolioEnv
+
     env_gym = StockPortfolioEnv(
         df=train_df, hmax=HMAX, initial_amount=INITIAL_AMOUNT,
         transaction_cost_pct=TRANSACTION_COST_PCT, state_space=stock_dim,
@@ -645,150 +702,349 @@ def _train_and_allocate(tickers: List[str], date: str) -> Dict[str, float]:
 
 class FinRLXAdapter(BaseAdapter):
     name = "finrl_x"
-    questions_answered = ["Q3", "Q4"]
+    questions_answered = ["Q2", "Q3", "Q4"]
     upstream_repo = "https://github.com/AI4Finance-Foundation/FinRL-Trading"
     requires_env = "finrl_x_real"
+
+    def __init__(self):
+        super().__init__()
+        self._last_native: Dict[str, dict] = {}
+
+    # ------------------------------------------------------------------
+    # Q2 — real rule-based market-regime state (recovered from v1's Q4
+    # field-semantics mismatch — see module header)
+    # ------------------------------------------------------------------
+    def q2_state(self, context: QueryContext, **kwargs) -> Optional[Q2State]:
+        asof_date = context.data_cutoff or context.as_of
+        regime_result = _get_regime(asof_date)
+        signals = regime_result.signals
+
+        evidence = [
+            EvidenceItem(
+                kind="model_feature", value=f"trend_deterioration={signals.trend_deterioration}",
+                source="adaptive_rotation.market_regime.compute_slow_regime_signals",
+                reference="SPX vs 26-week moving average",
+            ),
+            EvidenceItem(
+                kind="model_feature", value=f"drawdown_stress={signals.drawdown_stress}",
+                source="adaptive_rotation.market_regime.compute_slow_regime_signals",
+                reference="13-week SPX drawdown >= 10%",
+            ),
+            EvidenceItem(
+                kind="model_feature", value=f"volatility_stress={signals.volatility_stress}",
+                source="adaptive_rotation.market_regime.compute_slow_regime_signals",
+                reference="3-year robust VIX z-score >= 3.0",
+            ),
+        ]
+
+        state = StateEstimate(
+            dimension="market_regime",
+            value_category=regime_result.state.value,
+            value_numeric=float(signals.risk_score),
+            scale="risk_score in {0,1,2,3} (0->risk_on, 1->neutral, 2-3->risk_off); "
+                  "value_category is upstream's own tri-level label",
+            observation_window="26-week SPX trend MA / 13-week SPX drawdown / 3-year robust VIX z-score",
+            confidence=None,
+            evidence=evidence,
+        )
+
+        explanation = (
+            f"Upstream FinRL-Trading's own rule-based slow-regime detector "
+            f"(adaptive_rotation.market_regime.detect_slow_regime, real weekly ^GSPC/^VIX "
+            f"closes as of {asof_date}) reports '{regime_result.state.value}' "
+            f"(risk_score={signals.risk_score}/3, cash_floor={regime_result.cash_floor:.0%}). "
+            f"This is the same real regime computation that feeds the cash-floor overlay on "
+            f"this adapter's Q4 policy (see q4_policy) — v1 folded this into Q4's own `regime` "
+            f"field; v2 routes it here since market_regime is a state of the world, not a "
+            f"policy property (see CONTRACT/schemas.py Q4Policy docstring)."
+        )
+
+        self._last_native["q2"] = _regime_native_dict(regime_result)
+
+        return Q2State(context=context, states=[state], explanation=explanation)
 
     # ------------------------------------------------------------------
     # Q3 — ML-factor stock-selection signal
     # ------------------------------------------------------------------
-    def q3_signal(self, ticker: str, date: str, **kwargs) -> Optional[Q3Signal]:
-        t0 = time.time()
+    def q3_signal(self, context: QueryContext, **kwargs) -> Optional[Q3Signal]:
         ranking, model_results, importance_records = _get_ml_selection()
         n = len(ranking)
         top_cut = max(1, round(TOP_QUANTILE * n))
+        bottom_cut = n - top_cut
+        universe_tics = set(ranking["tic"])
 
-        row = ranking[ranking.tic == ticker]
-        if row.empty:
-            return Q3Signal(
-                signal_type=SignalType.FACTOR,
-                direction=Direction.NEUTRAL,
-                strength=0.0,
-                supporting_evidence=[
-                    f"{ticker} is outside this adapter's scoped {n}-name NASDAQ "
-                    f"universe (see NASDAQ_UNIVERSE in adapters/finrl_x_adapter.py) "
-                    f"— no ML factor ranking available for it."
-                ],
-                expected_horizon="1q",
-                expected_return=None,
-                adapter=self.name, ticker=ticker, date=date,
-                cost_usd=0.0, latency_sec=time.time() - t0,
-            )
+        requested = list(context.targets or context.universe or [])
+        targets = [t for t in requested if t in universe_tics]
+        out_of_scope = [t for t in requested if t not in universe_tics]
+        if not targets:
+            # No requested ticker is in this adapter's scoped universe --
+            # fall back to the full scoped ranking rather than fabricating
+            # a value for a ticker with no real model output.
+            targets = ranking["tic"].tolist()
 
-        rank = int(row["rank_position"].iloc[0])
-        pct = (n - rank) / (n - 1) if n > 1 else 0.5
-        is_top25 = rank <= top_cut
-        is_bottom25 = rank > (n - top_cut)
-        direction = Direction.LONG if is_top25 else Direction.SHORT if is_bottom25 else Direction.NEUTRAL
-        strength = max(0.0, min(1.0, abs(pct - 0.5) * 2))
+        values: Dict[str, float] = {}
+        expected_returns: Dict[str, float] = {}
+        for tic in targets:
+            row = ranking[ranking.tic == tic]
+            if row.empty:
+                continue
+            pred = float(row["predicted_return"].iloc[0])
+            values[tic] = pred
+            expected_returns[tic] = pred
 
-        best_model = row["best_model"].iloc[0]
+        if not values:
+            return None
+
+        direction = None
+        strength = None
+        if len(targets) == 1 and targets[0] in universe_tics:
+            row = ranking[ranking.tic == targets[0]]
+            rank = int(row["rank_position"].iloc[0])
+            pct = (n - rank) / (n - 1) if n > 1 else 0.5
+            is_top = rank <= top_cut
+            is_bottom = rank > bottom_cut
+            direction = Direction.LONG if is_top else Direction.SHORT if is_bottom else Direction.NEUTRAL
+            strength = max(0.0, min(1.0, abs(pct - 0.5) * 2))
+
+        best_model = str(ranking.iloc[0]["best_model"]) if n else None
         best_importances = sorted(
-            [r for r in importance_records if r["model"] == best_model and r["is_best"]],
+            [r for r in importance_records if r.get("model") == best_model and r.get("is_best")],
             key=lambda r: r["rank"],
-        )[:3]
-        if best_importances:
-            supporting_evidence = [f"{r['feature']} (importance={r['importance']:.3f}, model={best_model})" for r in best_importances]
-        else:
-            supporting_evidence = [f"predicted_return rank {rank}/{n} (model={best_model})"]
+        )[:3] if best_model else []
+        evidence = [
+            EvidenceItem(
+                kind="model_feature",
+                value=f"{r['feature']} (importance={r['importance']:.3f})",
+                source=f"ml_bucket_selection.run_bucket importance_records (model={r['model']})",
+            )
+            for r in best_importances
+        ] or None
 
-        expected_return = float(row["predicted_return"].iloc[0])
+        explanation = (
+            f"predicted_return is upstream FinRL-Trading's own out-of-sample regression "
+            f"prediction (best_model={best_model} of a real RF/XGBoost/HistGBM/ExtraTrees/"
+            f"Ridge/Stacking competition, ml_bucket_selection.run_bucket()) of "
+            f"log(next_quarter_close / current_quarter_close) over a scoped {n}-name "
+            f"NASDAQ-style universe. Fundamentals inputs are yfinance's latest-available "
+            f"quarterly statements, NOT point-in-time as of context.as_of/data_cutoff (see "
+            f"adapter_notes — a known limitation of avoiding the paid FMP point-in-time "
+            f"database)."
+            + (f" Requested target(s) outside this adapter's scoped universe: {out_of_scope}." if out_of_scope else "")
+        )
+
+        self._last_native["q3"] = {
+            "ranking": _ranking_native_records(ranking),
+            "model_results": model_results,
+            "importance_records": importance_records,
+        }
 
         return Q3Signal(
-            signal_type=SignalType.FACTOR,
+            context=context,
+            signal_semantics="predicted_return (real out-of-sample model forecast of next-quarter log price return)",
+            values=values,
+            score_scale="log return, unitless",
             direction=direction,
             strength=strength,
-            supporting_evidence=supporting_evidence,
-            expected_horizon="1q",
-            expected_return=expected_return,
-            adapter=self.name, ticker=ticker, date=date,
-            cost_usd=0.0, latency_sec=time.time() - t0,
+            expected_returns=expected_returns,
+            factor_expression=None,
+            confidence=None,
+            evidence=evidence,
+            explanation=explanation,
         )
 
     # ------------------------------------------------------------------
-    # Q4 — DRL portfolio allocation over the ML-selected top-25% subset
+    # Q4 — DRL portfolio allocation over the ML-selected top-25% subset,
+    # with a real regime-based cash-floor overlay
     # ------------------------------------------------------------------
-    def q4_portfolio(self, tickers: List[str], date: str, **kwargs) -> Optional[Q4Portfolio]:
-        t0 = time.time()
+    def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
         ranking, _, _ = _get_ml_selection()
         n = len(ranking)
         top_cut = max(2, round(TOP_QUANTILE * n))
         selected = ranking.head(top_cut)["tic"].tolist()
 
-        cache_key = (tuple(sorted(selected)), date)
+        cache_key = (tuple(sorted(selected)), generation_window.start, generation_window.end)
         if cache_key in _DRL_CACHE:
-            cached = _DRL_CACHE[cache_key]
-            cached.latency_sec = time.time() - t0
-            return cached
+            weights = dict(_DRL_CACHE[cache_key])
+        else:
+            weights = _train_and_allocate(selected, generation_window.start, generation_window.end)
+            _DRL_CACHE[cache_key] = dict(weights)
 
-        overlap = sorted(set(tickers or []) & set(selected))
-
-        weights = _train_and_allocate(selected, date)
         drl_cash = max(0.0, 1.0 - sum(weights.values()))
 
-        regime_result = _get_regime(date)
-        regime_label = _REGIME_TO_CONTRACT.get(regime_result.state.value, Regime.SIDEWAYS)
+        asof_date = context.data_cutoff or context.as_of
+        regime_result = _get_regime(asof_date)
         regime_cash_floor = float(regime_result.cash_floor)
 
         cash_ratio = max(drl_cash, regime_cash_floor)
         if cash_ratio > drl_cash and drl_cash < 1.0:
             scale = (1.0 - cash_ratio) / (1.0 - drl_cash)
             weights = {k: v * scale for k, v in weights.items()}
-        cash_ratio = max(0.0, min(1.0, cash_ratio))
 
-        rationale = (
-            f"Portfolio is upstream FinRL-Trading's own top-{int(TOP_QUANTILE*100)}% "
-            f"ML-selected subset of a {n}-name scoped NASDAQ universe "
-            f"({', '.join(selected)}), allocated by a real {MODEL_NAME.upper()} policy "
-            f"(upstream FinRL's own DRLAgent wrapping stable_baselines3.A2C, trained "
-            f"live for {TOTAL_TIMESTEPS} timesteps on real yfinance history through "
-            f"{date}). Upstream's own slow-regime detector "
-            f"(adaptive_rotation.market_regime, real weekly ^GSPC/^VIX data) reports "
-            f"'{regime_result.state.value}' (risk_score={regime_result.signals.risk_score}), "
-            f"contributing a {regime_cash_floor:.0%} cash floor overlay on top of the "
-            f"DRL policy's own {drl_cash:.1%} cash allocation. "
+        initial_weights = {k: v for k, v in weights.items() if v > 0.0}
+        non_cash_total = sum(initial_weights.values())
+        initial_weights["CASH"] = max(0.0, 1.0 - non_cash_total)
+
+        requested = set(context.targets or context.universe or [])
+        overlap = sorted(requested & set(selected))
+
+        explanation = (
+            f"Universe is upstream FinRL-Trading's own top-{int(TOP_QUANTILE*100)}% ML-selected "
+            f"subset of a {n}-name scoped NASDAQ-style universe ({', '.join(selected)}), from the "
+            f"same real ml_bucket_selection.run_bucket() ranking Q3 uses. Weights are the "
+            f"final-day allocation from a real {MODEL_NAME.upper()} policy (upstream FinRL's own "
+            f"DRLAgent wrapping stable_baselines3.A2C), trained live for {TOTAL_TIMESTEPS} "
+            f"timesteps on real yfinance price history over the harness-supplied generation "
+            f"window [{generation_window.start}, {generation_window.end}]. Upstream's own "
+            f"rule-based slow-regime detector (adaptive_rotation.market_regime, real weekly "
+            f"^GSPC/^VIX data as of {asof_date} — see q2_state for the same real regime output) "
+            f"reports '{regime_result.state.value}' (risk_score={regime_result.signals.risk_score}), "
+            f"contributing a {regime_cash_floor:.0%} cash floor blended with the DRL policy's own "
+            f"{drl_cash:.1%} cash allocation via cash_ratio=max(drl_cash, regime_cash_floor), "
+            f"rescaling the remaining weights down proportionally. "
             + (
-                f"{len(overlap)} of the caller-requested tickers ({', '.join(overlap)}) "
+                f"{len(overlap)} of the caller-requested target(s)/universe ({', '.join(overlap)}) "
                 f"are in the ML-selected set."
                 if overlap else
-                "None of the caller-requested tickers were in the ML-selected top-25% "
-                "set this cycle; the full ML-selected set is used instead (see "
-                "adapters/finrl_x_adapter.py header, 'Q4 universe')."
+                "None of the caller-requested targets/universe were in this cycle's ML-selected "
+                "top-25% set; the full ML-selected set is used regardless (see module header, "
+                "'Q4 universe')."
             )
         )
 
-        result = Q4Portfolio(
-            weights=weights,
-            cash_ratio=cash_ratio,
-            rationale=rationale,
-            regime=regime_label,
-            rebalance_freq="DAILY",
-            adapter=self.name,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+        universe_policy = UniversePolicy(
+            mode="dynamic",
+            max_assets=top_cut,
+            selection_frequency="varies with underlying fundamentals cadence (quarterly)",
+            selector_description=(
+                "Top-25% of a scoped NASDAQ-style universe by predicted_return, real ML "
+                "ensemble ranking via upstream ml_bucket_selection.run_bucket() (same "
+                "computation as this adapter's Q3 signal)."
+            ),
         )
-        _DRL_CACHE[cache_key] = result
+
+        observation_policy = ObservationPolicy(
+            lookback_window=f"{COV_LOOKBACK_DAYS} trading days rolling covariance over the harness-supplied generation window",
+            data_sources=[
+                "yfinance OHLCV via upstream FinRL YahooDownloader",
+                "yfinance ^GSPC/^VIX weekly closes (regime detector)",
+            ],
+            observation_description=(
+                "Upstream FinRL FeatureEngineer technical indicators + adapter-side rolling "
+                "return-covariance matrix (StockPortfolioEnv's required cov_list input)."
+            ),
+        )
+
+        decision_policy = DecisionPolicy(
+            decision_rule=(
+                "Real A2C DRL policy (stable_baselines3 via upstream FinRL DRLAgent/"
+                "StockPortfolioEnv) trained over generation_window; final-day softmax "
+                "portfolio weights over the ML-selected top-25% universe, cash-floor-adjusted "
+                "by upstream's own rule-based regime detector."
+            ),
+            output_semantics="target portfolio weights (non-negative, sum to 1 including CASH)",
+        )
+
+        update_policy = UpdatePolicy(
+            mode=UpdateMode.NONE,
+            update_description=(
+                "Policy is retrained from scratch each time q4_policy() is called over a given "
+                "generation_window; no online learning occurs after generation."
+            ),
+        )
+
+        constraints = PortfolioConstraints(
+            long_only=True,
+            net_exposure_min=1.0,
+            net_exposure_max=1.0,
+        )
+
+        self._last_native["q4"] = {
+            "selected_universe": selected,
+            "drl_weights_after_regime_overlay": weights,
+            "drl_cash_pre_regime": drl_cash,
+            "regime": _regime_native_dict(regime_result),
+            "generation_window": {"start": generation_window.start, "end": generation_window.end},
+        }
+
+        return Q4Policy(
+            context=context,
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            universe_policy=universe_policy,
+            observation_policy=observation_policy,
+            decision_policy=decision_policy,
+            update_policy=update_policy,
+            constraints=constraints,
+            initial_weights=initial_weights,
+            artifact=None,
+            decisions=None,
+            explanation=explanation,
+        )
+
+    # ------------------------------------------------------------------
+    # run() override — attach a faithful native_output (captured as a side
+    # effect of the real q2/q3/q4 calls BaseAdapter.run() makes) and the
+    # known-limitations note, matching this session's established v2
+    # convention (see adapters/alphagen_adapter.py).
+    # ------------------------------------------------------------------
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window: Optional[TimeWindow] = None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ):
+        self._last_native = {}
+        result = super().run(
+            task_id=task_id, context=context, generation_window=generation_window,
+            native_output=native_output, adapter_notes=adapter_notes, field_mappings=field_mappings,
+            **kwargs,
+        )
+        updates = {}
+        if native_output is None and self._last_native:
+            updates["native_output"] = self._last_native
+        if adapter_notes is None:
+            updates["adapter_notes"] = KNOWN_LIMITATIONS_NOTE
+        if updates:
+            result = result.model_copy(update=updates)
         return result
 
     # ------------------------------------------------------------------
-    # Smoke test — real q3 + q4 calls, not stubs
+    # Smoke test — real q2 + q3 + q4 calls, not stubs
     # ------------------------------------------------------------------
     def smoke_test(self):
         checks = super().smoke_test()
 
-        q3 = self.q3_signal("AAPL", "2024-01-15")
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.CROSS_SECTION,
+            targets=["AAPL"],
+        )
+
+        q2 = self.q2_state(context)
+        checks["q2_returns_Q2State"] = q2 is not None
+        if q2 is not None:
+            checks["q2_context_echoed_unchanged"] = q2.context == context
+            checks["q2_has_market_regime_dimension"] = any(s.dimension == "market_regime" for s in q2.states)
+
+        q3 = self.q3_signal(context)
         checks["q3_returns_Q3Signal"] = q3 is not None
         if q3 is not None:
-            checks["q3_direction_valid"] = q3.direction in ("LONG", "SHORT", "NEUTRAL")
-            checks["q3_strength_in_range"] = 0.0 <= q3.strength <= 1.0
+            checks["q3_context_echoed_unchanged"] = q3.context == context
+            checks["q3_values_nonempty"] = len(q3.values) > 0
 
-        q4 = self.q4_portfolio(["AAPL", "MSFT", "NVDA"], "2024-01-15")
-        checks["q4_returns_Q4Portfolio"] = q4 is not None
+        generation_window = TimeWindow(start="2022-07-01", end="2024-01-15")
+        q4 = self.q4_policy(context, generation_window)
+        checks["q4_returns_Q4Policy"] = q4 is not None
         if q4 is not None:
-            w_sum = sum(q4.weights.values())
-            checks["q4_weights_nonnegative"] = all(v >= 0.0 for v in q4.weights.values())
-            checks["q4_weights_sum_le_1"] = w_sum <= 1.0 + 1e-6
-            checks["q4_cash_ratio_in_range"] = 0.0 <= q4.cash_ratio <= 1.0
+            checks["q4_context_echoed_unchanged"] = q4.context == context
+            checks["q4_generation_window_echoed_unchanged"] = q4.generation_window == generation_window
+            w = q4.initial_weights or {}
+            checks["q4_weights_nonnegative"] = all(v >= -1e-9 for v in w.values())
+            checks["q4_weights_sum_to_1"] = abs(sum(w.values()) - 1.0) < 1e-6
 
         return checks

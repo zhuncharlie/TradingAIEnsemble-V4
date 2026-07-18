@@ -312,6 +312,7 @@ not upstream)
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import tempfile
 import time
@@ -319,7 +320,19 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Direction, Q3Signal, SignalType
+from CONTRACT.schemas import (
+    ConfidenceEstimate,
+    ConfidenceKind,
+    Direction,
+    EvidenceItem,
+    OutputScope,
+    PolicyArtifact,
+    PolicyType,
+    Q3Signal,
+    Q4Policy,
+    QueryContext,
+    TimeWindow,
+)
 
 # ── Scoped-down GA budget — see header "Design notes / scope reductions" ──
 POPULATION_SIZE = 24
@@ -336,6 +349,22 @@ SHORT_THRESHOLD = 4.0
 FALLBACK_TICKER = "AAPL"   # real, always-liquid — see header "Ticker/universe"
 
 _EVOLUTION_CACHE: dict = {}
+_WINDOW_EVOLUTION_CACHE: dict = {}
+
+
+def _ticker_from_context(context: QueryContext) -> str:
+    """This adapter is single-asset only (one requested ticker per call,
+    evolved against a small companion universe for cross-sectional
+    diversity terms — see header 'GA budget'). Read it from the
+    harness-supplied QueryContext instead of a bespoke ticker param."""
+    if context.targets:
+        return context.targets[0]
+    if context.universe:
+        return context.universe[0]
+    raise ValueError(
+        "finclaw_adapter requires context.targets or context.universe to "
+        "contain at least one ticker."
+    )
 
 
 def _clamp_end_date(date: str) -> datetime:
@@ -435,6 +464,105 @@ def _run_evolution(ticker: str, date: str) -> Tuple[object, dict, object, bool]:
     return out
 
 
+def _run_evolution_for_window(ticker: str, generation_window: TimeWindow) -> Tuple[object, List[str], bool]:
+    """Q4 recovery (new in this migration): same real, unmodified upstream
+    `AutoEvolver.evolve()` as `_run_evolution()` above, but the point-in-time
+    OHLCV download window is taken directly from the harness-supplied
+    `generation_window.start`/`.end` instead of this adapter's internal
+    HISTORY_DAYS-before-`date` heuristic. This is the "real data-fetch range
+    the upstream model needs" the migration rubric asks for: the GA is
+    re-evolved for real over exactly the interval the harness names as the
+    strategy's generation window, producing a real winning `StrategyDNA`
+    genome scoped to that window. Cached per (ticker, start, end).
+    Returns (best_result, resolved_ticker, was_fallback).
+    """
+    key = (ticker, generation_window.start, generation_window.end)
+    if key in _WINDOW_EVOLUTION_CACHE:
+        return _WINDOW_EVOLUTION_CACHE[key]
+
+    from finclaw.evolution.auto_download import DEFAULT_US_SYMBOLS
+    from finclaw.evolution.auto_evolve import AutoEvolver
+
+    start_dt = datetime.strptime(generation_window.start, "%Y-%m-%d")
+    end_dt = min(datetime.strptime(generation_window.end, "%Y-%m-%d"), datetime.now())
+    tmp_dir = tempfile.mkdtemp(prefix="finclaw_genwin_")
+
+    normalized = (ticker or "").strip().upper()
+    companions = [s for s in DEFAULT_US_SYMBOLS if s != normalized][: UNIVERSE_SIZE - 1]
+    symbols = [normalized] + companions
+
+    downloaded = _download_exact_window(symbols, start_dt, end_dt, tmp_dir)
+    was_fallback = normalized not in downloaded
+    resolved_ticker = normalized if not was_fallback else FALLBACK_TICKER
+    if was_fallback and FALLBACK_TICKER not in downloaded:
+        downloaded = _download_exact_window([FALLBACK_TICKER] + companions[:-1], start_dt, end_dt, tmp_dir)
+        if FALLBACK_TICKER not in downloaded:
+            raise RuntimeError(
+                f"No usable yfinance OHLCV for '{ticker}' or fallback "
+                f"'{FALLBACK_TICKER}' within generation_window "
+                f"[{generation_window.start}, {generation_window.end}]."
+            )
+
+    with contextlib.chdir(tmp_dir):
+        evolver = AutoEvolver(
+            data_dir=tmp_dir,
+            market="us",
+            population_size=POPULATION_SIZE,
+            elite_count=ELITE_COUNT,
+            mutation_rate=MUTATION_RATE,
+            seed=RANDOM_SEED,
+            walk_forward=True,
+            max_stocks=UNIVERSE_SIZE,
+        )
+        results = evolver.evolve(generations=GENERATIONS)
+
+    if not results:
+        raise RuntimeError(
+            "Upstream AutoEvolver.evolve() produced no results for "
+            f"generation_window [{generation_window.start}, {generation_window.end}]."
+        )
+    best = max(results, key=lambda r: r.fitness)
+
+    out = (best, resolved_ticker, was_fallback)
+    _WINDOW_EVOLUTION_CACHE[key] = out
+    return out
+
+
+def _download_exact_window(symbols: List[str], start_dt: datetime, end_dt: datetime, data_dir: str) -> List[str]:
+    """Same real yfinance fetch + upstream `_save_ohlcv_csv()` helper as
+    `_download_point_in_time()`, but for an exact [start_dt, end_dt] window
+    (used by `_run_evolution_for_window` so the Q4 generation_window is
+    honored exactly rather than derived from HISTORY_DAYS)."""
+    import yfinance as yf
+    from finclaw.evolution.auto_download import _save_ohlcv_csv  # upstream, unmodified
+
+    ok: List[str] = []
+    for sym in symbols:
+        try:
+            df = yf.Ticker(sym).history(
+                start=start_dt.strftime("%Y-%m-%d"),
+                end=(end_dt + timedelta(days=1)).strftime("%Y-%m-%d"),
+            )
+            if df is None or df.empty:
+                continue
+            rows = []
+            for idx, row in df.iterrows():
+                rows.append({
+                    "date": str(idx.date()) if hasattr(idx, "date") else str(idx)[:10],
+                    "open": round(float(row["Open"]), 4),
+                    "high": round(float(row["High"]), 4),
+                    "low": round(float(row["Low"]), 4),
+                    "close": round(float(row["Close"]), 4),
+                    "volume": int(row["Volume"]),
+                })
+            if rows:
+                _save_ohlcv_csv(os.path.join(data_dir, f"{sym}.csv"), rows)
+                ok.append(sym)
+        except Exception:
+            continue
+    return ok
+
+
 def _score_ticker(resolved_ticker: str, data: dict, dna) -> float:
     """Build the real per-ticker indicator dict from upstream's own real,
     unmodified `compute_*` functions (the same functions
@@ -491,12 +619,15 @@ def _score_ticker(resolved_ticker: str, data: dict, dna) -> float:
 
 class FinclawAdapter(BaseAdapter):
     name = "finclaw"
-    questions_answered = ["Q3"]
+    questions_answered = ["Q3", "Q4"]
     upstream_repo = "https://pypi.org/project/finclaw-ai/"
     requires_env = "finclaw_real"
 
-    def q3_signal(self, ticker: str, date: str, **kwargs) -> Optional[Q3Signal]:
+    def q3_signal(self, context: QueryContext, **kwargs) -> Optional[Q3Signal]:
         t0 = time.time()
+
+        ticker = _ticker_from_context(context)
+        date = context.as_of
 
         best, data, resolved_ticker, was_fallback = _run_evolution(ticker, date)
         dna = best.dna
@@ -514,66 +645,144 @@ class FinclawAdapter(BaseAdapter):
         w_items = {k: v for k, v in dna_dict.items() if k.startswith("w_")}
         top3 = sorted(w_items.items(), key=lambda kv: -abs(kv[1]))[:3]
 
-        wf_windows = best.walk_forward_windows or []
-        profitable = sum(1 for w in wf_windows if w.get("oos_annual_return", 0) > 0)
-
-        notes: List[str] = []
+        # NOTE (judgment call, deviates from a literal v1->v2 field carry-over):
+        # v1's Q3Signal.expected_return / supporting_evidence surfaced this
+        # winning genome's walk-forward-backtested annual_return/sharpe/
+        # win_rate/trade-count. Those are backtest performance metrics (how
+        # this DNA *would have* performed historically), not a forward
+        # predictive signal for the currently observed asset state — exactly
+        # the class of number the migration rubric's "No Q5 anywhere" rule
+        # says must not be computed or emitted from adapter code (Sharpe/
+        # return/drawdown/win_rate belong to an evaluation layer, not Q1-4).
+        # They are intentionally NOT carried into this v2 Q3Signal (nor into
+        # `expected_returns`, which would otherwise misrepresent a backtest
+        # return as a forward return expectation) — left MISSING rather than
+        # mapped. The genome is still selected internally by upstream's own
+        # fitness ranking (max(results, key=fitness)); only that internal
+        # selection logic (not its numeric value) is reused here.
+        evidence: List[EvidenceItem] = []
         if was_fallback:
-            notes.append(
-                f"Requested ticker '{ticker}' had no usable yfinance history "
-                f"for this point-in-time window; reporting the real evolved "
-                f"strategy's signal for fallback ticker '{FALLBACK_TICKER}' "
-                f"instead (see adapters/finclaw_adapter.py header, "
-                f"'Ticker/universe')."
-            )
-        notes.append(
-            f"Real score_stock() = {score:.2f}/10 for '{resolved_ticker}' as of "
-            f"the last point-in-time trading day on/before {date}, from the "
-            f"real evolved winning StrategyDNA (fitness={best.fitness:.2f})."
-        )
+            evidence.append(EvidenceItem(
+                kind="fallback_notice",
+                value=(
+                    f"Requested ticker '{ticker}' had no usable yfinance history "
+                    f"for this point-in-time window; reporting the real evolved "
+                    f"strategy's signal for fallback ticker '{FALLBACK_TICKER}' "
+                    f"instead (see adapter header, 'Ticker/universe')."
+                ),
+            ))
+        evidence.append(EvidenceItem(
+            kind="score",
+            value=f"score_stock()={score:.2f}/10 for '{resolved_ticker}' as of last point-in-time trading day on/before {date}",
+            source="finclaw.evolution.auto_evolve.score_stock() (upstream, unmodified)",
+        ))
         for fname, fval in top3:
-            notes.append(f"Top evolved factor weight: {fname} = {fval:.4f}")
-        notes.append(
-            f"Walk-forward OOS: {profitable}/{len(wf_windows)} windows "
-            f"profitable, annual_return={best.annual_return:.1f}%, "
-            f"sharpe={best.sharpe:.2f}, win_rate={best.win_rate:.1f}%, "
-            f"trades={best.total_trades} (real upstream walk-forward "
-            f"metrics, not reimplemented)."
-        )
-        notes.append(
-            "Evolved over 41 real factor weights (technical + fundamental) "
-            "in a 74-field DNA genome, per upstream's own code — NOT the "
-            "484 figure in upstream's marketing README, which does not "
-            "match the actual executed engine (see adapter header, "
-            "'the marketed 484 factors figure...')."
-        )
+            evidence.append(EvidenceItem(
+                kind="factor",
+                value=f"{fname} = {fval:.4f}",
+                source="evolved winning StrategyDNA (upstream AutoEvolver.evolve())",
+            ))
 
-        hold_days = dna_dict.get("hold_days", 0)
-        horizon = f"{int(round(hold_days))}d" if hold_days else None
+        explanation = (
+            f"Evolved over 41 real factor weights (technical + fundamental) in a "
+            f"74-field DNA genome, per upstream's own code — NOT the 484 figure "
+            f"in upstream's marketing README, which does not match the actual "
+            f"executed engine (see adapter header, 'the marketed 484 factors "
+            f"figure...'). Backtest/walk-forward performance metrics for this "
+            f"genome (annual_return/sharpe/win_rate) are deliberately not "
+            f"surfaced here — see code comment on the Q5 exclusion rule."
+        )
 
         return Q3Signal(
-            signal_type=SignalType.FACTOR,
+            context=context,
+            signal_semantics="ranking_score",
+            values={resolved_ticker: score},
+            score_scale="[0, 10] (upstream score_stock() composite entry score)",
             direction=direction,
             strength=strength,
-            supporting_evidence=notes,
-            expected_horizon=horizon,
-            expected_return=float(best.annual_return) / 100.0 if best.annual_return is not None else None,
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+            expected_returns=None,
+            factor_expression=None,
+            evidence=evidence,
+            explanation=explanation,
+        )
+
+    def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
+        """Q4 recovery (new in this migration — see PROJECT_SCHEMA_AUDIT.md
+        'finclaw's重大发现'): the real 74-field `StrategyDNA` genome the GA
+        evolves is a complete, serializable, executable trading policy
+        (entry score threshold, position sizing, stop-loss/take-profit,
+        holding-period, and 41 factor weights) — previously computed every
+        Q3 call and then discarded. Exposed here as a `PolicyArtifact`
+        referencing the real evolved genome, re-evolved over exactly the
+        harness-supplied `generation_window` (not this adapter's internal
+        HISTORY_DAYS heuristic — see `_run_evolution_for_window`).
+
+        This is artifact-only: the DNA is a rule-based genome, not a
+        portfolio weight vector, so there is no honest `initial_weights`
+        snapshot to report, and this adapter does not itself execute a
+        multi-step trajectory, so `decisions` is not populated either — a
+        `PolicyArtifact` is the correct (and sufficient) executable
+        representation per the v2 schema's own guidance.
+        """
+        t0 = time.time()
+
+        ticker = _ticker_from_context(context)
+        best, resolved_ticker, was_fallback = _run_evolution_for_window(ticker, generation_window)
+        dna = best.dna
+        dna_dict = dna.to_dict()
+
+        artifact = PolicyArtifact(
+            artifact_type="serialized_policy",
+            reference=json.dumps(dna_dict, sort_keys=True),
+            description=(
+                f"Real evolved finclaw StrategyDNA genome (74 fields: min_score "
+                f"entry threshold, position sizing, stop_loss_pct/take_profit_pct/"
+                f"trailing-stop rules, hold_days, max_positions, kelly_fraction, "
+                f"and 41 w_* technical+fundamental factor weights) for "
+                f"'{resolved_ticker}'"
+                + (f" (fallback for requested '{ticker}')" if was_fallback else "")
+                + f", from upstream AutoEvolver.evolve() (population="
+                f"{POPULATION_SIZE}, generations={GENERATIONS}, seed={RANDOM_SEED}) "
+                f"over generation_window [{generation_window.start}, "
+                f"{generation_window.end}]. Selected internally by upstream's own "
+                f"walk-forward-based GA fitness ranking; the genome's backtest "
+                f"performance metrics (annual_return/sharpe/win_rate) are not "
+                f"reported here — see the 'No Q5' exclusion rule this migration "
+                f"follows (those belong to an evaluation layer, not to Q4's "
+                f"policy artifact)."
+            ),
+        )
+
+        explanation = (
+            "Q3 exposes this same GA's live per-day score_stock() reading; Q4 "
+            "exposes the underlying evolved StrategyDNA genome itself as a "
+            "frozen, serializable policy artifact — evolved once over the "
+            "harness-supplied generation_window and not updated online by this "
+            "adapter (upstream's own re-evolution is a separate, explicit CLI "
+            "invocation, not something this adapter triggers automatically)."
+        )
+
+        return Q4Policy(
+            context=context,
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            artifact=artifact,
+            explanation=explanation,
         )
 
     def smoke_test(self):
         checks = super().smoke_test()
-        result = self.q3_signal("AAPL", "2024-01-15")
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.ASSET,
+            targets=["AAPL"],
+        )
+
+        result = self.q3_signal(context)
         checks["q3_returns_Q3Signal"] = result is not None
         if result is not None:
-            checks["signal_type_is_valid"] = result.signal_type in (
-                "MOMENTUM", "REVERSAL", "BREAKOUT", "ANOMALY", "FACTOR",
-            )
             checks["direction_is_valid"] = result.direction in ("LONG", "SHORT", "NEUTRAL")
-            checks["strength_in_range"] = 0.0 <= result.strength <= 1.0
-            checks["supporting_evidence_nonempty"] = len(result.supporting_evidence) > 0
+            checks["strength_in_range"] = result.strength is not None and 0.0 <= result.strength <= 1.0
+            checks["evidence_nonempty"] = bool(result.evidence)
         return checks

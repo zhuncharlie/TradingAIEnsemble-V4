@@ -281,6 +281,88 @@ Scope reductions (translation choices made by this adapter, not upstream)
     default to creating a stray `git_ignore_folder/` at the trading-ai-
     ensemble repo root (upstream's own literal default is `Path.cwd() /
     "git_ignore_folder" / ...`).
+
+============================================================================
+v1 -> v2.0.0 schema migration notes (added during migration; the mechanism/
+verification/scope-reduction narrative above is from the original v1 build
+and is still accurate — only the canonical field mapping below changed)
+============================================================================
+  - `SignalType` no longer exists in v2 at all; deleted. `signal_semantics`
+    (free text) replaces it: describes the real executed value of the
+    RD-Agent-implemented `factor.py` for this ticker as a continuous score,
+    not a return prediction or probability.
+  - **`values: Dict[ticker, float]` (new, required)**: the real executed
+    factor value — `workspace.execute()`'s own real local subprocess run of
+    the real LLM-generated `factor.py`, the latest non-null value of the
+    resulting real per-date `factor_series` for the one real ticker this
+    pipeline fetched data for. This pipeline only ever builds data for a
+    single ticker (`_build_debug_data(ticker, date)`), so `values` is a
+    single-entry dict here, not a cross-section — a genuine difference from
+    alphagen/atlas (whose pools are evaluated over a real multi-ticker
+    universe), disclosed rather than papered over with a fabricated
+    cross-section.
+  - **If the real pipeline produces no valid executed factor value this
+    call** (a genuine `CoderError` — the real CoSTEER evaluator rejected
+    every attempt within the bounded 2-round loop — or a real execution
+    that returns an empty/all-NaN series), `q3_signal` returns `None`
+    rather than fabricating a `values` entry: `Q3Signal.values` is
+    required and non-empty in v2, and CLAUDE.md forbids fabricating a
+    field with no real source. This did not happen during the real smoke
+    run for this migration but is a real, disclosed possible outcome of
+    the bounded LLM loop; see "测试结果" in the migration report for
+    whether it was observed.
+  - `factor_expression` (new): `task.factor_formulation`, the real LLM-
+    formulated LaTeX/formula-string produced by
+    `QlibFactorHypothesis2Experiment.convert()` — NATIVE (upstream's own
+    field, not adapter-derived).
+  - `supporting_evidence: List[str]` -> `evidence: Optional[List[EvidenceItem]]`,
+    typed per this migration's brief: `kind="hypothesis"` for
+    `Hypothesis.hypothesis`, `kind="hypothesis_reason"` for
+    `Hypothesis.reason`, `kind="factor_formulation"` for the real
+    `FactorTask.factor_name`/`.factor_description`/`.factor_formulation`,
+    `kind="coder_feedback"` for the real `HypothesisFeedback.final_decision`/
+    `.final_feedback` (or the real `CoderError` text when the bounded loop
+    never converged), and `kind="correlation_diagnostic"` for this
+    adapter's own Pearson-correlation direction/strength translation.
+  - `explanation` (new): `Hypothesis.hypothesis` — the real LLM-proposed
+    hypothesis text, used verbatim (per this migration's brief), not
+    wrapped in adapter-authored template prose.
+  - `expected_return` (v1 field, always `None` here already) has no v2
+    equivalent populated for the same reason as alphagen/atlas: no
+    reliable per-ticker expected-return number exists in this adapter
+    beyond the direction/strength translation itself.
+  - `expected_horizon` (v1 top-level field) no longer exists in v2's
+    `Q3Signal` — the real `FORWARD_RETURN_DAYS=5` window used for this
+    adapter's own correlation statistic is disclosed in `explanation`/
+    `evidence` text instead of a dedicated field, and remains an
+    adapter-internal constant (not read from `context.horizon`), per this
+    migration rubric's explicit allowance.
+  - `direction`/`strength`: unchanged in derivation (same real Pearson
+    correlation between the real executed factor series and the real
+    forward-return series, `sign(corr) * sign(latest_value)` for direction,
+    `abs(corr)` for strength) but now `Optional` per v2.
+  - `confidence`: left `None` — no native or reliably-derivable confidence
+    exists distinct from the correlation-based `strength`; the real
+    CoSTEER accept/reject verdict is a code-quality judgment, not a
+    signal-confidence estimate, so it stays in `evidence`
+    (`kind="coder_feedback"`) rather than being repurposed as `confidence`.
+  - `q3_signal(ticker, date)` -> `q3_signal(context: QueryContext)`: ticker
+    read from `context.targets[0]` (required — this adapter has no
+    universe-fallback concept, unlike alphagen/atlas, since it fetches data
+    for exactly the one requested ticker), date from `context.data_cutoff`.
+    `context` is echoed back unchanged into `Q3Signal(context=context, ...)`
+    per the v2 contract.
+  - `run()` is now overridden to attach a faithful `native_output` (the
+    real hypothesis/reason/factor-task/feedback text, the real generated
+    `factor.py` source, the real correlation statistic, under a separate
+    `adapter_derived` key for the direction/strength translation) and —
+    since this is the one adapter of this migration's three that spends
+    real money on a real LLM API — the real observed `cost_usd`
+    (`_litellm_backend.ACC_COST` delta) and wall-clock `latency_sec`,
+    patched onto `RunMetadata` after `super().run()` builds it (that method
+    itself never threads q3_signal's cost/latency into `RunMetadata`, so
+    this is the only place those real, already-tracked numbers can be
+    attached without modifying `CONTRACT/base_adapter.py`).
 """
 
 from __future__ import annotations
@@ -295,7 +377,7 @@ import pandas as pd
 import yfinance as yf
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Direction, Q3Signal, SignalType
+from CONTRACT.schemas import Direction, EvidenceItem, OutputScope, Q3Signal, QueryContext
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "RD-Agent"
 DEEPSEEK_ENV_PATH = Path(__file__).resolve().parent / "vendor" / "ai-hedge-fund" / ".env"
@@ -514,6 +596,8 @@ def _run_pipeline(ticker: str, date: str) -> dict:
                 "task": task,
                 "feedback": None,
                 "coder_error": str(coder_exc),
+                "factor_code": "",
+                "factor_series": pd.Series(dtype=float),
                 "direction": Direction.NEUTRAL,
                 "strength": 0.0,
                 "corr": None,
@@ -541,6 +625,7 @@ def _run_pipeline(ticker: str, date: str) -> dict:
             "feedback": feedback,
             "coder_error": None,
             "factor_code": factor_code,
+            "factor_series": factor_series,
             "direction": direction,
             "strength": strength,
             "corr": corr,
@@ -562,66 +647,204 @@ class RDAgentAdapter(BaseAdapter):
     # ------------------------------------------------------------------
     # Q3 — Alpha signal via a real, bounded LLM-agent research round
     # ------------------------------------------------------------------
-    def q3_signal(self, ticker: str, date: str, **kwargs) -> Optional[Q3Signal]:
+    def q3_signal(self, context: QueryContext, **kwargs) -> Optional[Q3Signal]:
         t0 = time.time()
+
+        if not context.targets:
+            raise ValueError(
+                "rdagent q3_signal requires context.targets[0] — this adapter fetches "
+                "real data for exactly one requested ticker, it has no universe-fallback "
+                "concept like alphagen/atlas."
+            )
+        ticker = context.targets[0]
+        date = context.data_cutoff or context.as_of
+
         result = _run_pipeline(ticker, date)
 
         hyp = result["hypothesis"]
         task = result["task"]
         fb = result["feedback"]
 
-        evidence: List[str] = [
-            f"RD-Agent real LLM-proposed research hypothesis: {hyp.hypothesis}",
-            f"Reason: {hyp.reason}",
-            f"Real LLM-formulated factor '{task.factor_name}': {task.factor_description} "
-            f"[formulation: {task.factor_formulation}]",
+        # `values`: the real executed factor value (workspace.execute()'s real
+        # local subprocess run of the real LLM-generated factor.py) — a
+        # single-ticker dict since this pipeline only ever fetches data for
+        # the one requested ticker (see header migration notes).
+        factor_series = result.get("factor_series")
+        latest_value: Optional[float] = None
+        if factor_series is not None and not factor_series.empty:
+            nonnull = factor_series.dropna()
+            if not nonnull.empty:
+                latest_value = float(nonnull.iloc[-1])
+
+        if latest_value is None:
+            # No real executed factor value this call (CoderError non-convergence,
+            # or a real execution that produced an empty/all-NaN series).
+            # Q3Signal.values is required and non-empty in v2 — never fabricate
+            # an entry, so this adapter has nothing honest to return this call.
+            self._last_native_output = {
+                "upstream": {
+                    "hypothesis": hyp.hypothesis,
+                    "hypothesis_reason": hyp.reason,
+                    "factor_name": task.factor_name,
+                    "factor_description": task.factor_description,
+                    "factor_formulation": task.factor_formulation,
+                    "coder_error": result.get("coder_error"),
+                    "factor_code": result.get("factor_code", ""),
+                },
+                "adapter_derived": {"ticker": ticker, "no_real_value_reason": "empty/non-convergent factor_series"},
+            }
+            self._last_cost_usd = result["cost_usd"]
+            self._last_latency_sec = time.time() - t0
+            return None
+
+        values: Dict[str, float] = {ticker: latest_value}
+
+        evidence: List[EvidenceItem] = [
+            EvidenceItem(
+                kind="hypothesis",
+                value=hyp.hypothesis,
+                source="RD-Agent QlibFactorHypothesisGen.gen() (real LLM call)",
+            ),
+            EvidenceItem(
+                kind="hypothesis_reason",
+                value=hyp.reason,
+                source="RD-Agent QlibFactorHypothesisGen.gen() (real LLM call)",
+            ),
+            EvidenceItem(
+                kind="factor_formulation",
+                value=f"'{task.factor_name}': {task.factor_description} [formulation: {task.factor_formulation}]",
+                source="RD-Agent QlibFactorHypothesis2Experiment.convert() (real LLM call)",
+            ),
         ]
         if fb is not None:
-            evidence.append(
-                f"Real CoSTEER implement+evaluate verdict: final_decision={fb.final_decision} -- "
-                f"{fb.final_feedback}"
-            )
+            evidence.append(EvidenceItem(
+                kind="coder_feedback",
+                value=f"final_decision={fb.final_decision} -- {fb.final_feedback}",
+                source="RD-Agent QlibFactorCoSTEER real CoSTEERSingleFeedback (real LLM-as-judge call)",
+            ))
         if result.get("coder_error"):
-            evidence.append(
-                "Real CoSTEER round did not converge on an accepted implementation within the "
-                f"bounded 2-round loop -- upstream's own real rejection feedback: {result['coder_error']}"
-            )
+            evidence.append(EvidenceItem(
+                kind="coder_feedback",
+                value=(
+                    "Real CoSTEER round did not converge on an accepted implementation within "
+                    f"the bounded 2-round loop -- upstream's own real rejection feedback: "
+                    f"{result['coder_error']}"
+                ),
+                source="RD-Agent QlibFactorCoSTEER (real local execution + evaluator)",
+            ))
+        explanation = hyp.hypothesis
         if result["corr"] is not None:
-            evidence.append(
-                f"This adapter's own translation: correlation of the real factor values with "
-                f"{ticker}'s real {FORWARD_RETURN_DAYS}-day forward return = {result['corr']:.4f} "
-                "(used to derive direction/strength, not upstream's own evaluation)."
-            )
+            evidence.append(EvidenceItem(
+                kind="correlation_diagnostic",
+                value=(
+                    f"This adapter's own translation: correlation of the real executed factor "
+                    f"values with {ticker}'s real {FORWARD_RETURN_DAYS}-day forward return = "
+                    f"{result['corr']:.4f} (used to derive direction/strength, not upstream's "
+                    "own evaluation)."
+                ),
+                source="adapter_derived (Pearson correlation, factor_series vs forward return)",
+            ))
+
+        self._last_native_output = {
+            "upstream": {
+                "hypothesis": hyp.hypothesis,
+                "hypothesis_reason": hyp.reason,
+                "factor_name": task.factor_name,
+                "factor_description": task.factor_description,
+                "factor_formulation": task.factor_formulation,
+                "coder_feedback": (
+                    {"final_decision": fb.final_decision, "final_feedback": fb.final_feedback}
+                    if fb is not None else None
+                ),
+                "coder_error": result.get("coder_error"),
+                "factor_code": result.get("factor_code", ""),
+                "executed_factor_value": latest_value,
+            },
+            "adapter_derived": {
+                "ticker": ticker,
+                "correlation": result["corr"],
+            },
+        }
+        self._last_cost_usd = result["cost_usd"]
+        self._last_latency_sec = time.time() - t0
 
         return Q3Signal(
-            signal_type=SignalType.FACTOR,
+            context=context,
+            signal_semantics=(
+                "factor_value — the real executed value of the RD-Agent-implemented factor.py "
+                "for this ticker (LLM-proposed hypothesis -> formulated factor -> generated + "
+                "locally-executed code), not a return prediction or probability."
+            ),
+            values=values,
+            score_scale="continuous, unitless (real locally-executed generated-code output)",
             direction=result["direction"],
             strength=result["strength"],
-            supporting_evidence=evidence,
-            expected_horizon=f"{FORWARD_RETURN_DAYS}d",
-            expected_return=None,
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=result["cost_usd"],
-            latency_sec=time.time() - t0,
+            factor_expression=task.factor_formulation,
+            evidence=evidence,
+            explanation=explanation,
         )
+
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window=None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ):
+        """Delegates to BaseAdapter.run() for the real context/generation_window
+        checks and RunMetadata construction — only attaches a faithful
+        native_output plus the real observed cost_usd/latency_sec (this
+        adapter is the one of the three migrated in this batch that spends
+        real money on a real DeepSeek LLM call; BaseAdapter.run() itself
+        never threads a q*_method's cost/latency into RunMetadata, so this
+        is the only place those already-tracked real numbers can be
+        attached without touching CONTRACT/base_adapter.py)."""
+        self._last_native_output = None
+        self._last_cost_usd = 0.0
+        self._last_latency_sec = 0.0
+        result = super().run(
+            task_id=task_id, context=context, generation_window=generation_window,
+            native_output=native_output, adapter_notes=adapter_notes, field_mappings=field_mappings,
+            **kwargs,
+        )
+        updates = {}
+        if native_output is None and self._last_native_output:
+            updates["native_output"] = self._last_native_output
+        if self._last_cost_usd or self._last_latency_sec:
+            updates["run"] = result.run.model_copy(update={
+                "cost_usd": self._last_cost_usd,
+                "latency_sec": self._last_latency_sec,
+            })
+        if updates:
+            result = result.model_copy(update=updates)
+        return result
 
     # ------------------------------------------------------------------
     # Smoke test — one real call through the full bounded pipeline
     # ------------------------------------------------------------------
     def smoke_test(self) -> Dict[str, bool]:
         checks = super().smoke_test()
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.ASSET,
+            targets=["AAPL"],
+        )
         try:
-            q3 = self.q3_signal("AAPL", "2024-01-15")
+            q3 = self.q3_signal(context)
             checks["q3_returns_Q3Signal"] = q3 is not None
-            checks["q3_signal_type_valid"] = q3.signal_type in ("MOMENTUM", "REVERSAL", "BREAKOUT", "ANOMALY", "FACTOR")
-            checks["q3_direction_valid"] = q3.direction in ("LONG", "SHORT", "NEUTRAL")
-            checks["q3_strength_in_range"] = 0.0 <= q3.strength <= 1.0
-            checks["q3_supporting_evidence_nonempty"] = len(q3.supporting_evidence) > 0
-            checks["q3_evidence_includes_real_hypothesis"] = any(
-                "hypothesis" in e.lower() for e in q3.supporting_evidence
-            )
+            if q3 is not None:
+                checks["context_echoed_unchanged"] = q3.context == context
+                checks["q3_values_nonempty"] = len(q3.values) > 0
+                checks["q3_direction_valid"] = q3.direction in ("LONG", "SHORT", "NEUTRAL", None)
+                checks["q3_strength_in_range"] = q3.strength is None or 0.0 <= q3.strength <= 1.0
+                checks["q3_evidence_nonempty"] = bool(q3.evidence)
+                checks["q3_evidence_includes_real_hypothesis"] = any(
+                    (e.kind == "hypothesis" and e.value) for e in (q3.evidence or [])
+                )
         except Exception:
             checks["q3_smoke_call_succeeds"] = False
         return checks

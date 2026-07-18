@@ -296,7 +296,7 @@ import numpy as np
 import pandas as pd
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Direction, Q3Signal, SignalType
+from CONTRACT.schemas import Direction, EvidenceItem, OutputScope, Q3Signal, QueryContext
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "qlib"
 SCRATCH_ROOT = VENDOR_DIR / "git_ignore_folder"
@@ -530,10 +530,21 @@ class QlibAdapter(BaseAdapter):
     upstream_repo = "https://github.com/microsoft/qlib"
     requires_env = "qlib_real"
 
-    def q3_signal(self, ticker: str, date: str, **kwargs) -> Optional[Q3Signal]:
+    def q3_signal(self, context: QueryContext, **kwargs) -> Optional[Q3Signal]:
         t0 = time.time()
 
-        normalized = (ticker or "").strip().upper()
+        if context.targets:
+            raw_ticker = context.targets[0]
+        elif context.universe:
+            raw_ticker = context.universe[0]
+        else:
+            raise ValueError(
+                "qlib q3_signal requires QueryContext.targets or QueryContext.universe "
+                "with at least one ticker."
+            )
+        date = context.data_cutoff
+
+        normalized = (raw_ticker or "").strip().upper()
         universe = _resolve_universe(normalized)
 
         was_fallback = False
@@ -552,83 +563,122 @@ class QlibAdapter(BaseAdapter):
         pred: pd.Series = result["pred"]
         asof_str = result["asof"].strftime("%Y-%m-%d")
         notes: List[str] = []
+        evidence: List[EvidenceItem] = []
 
         if was_fallback:
             notes.append(
-                f"Requested ticker '{ticker}' had no usable real yfinance history "
+                f"Requested ticker '{raw_ticker}' had no usable real yfinance history "
                 f"for this point-in-time window; reporting the real Qlib/Alpha158/"
                 f"LGBModel signal for fallback ticker '{resolved_ticker}' instead "
                 f"(see adapters/qlib_adapter.py header, 'Universe')."
             )
 
         if pred.empty:
+            raise RuntimeError(
+                f"Real Qlib/Alpha158/LGBModel produced no test-segment predictions for "
+                f"universe {result['tickers_ok']} ending {asof_str} — cannot honestly "
+                f"populate the required Q3Signal.values without fabricating a placeholder."
+            )
+
+        last_date = pred.index.get_level_values("datetime").max()
+        day_slice = pred.xs(last_date, level="datetime")
+        day_slice = day_slice.dropna()
+        if day_slice.empty:
+            raise RuntimeError(
+                f"Real Qlib/Alpha158/LGBModel predictions for "
+                f"{last_date.strftime('%Y-%m-%d')} were all NaN across universe "
+                f"{result['tickers_ok']} — cannot honestly populate the required "
+                f"Q3Signal.values without fabricating a placeholder."
+            )
+
+        # `values`/`expected_returns` — every real per-ticker predicted score
+        # in the day's real cross-section, not just the requested ticker
+        # (see class docstring).
+        values: Dict[str, float] = {str(tic): float(v) for tic, v in day_slice.items()}
+        expected_returns: Dict[str, float] = dict(values)
+
+        if resolved_ticker not in day_slice.index or len(day_slice) < 2:
             direction = Direction.NEUTRAL
             strength = 0.0
-            expected_return = None
-            notes.append(f"Real test-segment predictions were empty for {asof_str} — reporting NEUTRAL.")
+            notes.append(
+                f"No valid real cross-sectional prediction specifically for "
+                f"'{resolved_ticker}' on {last_date.strftime('%Y-%m-%d')} (or fewer "
+                f"than 2 tickers had a valid score that day) — reporting NEUTRAL "
+                f"direction/strength for it; `values`/`expected_returns` still carry "
+                f"the real predictions for the {len(day_slice)} ticker(s) that did "
+                f"have one."
+            )
         else:
-            last_date = pred.index.get_level_values("datetime").max()
-            day_slice = pred.xs(last_date, level="datetime")
-            day_slice = day_slice.dropna()
-            if resolved_ticker not in day_slice.index or len(day_slice) < 2:
-                direction = Direction.NEUTRAL
-                strength = 0.0
-                expected_return = None
-                notes.append(
-                    f"No valid real cross-sectional prediction for '{resolved_ticker}' "
-                    f"on {last_date.strftime('%Y-%m-%d')} — reporting NEUTRAL."
-                )
-            else:
-                n = len(day_slice)
-                order = day_slice.sort_values(ascending=False)
-                rank_position = list(order.index).index(resolved_ticker) + 1  # 1-based, 1 = highest score
-                pct = (n - rank_position) / (n - 1) if n > 1 else 0.5
-                is_top = pct >= (1 - TOP_PCT)
-                is_bottom = pct <= TOP_PCT
-                direction = Direction.LONG if is_top else Direction.SHORT if is_bottom else Direction.NEUTRAL
-                strength = max(0.0, min(1.0, abs(pct - 0.5) * 2))
-                expected_return = float(day_slice.loc[resolved_ticker])
-                notes.append(
-                    f"'{resolved_ticker}' real LGBModel-predicted score "
-                    f"{expected_return:.5f} (upstream's own real regression output "
-                    f"for label '{LABEL_EXPRESSION}') ranks {rank_position}/{n} "
-                    f"({pct:.0%} percentile) across the real {n}-ticker universe on "
-                    f"{last_date.strftime('%Y-%m-%d')}."
-                )
+            n = len(day_slice)
+            order = day_slice.sort_values(ascending=False)
+            rank_position = list(order.index).index(resolved_ticker) + 1  # 1-based, 1 = highest score
+            pct = (n - rank_position) / (n - 1) if n > 1 else 0.5
+            is_top = pct >= (1 - TOP_PCT)
+            is_bottom = pct <= TOP_PCT
+            direction = Direction.LONG if is_top else Direction.SHORT if is_bottom else Direction.NEUTRAL
+            strength = max(0.0, min(1.0, abs(pct - 0.5) * 2))
+            notes.append(
+                f"'{resolved_ticker}' real LGBModel-predicted score "
+                f"{values[resolved_ticker]:.5f} (upstream's own real regression output "
+                f"for label '{LABEL_EXPRESSION}') ranks {rank_position}/{n} "
+                f"({pct:.0%} percentile) across the real {n}-ticker universe on "
+                f"{last_date.strftime('%Y-%m-%d')}."
+            )
+            evidence.append(EvidenceItem(
+                kind="model_score",
+                value=f"{resolved_ticker} rank {rank_position}/{n} ({pct:.0%} percentile) on {last_date.strftime('%Y-%m-%d')}",
+                source="qlib LGBModel.predict() real cross-sectional score, adapter-side percentile rank",
+                reference=f"label_expression={LABEL_EXPRESSION}",
+            ))
 
-            # Real top-5 LightGBM feature importances, mapped from generic
-            # `Column_N` names back to real Alpha158 factor names — see
-            # header "supporting_evidence".
-            fi = result["feature_importance"]
-            feature_cols = result["feature_cols"]
-            named_fi = []
-            for col_name, val in fi.items():
-                try:
-                    idx = int(str(col_name).split("_")[1])
-                    real_name = feature_cols[idx] if idx < len(feature_cols) else str(col_name)
-                except (IndexError, ValueError):
-                    real_name = str(col_name)
-                named_fi.append((real_name, float(val)))
-            named_fi.sort(key=lambda kv: kv[1], reverse=True)
-            for real_name, val in named_fi[:5]:
-                notes.append(f"Real Alpha158 factor '{real_name}': LightGBM importance={val:.0f}")
+        # Real top-5 LightGBM feature importances, mapped from generic
+        # `Column_N` names back to real Alpha158 factor names — see
+        # header "supporting_evidence".
+        fi = result["feature_importance"]
+        feature_cols = result["feature_cols"]
+        named_fi = []
+        for col_name, val in fi.items():
+            try:
+                idx = int(str(col_name).split("_")[1])
+                real_name = feature_cols[idx] if idx < len(feature_cols) else str(col_name)
+            except (IndexError, ValueError):
+                real_name = str(col_name)
+            named_fi.append((real_name, float(val)))
+        named_fi.sort(key=lambda kv: kv[1], reverse=True)
+        top5 = named_fi[:5]
+        factor_expression = (
+            "Top-5 real Alpha158 factors by real LightGBM feature importance: "
+            + ", ".join(f"{name}={val:.0f}" for name, val in top5)
+        ) if top5 else None
+        for real_name, val in top5:
+            evidence.append(EvidenceItem(
+                kind="model_feature",
+                value=f"{real_name}={val:.0f}",
+                source="qlib LGBModel.get_feature_importance() over the real Alpha158 158-factor set",
+                reference="qlib/contrib/data/handler.py::Alpha158",
+            ))
 
-            # A handful of the real raw Alpha158 factor values for this
-            # ticker/date, if available.
-            test_feat = result["test_feat"]
-            if resolved_ticker in day_slice.index:
-                try:
-                    row = test_feat.xs((last_date, resolved_ticker), level=("datetime", "instrument"))
-                    # `.xs()` with both levels pinned still returns a 1-row
-                    # DataFrame here (the real Alpha158 factor names are the
-                    # *columns*, not the remaining index) — real factor
-                    # names/values, not fabricated.
-                    present = [c for c in EVIDENCE_FACTOR_NAMES if c in row.columns]
-                    if present:
-                        vals = ", ".join(f"{c}={float(row[c].iloc[0]):.4f}" for c in present)
-                        notes.append(f"Real raw Alpha158 factor values for '{resolved_ticker}' on {last_date.strftime('%Y-%m-%d')}: {vals}")
-                except Exception:
-                    pass
+        # A handful of the real raw Alpha158 factor values for the requested
+        # ticker on the requested date, if available.
+        test_feat = result["test_feat"]
+        if resolved_ticker in day_slice.index:
+            try:
+                row = test_feat.xs((last_date, resolved_ticker), level=("datetime", "instrument"))
+                # `.xs()` with both levels pinned still returns a 1-row
+                # DataFrame here (the real Alpha158 factor names are the
+                # *columns*, not the remaining index) — real factor
+                # names/values, not fabricated.
+                present = [c for c in EVIDENCE_FACTOR_NAMES if c in row.columns]
+                if present:
+                    vals_str = ", ".join(f"{c}={float(row[c].iloc[0]):.4f}" for c in present)
+                    evidence.append(EvidenceItem(
+                        kind="factor_value",
+                        value=vals_str,
+                        source="Alpha158 real factor computation",
+                        reference=f"{resolved_ticker}@{last_date.strftime('%Y-%m-%d')}",
+                    ))
+            except Exception:
+                pass
 
         train_start, train_end = result["train_window"]
         valid_start, valid_end = result["valid_window"]
@@ -639,32 +689,84 @@ class QlibAdapter(BaseAdapter):
             f"[{valid_start.date()}, {valid_end.date()}], best/early-stopped "
             f"iteration={result['best_iteration']} (see adapter header, "
             f"'LightGBM training budget', for why this is scoped down from "
-            f"upstream's own CSI300-scale benchmark config)."
+            f"upstream's own CSI300-scale benchmark config). Forward-horizon "
+            f"disclosure: upstream's own label expression '{LABEL_EXPRESSION}' "
+            f"shifts 2 trading days ahead (a T+1-execution-safe convention), so "
+            f"`values`/`expected_returns` are point estimates of a ~2-trading-day "
+            f"forward return, not a plain 1-day return."
         )
 
+        self._last_native_output = {
+            "upstream": {
+                "predicted_scores": values,
+                "feature_importance_top5": [{"factor": n, "importance": v} for n, v in top5],
+                "last_prediction_date": last_date.strftime("%Y-%m-%d"),
+                "train_window": [train_start.strftime("%Y-%m-%d"), train_end.strftime("%Y-%m-%d")],
+                "valid_window": [valid_start.strftime("%Y-%m-%d"), valid_end.strftime("%Y-%m-%d")],
+                "test_window": [result["test_window"][0].strftime("%Y-%m-%d"), result["test_window"][1].strftime("%Y-%m-%d")],
+                "best_iteration": result["best_iteration"],
+                "tickers_ok": result["tickers_ok"],
+                "label_expression": LABEL_EXPRESSION,
+            },
+            "adapter_derived": {
+                "requested_ticker": raw_ticker,
+                "resolved_ticker": resolved_ticker,
+                "was_fallback": was_fallback,
+            },
+        }
+
         return Q3Signal(
-            signal_type=SignalType.FACTOR,
+            context=context,
+            signal_semantics="predicted_return",
+            values=values,
+            score_scale=f"real regression-label scale ({LABEL_EXPRESSION}) — a forward daily-return ratio, not normalized/rescaled",
             direction=direction,
             strength=strength,
-            supporting_evidence=notes,
-            expected_horizon="2d",
-            expected_return=expected_return,
-            adapter=self.name,
-            ticker=ticker,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+            expected_returns=expected_returns,
+            factor_expression=factor_expression,
+            evidence=evidence or None,
+            explanation="\n".join(notes),
         )
+
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window=None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ):
+        """Delegates to BaseAdapter.run() for the real context/generation_window
+        checks and RunMetadata construction — only attaches a faithful
+        native_output captured as a side effect of the real q3_signal() call
+        BaseAdapter.run() makes internally (same pattern used by this
+        session's other migrated Q3 adapters, e.g. alphagen/rdagent)."""
+        self._last_native_output = None
+        result = super().run(
+            task_id=task_id, context=context, generation_window=generation_window,
+            native_output=native_output, adapter_notes=adapter_notes, field_mappings=field_mappings,
+            **kwargs,
+        )
+        if native_output is None and self._last_native_output:
+            result = result.model_copy(update={"native_output": self._last_native_output})
+        return result
 
     def smoke_test(self):
         checks = super().smoke_test()
-        result = self.q3_signal("AAPL", "2024-01-15")
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.ASSET,
+            targets=["AAPL"],
+            universe=["AAPL"],
+        )
+        result = self.q3_signal(context)
         checks["q3_returns_Q3Signal"] = result is not None
         if result is not None:
-            checks["signal_type_is_valid"] = result.signal_type in (
-                "MOMENTUM", "REVERSAL", "BREAKOUT", "ANOMALY", "FACTOR",
-            )
             checks["direction_is_valid"] = result.direction in ("LONG", "SHORT", "NEUTRAL")
-            checks["strength_in_range"] = 0.0 <= result.strength <= 1.0
-            checks["supporting_evidence_nonempty"] = len(result.supporting_evidence) > 0
+            checks["strength_in_range"] = result.strength is None or 0.0 <= result.strength <= 1.0
+            checks["values_nonempty"] = len(result.values) > 0
+            checks["context_echoed"] = result.context == context
         return checks

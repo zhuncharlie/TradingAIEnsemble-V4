@@ -1,6 +1,6 @@
 """
 adapters/finrl_adapter.py — wraps github.com/AI4Finance-Foundation/FinRL
-(Q4 portfolio allocation, Q5 backtest performance).
+(Q4 — policy: DRL portfolio allocation).
 
 Repo verification (per CLAUDE.md's own "Registered Adapters" table, which
 already names this exact repo/questions for finrl_adapter.py):
@@ -40,7 +40,8 @@ same checks used for the FinGPT/DeepAlpha adapters this session):
     kind. No live brokerage/exchange credentials or real money are used
     anywhere in this adapter, satisfying the brief's stop-condition check.
 
-Patch (patches/FinRL.diff, applied to adapters/vendor/FinRL/finrl/__init__.py):
+Patch (patches/FinRL.diff, applied to adapters/vendor/FinRL/finrl/__init__.py,
+already vetted, unchanged by this migration):
     The unpatched `finrl/__init__.py` eagerly does
     `from finrl.trade import trade` / `from finrl.train import train` /
     `from finrl.test import test` at package-import time. That import chain
@@ -55,60 +56,133 @@ Patch (patches/FinRL.diff, applied to adapters/vendor/FinRL/finrl/__init__.py):
     `try/except ImportError: pass` so `import finrl` (and any submodule
     import that doesn't specifically need test/trade/train) no longer
     requires those optional brokerage/paid-data-vendor SDKs to be
-    installed. Verified (by temporarily blocking those imports via a
-    `sys.meta_path` finder) that none of `FeatureEngineer`/
-    `YahooDownloader`/`StockPortfolioEnv`/`DRLAgent`/`config` actually need
-    them once the patch is in place.
+    installed.
 
 Environment setup (one-time, outside this file):
     conda create -n finrl_real python=3.10
     conda activate finrl_real
-    # torch/stable-baselines3/gymnasium installed fine via pip in this env
-    # (no cmake/Rust build issues hit for this stack, unlike xgboost/
-    # lightgbm/pyarrow earlier this session).
     pip install stable-baselines3[extra] gymnasium stockstats scikit-learn \
                 pandas numpy matplotlib torch
     pip install "yfinance==0.2.66"
     # PIN yfinance to 0.2.66, NOT latest: FinRL's own
     # YahooDownloader.fetch_data() calls `yf.download(tic, ..., proxy=proxy)`
-    # unconditionally (proxy=None by default). yfinance>=1.0 (tested 1.4.1)
-    # removed the `proxy` kwarg from `download()` entirely (moved to
-    # `yf.set_config(proxy=...)`), raising
-    # `TypeError: download() got an unexpected keyword argument 'proxy'`
-    # on every call. 0.2.66 (last 0.2.x release) still accepts it — no
-    # vendor source was patched for this, just a version pin, same
-    # philosophy as FinGPT's transformers/peft/accelerate pin this session.
+    # unconditionally (proxy=None by default). yfinance>=1.0 removed the
+    # `proxy` kwarg from `download()` entirely. 0.2.66 still accepts it.
     git clone --depth 1 https://github.com/AI4Finance-Foundation/FinRL.git \
         adapters/vendor/FinRL
     # then apply patches/FinRL.diff to adapters/vendor/FinRL/finrl/__init__.py
 
 Run the harness with that env active:
     conda activate finrl_real
-    python CONTRACT/test_harness.py --adapter adapters/finrl_adapter.py
+    python CONTRACT/adapter_runner.py --adapter adapters/finrl_adapter.py ...
 
-Design notes (translation choices made by this adapter, not upstream):
-  - No pretrained weights shipped or used: like DeepAlpha, FinRL's own repo
-    ships no trained model checkpoints (its README/tutorials assume you run
-    `finrl/train.py`-style scripts yourself against whatever ticker/date
-    range you want). This is not a scope reduction forced by missing
-    artifacts — it is FinRL's normal, documented usage pattern — but the
-    training budget below IS a deliberate scope reduction from "full paper-
-    scale training" to "minimum viable, train live", per the same
-    substitution DeepAlpha used:
-      - Tickers: whatever the caller passes (harness uses AAPL/MSFT/NVDA),
-        not the full DOW-30 upstream's own tutorials train on.
-      - `TOTAL_TIMESTEPS = 3000` (vs. tens/hundreds of thousands in
-        upstream's own published benchmarks) using upstream's own default
-        `A2C_PARAMS` from `finrl.config` (`n_steps=5`, unmodified).
-        Algorithm: A2C (fastest of FinRL's five supported SB3 algorithms;
-        real `stable_baselines3.A2C` via upstream's own `DRLAgent`, not
-        reimplemented).
-      - Real yfinance OHLCV data (via upstream's own `YahooDownloader`),
-        ~1.5 years of history per call, not upstream's own curated
-        DOW-30-since-2009-style datasets.
-      - End-to-end (fetch + feature-engineer + train 3000 steps + rollout)
-        measured ~15-25s for 3 tickers in this environment — well inside
-        the harness's smoke_test (<300s) and run() (<600s) budgets.
+============================================================================
+v2.0.0 schema migration notes (from v1's Q4Portfolio/Q5Backtest)
+============================================================================
+  - **Signature**: `q4_policy` now takes `context: QueryContext` +
+    `generation_window: TimeWindow` instead of the v1 `tickers: List[str],
+    date: str`. Tickers are read from `context.universe` (falling back to
+    `context.targets`). Critically, the v1 adapter used to *compute its own*
+    `fetch_start = date - HISTORY_DAYS` training window internally — v2's
+    contract requires the opposite: `generation_window` is harness-supplied,
+    the adapter must not choose/expand/shorten it, and must echo the exact
+    same object back on the returned `Q4Policy.generation_window`. This
+    adapter now fetches real yfinance history over exactly
+    `[generation_window.start, generation_window.end]` (± the one-day
+    padding `YahooDownloader`'s exclusive `end` parameter needs) and trains
+    on that entire real window — no adapter-internal window computation
+    remains. A caller must supply a `generation_window` wide enough to
+    clear the real `COV_LOOKBACK_DAYS`-trading-day rolling-covariance
+    warm-up `_fetch_and_engineer` needs (the same "not enough trading days"
+    RuntimeError as before fires if it isn't, unchanged).
+  - **Q5 removed entirely**: `q5_backtest` (`total_return`/`sharpe`/
+    `max_drawdown`/`calmar`/`win_rate`/`equity_curve`/`alpha_vs_benchmark`)
+    is deleted, along with its now-unused `_equal_weight_bnh_return` helper.
+    CONTRACT/schemas.py v2 has no Q5 — backtest/evaluation metrics belong to
+    a separate evaluation layer, not the adapter (CLAUDE.md §4 / rubric).
+  - **`initial_weights`**: the real last row of upstream's own
+    `DRLAgent.DRL_prediction()` → `save_action_memory()` output, reported
+    verbatim (no defensive clipping/rescaling — upstream's own
+    `StockPortfolioEnv.softmax_normalization()` already code-verified
+    non-negative/sums-to-1, see `finrl/meta/env_portfolio_allocation/
+    env_portfolio.py`). `constraints=PortfolioConstraints(long_only=True,
+    cash_allowed=True)` reflects that real, verified guarantee — not an
+    assumption.
+  - **`policy_type=PolicyType.ROLLING_OPTIMIZER`**: each `q4_policy` call
+    retrains upstream's own A2C policy from scratch over the supplied
+    `generation_window` — there is no persisted/frozen model carried
+    between calls (aside from the new optional `artifact` below), so this
+    is a rolling refit, not a static allocation or a frozen learned policy.
+    `update_policy=UpdatePolicy(mode=UpdateMode.ROLLING_REFIT, ...)` follows
+    from the same fact.
+  - **`observation_policy`**: real `finrl.config.INDICATORS` (the actual
+    technical-indicator list `FeatureEngineer` computes) plus the real
+    `COV_LOOKBACK_DAYS`-trading-day rolling-covariance lookback this
+    adapter's own glue code builds for `StockPortfolioEnv`.
+  - **`artifact=PolicyArtifact(...)`** (recovered capability — see
+    PROJECT_SCHEMA_AUDIT.md's P0 finding for FinRL: "checkpoint not
+    persisted"): the trained `stable_baselines3.A2C` model is now saved via
+    its own real `.save()` method to a gitignored scratch path
+    (`adapters/vendor/FinRL/git_ignore_folder/work/models/`) before being
+    discarded, and referenced (with a real sha256 hash of the saved file)
+    as a `model_checkpoint` artifact. This is a genuinely low-cost recovery
+    (one extra real SB3 API call) of information the v1 adapter discarded
+    entirely after weight extraction. Saving is wrapped in try/except so a
+    disk/permission failure degrades to `artifact=None` rather than failing
+    the whole call — `initial_weights` alone is still a valid `Q4Policy`.
+  - **`decisions` stays `None`**: a single `q4_policy` call produces one
+    real point-in-time snapshot (`initial_weights`), not a multi-step
+    trajectory — reporting it as `decisions` would fabricate a trajectory
+    this adapter never actually generated (see CONTRACT/schemas.py's
+    `Q4Policy`/`PolicyDecisionStep` docstrings and the rubric's explicit
+    instruction on this exact point).
+  - **v1's ad-hoc `regime` field is dropped, not relocated to Q2** (a
+    deliberate scope decision, flagged here for the task owner): v1's
+    Q4Portfolio.regime was computed as "equal-weighted trailing 30-day
+    realized return of the requested tickers → BULL/BEAR/SIDEWAYS", real
+    arithmetic over real fetched prices but *not* a FinRL-native output —
+    FinRL's own env/agent has no regime concept at all (contrast with
+    `finrl_x_adapter.py`'s FinRL-Trading, which has a real, upstream-side
+    regime detector — that IS the case PROJECT_SCHEMA_AUDIT.md's "Regime
+    note" flags for Q2 relocation, and it lives in a separate adapter file
+    not touched by this migration). Since this migration's own task
+    instructions enumerate exactly which Q4 fields to map and do not
+    request adding a Q2 capability, and PROJECT_SCHEMA_AUDIT.md's coverage
+    matrix marks plain FinRL's Q2 as `UNSUPPORTED` (not just "needs
+    relocating"), this migration drops the heuristic outright rather than
+    inventing a new Q2 output for a non-native, generically-computable
+    number. This is a judgment call, not an oversight — flagged explicitly
+    per the rubric's "note deviations" instruction; trivial to add back as
+    a disclosed-heuristic Q2 StateEstimate in a follow-up if the task owner
+    wants the general "regime must move to Q2" rule applied here too.
+  - **No caching across calls**: v1 cached `Q4Portfolio`/`Q5Backtest` per
+    `(tickers, date)` (and `(tickers, start, end)`) to avoid retraining
+    twice when a test harness called a Q method directly and then again via
+    `adapter.run()`. v2's `ROLLING_OPTIMIZER`/`ROLLING_REFIT` semantics
+    explicitly mean "each call retrains fresh" — caching would silently
+    contradict that, so this migration removes it. Real training is ~15-25s
+    for 3 tickers at this adapter's existing `TOTAL_TIMESTEPS=3000` budget
+    (unchanged from v1), so calling it twice in a verification script is
+    still fast enough to be practical.
+  - **`run()` is overridden** solely to attach a faithful `native_output`
+    (the real action-memory weights, ticker list, indicator list, and
+    saved-artifact path) captured as a side effect of the real
+    `q4_policy()` call `BaseAdapter.run()` makes internally — same pattern
+    this session's other migrated adapters use (e.g. `atlas_adapter.py`,
+    `alphagen_adapter.py`).
+
+Design notes carried over unchanged from v1 (translation choices made by
+this adapter, not upstream):
+  - No pretrained weights shipped or used: FinRL's own repo ships no
+    trained model checkpoints; this is FinRL's normal, documented usage
+    pattern (train live each time), not a scope reduction forced by
+    missing artifacts.
+  - `TOTAL_TIMESTEPS = 3000` (vs. tens/hundreds of thousands in upstream's
+    own published benchmarks) using upstream's own default `A2C_PARAMS`
+    from `finrl.config` (`n_steps=5`, unmodified). Algorithm: A2C (fastest
+    of FinRL's five supported SB3 algorithms; real
+    `stable_baselines3.A2C` via upstream's own `DRLAgent`, not
+    reimplemented).
   - Data-prep glue code (adapter-side, not upstream logic): FinRL's own
     `StockPortfolioEnv` requires a `cov_list` column (rolling covariance
     matrix of returns per date) that isn't produced by upstream's own
@@ -120,94 +194,55 @@ Design notes (translation choices made by this adapter, not upstream):
     as required input plumbing for upstream's own environment class — the
     portfolio-allocation decision logic itself (the DRL policy, the reward,
     the softmax weight normalization) is 100% upstream's own
-    `StockPortfolioEnv`/`DRLAgent` code, never reimplemented here. This is
-    the same kind of "adapter must assemble upstream's own expected input
-    shape" glue DeepAlpha needed (excluding raw OHLCV columns before
-    training).
+    `StockPortfolioEnv`/`DRLAgent` code, never reimplemented here.
     `COV_LOOKBACK_DAYS = 60` trading days, reduced from the 252 (~1
     calendar year) used in FinRL's own published tutorial, purely to keep
-    the required history window (and therefore the yfinance fetch) small
-    enough to comfortably clear the harness's time budget with room to
-    spare; documented here as a scope reduction, not a bug.
-  - Q4 `weights` / `cash_ratio`: trains upstream's own A2C policy on the
-    ~1.5y window ending at the requested `date`, then takes the *last row*
-    of upstream's own `DRLAgent.DRL_prediction()` → `save_action_memory()`
-    output (the model's own softmax-normalized portfolio weights for the
-    final day in that window) as the current allocation. Upstream's own
-    `StockPortfolioEnv.softmax_normalization()` always yields non-negative
-    weights summing to 1.0, so `cash_ratio` is computed as
-    `max(0.0, 1.0 - sum(weights))` (effectively 0.0 by construction — this
-    policy is always fully invested, never holds cash, matching upstream's
-    own environment design) rather than hardcoded.
-  - Q4 `regime`: NOT derived from the DRL model (upstream's env doesn't
-    label regimes). Adapter-side heuristic over the same real price data
-    already fetched: equal-weighted realized return of the requested
-    tickers over the trailing 30 trading days — >+2% → BULL, <-2% → BEAR,
-    else SIDEWAYS. Documented as a simple auxiliary classification, not a
-    model output, exactly like DeepAlpha's Q3 `expected_return` distinction
-    between model output and adapter-derived fields.
-  - Q5 `total_return`/`sharpe`/`max_drawdown`/`calmar`/`win_rate`/
-    `equity_curve`: trains upstream's own A2C policy on the window before
-    `start`, then runs upstream's own `DRLAgent.DRL_prediction()` on a
-    *fresh, held-out* `StockPortfolioEnv` built only from the
-    `[start, end)` test rows (real out-of-sample rollout, not in-sample).
-    `equity_curve` is the cumulative product of the `daily_return` series
-    upstream's own env returns via `save_asset_memory()` (normalized to
-    start at 1.0, per the schema's own field description).
-    `sharpe = sqrt(252) * mean(daily_return) / std(daily_return)` is the
-    exact annualized-Sharpe formula `StockPortfolioEnv.step()` itself
-    already computes and prints internally on the terminal step (see
-    `finrl/meta/env_portfolio_allocation/env_portfolio.py`) — recomputed
-    here from upstream's own returned `daily_return` series (not a new
-    metric formula, not printed/returned by upstream directly, so it has
-    to be recomputed from upstream's own output data).
-    `max_drawdown` (always ≤0) and `calmar` are standard equity-curve
-    arithmetic over that same real, upstream-produced `equity_curve` —
-    not upstream logic to begin with (upstream's tutorials use the
-    separate `pyfolio` package for these, not vendored into this repo's
-    checked-in code), so computed directly here.
-  - Q5 `alpha_vs_benchmark`: equal-weight buy-and-hold return over the same
-    real `[start, end)` price data (first-vs-last close per ticker,
-    equal-weighted) minus the model's `total_return` — pure arithmetic on
-    real fetched prices, matching the schema's own
-    `benchmark="equal_weight_bnh"` default, not a call into any upstream
-    benchmarking code.
-  - Per-(tickers,date) and per-(tickers,start,end) in-memory caching: the
-    test harness calls each Q method directly AND again via `adapter.run()`
-    with identical arguments; without caching this would retrain the DRL
-    policy twice per method for the same inputs. Same pattern as
-    DeepAlpha's per-ticker cache.
+    the required history window small enough to comfortably clear harness
+    time budgets with room to spare; documented here as a scope reduction,
+    not a bug.
 """
 
 from __future__ import annotations
 
+import hashlib
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 
 from CONTRACT.base_adapter import BaseAdapter
-from CONTRACT.schemas import Q4Portfolio, Q5Backtest, Regime
+from CONTRACT.schemas import (
+    DecisionPolicy,
+    ObservationPolicy,
+    OutputScope,
+    PolicyArtifact,
+    PolicyType,
+    PortfolioConstraints,
+    Q4Policy,
+    QueryContext,
+    TimeWindow,
+    UniversePolicy,
+    UpdateMode,
+    UpdatePolicy,
+)
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "FinRL"
 if str(VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(VENDOR_DIR))
 
+# `adapters/vendor/` is entirely gitignored (see .gitignore), so this scratch
+# tree needs no additional ignore entry.
+ARTIFACT_DIR = VENDOR_DIR / "git_ignore_folder" / "work" / "models"
+
 COV_LOOKBACK_DAYS = 60          # trading days of rolling-covariance window (reduced from upstream tutorial's 252)
-HISTORY_DAYS = 550              # ~1.5 calendar years of history fetched for training windows (pd.DateOffset
-                                 # doesn't support fractional years, so this is expressed directly in days)
-TOTAL_TIMESTEPS = 3000          # DRL training budget — "train live", not paper-scale
+TOTAL_TIMESTEPS = 3000          # DRL training budget — "train live", not paper-scale (unchanged from v1)
 MODEL_NAME = "a2c"              # fastest of FinRL's 5 supported SB3 algorithms
 INITIAL_AMOUNT = 1_000_000
 HMAX = 100
 TRANSACTION_COST_PCT = 0.001
 REWARD_SCALING = 1e-1
-
-_Q4_CACHE: Dict[Tuple[tuple, str], "Q4Portfolio"] = {}
-_Q5_CACHE: Dict[Tuple[tuple, str, str], "Q5Backtest"] = {}
 
 
 def _fetch_and_engineer(tickers: List[str], fetch_start: str, fetch_end: str) -> pd.DataFrame:
@@ -236,7 +271,7 @@ def _fetch_and_engineer(tickers: List[str], fetch_start: str, fetch_end: str) ->
     if len(unique_dates) <= COV_LOOKBACK_DAYS + 5:
         raise RuntimeError(
             f"Not enough trading days ({len(unique_dates)}) for a "
-            f"{COV_LOOKBACK_DAYS}-day covariance lookback — widen the date range."
+            f"{COV_LOOKBACK_DAYS}-day covariance lookback — widen generation_window."
         )
 
     cov_list, dates_out = [], []
@@ -285,167 +320,228 @@ def _train_agent(train_df: pd.DataFrame, tickers: List[str]):
     return trained, env_gym
 
 
-def _equal_weight_bnh_return(df_slice: pd.DataFrame, tickers: List[str]) -> float:
-    """Real-price arithmetic benchmark, not upstream model logic."""
-    pivot = df_slice.pivot_table(index="date", columns="tic", values="close").sort_index()
-    pivot = pivot[[t for t in tickers if t in pivot.columns]]
-    per_ticker_return = pivot.iloc[-1] / pivot.iloc[0] - 1.0
-    return float(per_ticker_return.mean())
-
-
 class FinRLAdapter(BaseAdapter):
     name = "finrl"
-    questions_answered = ["Q4", "Q5"]
+    questions_answered = ["Q4"]
     upstream_repo = "https://github.com/AI4Finance-Foundation/FinRL"
     requires_env = "finrl_real"
 
     # ------------------------------------------------------------------
-    # Q4 — Portfolio allocation
+    # Q4 — Policy
     # ------------------------------------------------------------------
-    def q4_portfolio(self, tickers: List[str], date: str, **kwargs) -> Optional[Q4Portfolio]:
+    def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
         t0 = time.time()
-        tickers = list(tickers)
-        cache_key = (tuple(sorted(tickers)), date)
-        if cache_key in _Q4_CACHE:
-            cached = _Q4_CACHE[cache_key]
-            cached.latency_sec = time.time() - t0
-            return cached
 
+        if context.universe:
+            tickers = list(context.universe)
+        elif context.targets:
+            tickers = list(context.targets)
+        else:
+            raise ValueError(
+                "finrl q4_policy requires QueryContext.universe or QueryContext.targets "
+                "with at least one ticker."
+            )
+
+        from finrl import config
         from finrl.agents.stablebaselines3.models import DRLAgent
         from finrl.meta.preprocessor.preprocessors import data_split
 
-        end_ts = pd.Timestamp(date)
-        fetch_start = (end_ts - pd.DateOffset(days=HISTORY_DAYS)).strftime("%Y-%m-%d")
-        fetch_end = (end_ts + pd.DateOffset(days=1)).strftime("%Y-%m-%d")  # yfinance end is exclusive
+        # Real price-history fetch range is exactly the harness-supplied
+        # generation_window — see module header, "v2.0.0 schema migration
+        # notes". `+1 day` only compensates for yfinance's exclusive `end`.
+        fetch_start = generation_window.start
+        fetch_end = (pd.Timestamp(generation_window.end) + pd.DateOffset(days=1)).strftime("%Y-%m-%d")
 
         df = _fetch_and_engineer(tickers, fetch_start, fetch_end)
-        # StockPortfolioEnv expects upstream's own data_split() indexing (date
-        # factorized into an integer index shared by all tickers on that date)
-        # rather than a plain 0..N-1 row index — see DECISIONS_finrl.md.
         train_df = data_split(df, fetch_start, fetch_end)
         trained, env_gym = _train_agent(train_df, tickers)
         _, actions_df = DRLAgent.DRL_prediction(model=trained, environment=env_gym)
 
         last_row = actions_df.iloc[-1]
-        weights = {tic: max(0.0, float(w)) for tic, w in last_row.items()}
-        total_w = sum(weights.values())
-        if total_w > 1.0:
-            weights = {k: v / total_w for k, v in weights.items()}
-            total_w = 1.0
-        cash_ratio = max(0.0, min(1.0, 1.0 - total_w))
+        # Real values as-is — upstream's own softmax_normalization() already
+        # code-verified non-negative/sums-to-1 (see header); no defensive
+        # clipping/rescaling added here.
+        weights: Dict[str, float] = {tic: float(w) for tic, w in last_row.items()}
 
-        trailing = df[df.date >= df.date.unique()[-min(30, len(df.date.unique()))]]
-        trailing_return = _equal_weight_bnh_return(trailing, tickers)
-        regime = Regime.BULL if trailing_return > 0.02 else Regime.BEAR if trailing_return < -0.02 else Regime.SIDEWAYS
+        # Real, cheap artifact recovery — see module header. Non-fatal on
+        # failure: initial_weights alone is still a valid Q4Policy.
+        artifact: Optional[PolicyArtifact] = None
+        artifact_path: Optional[Path] = None
+        try:
+            ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+            run_tag = hashlib.sha1(
+                f"{sorted(tickers)}|{generation_window.start}|{generation_window.end}|{time.time()}".encode()
+            ).hexdigest()[:16]
+            artifact_path = ARTIFACT_DIR / f"a2c_{run_tag}.zip"
+            trained.save(str(artifact_path))  # real stable_baselines3.BaseAlgorithm.save()
+            artifact_hash = hashlib.sha256(artifact_path.read_bytes()).hexdigest() if artifact_path.exists() else None
+            artifact = PolicyArtifact(
+                artifact_type="model_checkpoint",
+                reference=str(artifact_path),
+                hash=artifact_hash,
+                description=(
+                    f"Trained upstream stable_baselines3.A2C model (FinRL's own "
+                    f"DRLAgent), {TOTAL_TIMESTEPS} timesteps over generation_window "
+                    f"[{generation_window.start}, {generation_window.end}] for tickers "
+                    f"{tickers}. Saved via SB3's own model.save(); the v1 adapter "
+                    f"discarded this model entirely after weight extraction."
+                ),
+            )
+        except Exception:
+            artifact = None
+            artifact_path = None
 
-        rationale = (
-            f"Weights are the final-day allocation from a real {MODEL_NAME.upper()} policy "
-            f"(upstream FinRL's own DRLAgent wrapping stable_baselines3.A2C), trained live for "
-            f"{TOTAL_TIMESTEPS} timesteps on {', '.join(tickers)}'s real yfinance history from "
-            f"{fetch_start} to {date} (upstream's own StockPortfolioEnv reward = portfolio value, "
-            f"upstream's own softmax weight normalization — no pretrained checkpoint was available "
-            f"or used). Trailing 30-day equal-weight realized return {trailing_return:+.2%} → "
-            f"heuristic regime label {regime.value if hasattr(regime,'value') else regime}."
+        universe_policy = UniversePolicy(
+            mode="fixed",
+            fixed_assets=tickers,
+            selector_description=(
+                "Caller-specified ticker list (QueryContext.universe/targets); FinRL's "
+                "own StockPortfolioEnv/DRLAgent perform no asset selection of their own "
+                "in this adapter path — selection happens upstream of this call "
+                "(contrast with finrl_x_adapter.py's separate ML-bucket top-25% "
+                "selection capability)."
+            ),
         )
 
-        result = Q4Portfolio(
-            weights=weights,
-            cash_ratio=cash_ratio,
-            rationale=rationale,
-            regime=regime,
-            rebalance_freq="DAILY",
-            adapter=self.name,
-            date=date,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+        observation_policy = ObservationPolicy(
+            lookback_window=f"{COV_LOOKBACK_DAYS}_trading_days",
+            features=list(config.INDICATORS),
+            data_sources=["yfinance via upstream finrl.meta.preprocessor.yahoodownloader.YahooDownloader"],
+            observation_description=(
+                "Upstream StockPortfolioEnv's real observation state: per-ticker "
+                f"OHLCV-derived technical indicators ({', '.join(config.INDICATORS)}) "
+                f"plus a real rolling {COV_LOOKBACK_DAYS}-trading-day return-covariance "
+                "matrix (adapter-side glue required by StockPortfolioEnv's own input "
+                "contract, not upstream decision logic — see module header)."
+            ),
         )
-        _Q4_CACHE[cache_key] = result
+
+        decision_policy = DecisionPolicy(
+            decision_rule=(
+                "Trained A2C policy's continuous action vector, passed through "
+                "upstream's own StockPortfolioEnv.softmax_normalization() to yield "
+                "real non-negative portfolio weights summing to ~1.0 across the "
+                "given tickers."
+            ),
+            output_semantics=(
+                "target_weights: continuous allocation across tickers (post-softmax, "
+                "non-negative, sums to ~1.0); no explicit cash weight in the model's "
+                "action space."
+            ),
+            rebalance_frequency="DAILY",
+            holding_horizon=None,
+        )
+
+        update_policy = UpdatePolicy(
+            mode=UpdateMode.ROLLING_REFIT,
+            update_frequency="per adapter call",
+            update_description=(
+                "Each q4_policy call retrains a fresh upstream A2C policy from "
+                "scratch (DRLAgent.train_model(), real stable_baselines3.A2C) over "
+                "the supplied generation_window; no trained-model state is carried "
+                "between calls other than the optional saved artifact reference."
+            ),
+        )
+
+        constraints = PortfolioConstraints(long_only=True, cash_allowed=True)
+
+        explanation = (
+            f"initial_weights are the final-day allocation from a real "
+            f"{MODEL_NAME.upper()} policy (upstream FinRL's own DRLAgent wrapping "
+            f"stable_baselines3.A2C), trained live for {TOTAL_TIMESTEPS} timesteps on "
+            f"{', '.join(tickers)}'s real yfinance history over the harness-supplied "
+            f"generation_window [{generation_window.start}, {generation_window.end}] "
+            f"(upstream's own StockPortfolioEnv reward = portfolio value; upstream's "
+            f"own softmax weight normalization proves non-negativity/sum-to-1 — no "
+            f"pretrained checkpoint was available or used, matching upstream's normal "
+            f"usage pattern)."
+        )
+
+        result = Q4Policy(
+            context=context,
+            policy_type=PolicyType.ROLLING_OPTIMIZER,
+            generation_window=generation_window,
+            universe_policy=universe_policy,
+            observation_policy=observation_policy,
+            decision_policy=decision_policy,
+            update_policy=update_policy,
+            constraints=constraints,
+            initial_weights=weights,
+            artifact=artifact,
+            decisions=None,
+            explanation=explanation,
+        )
+
+        self._last_native_output = {
+            "upstream": {
+                "action_memory_last_row": weights,
+                "tickers": tickers,
+                "indicators": list(config.INDICATORS),
+                "model_name": MODEL_NAME,
+                "total_timesteps": TOTAL_TIMESTEPS,
+                "artifact_path": str(artifact_path) if artifact_path is not None else None,
+            },
+            "adapter_derived": {
+                "generation_window": {"start": generation_window.start, "end": generation_window.end},
+                "cov_lookback_days": COV_LOOKBACK_DAYS,
+            },
+        }
+        self._last_latency_sec = time.time() - t0
         return result
 
     # ------------------------------------------------------------------
-    # Q5 — Backtest
+    # run() override — attach faithful native_output, reusing the same
+    # pattern this session's other migrated adapters use.
     # ------------------------------------------------------------------
-    def q5_backtest(self, tickers: List[str], start: str, end: str, **kwargs) -> Optional[Q5Backtest]:
-        t0 = time.time()
-        tickers = list(tickers)
-        cache_key = (tuple(sorted(tickers)), start, end)
-        if cache_key in _Q5_CACHE:
-            cached = _Q5_CACHE[cache_key]
-            cached.latency_sec = time.time() - t0
-            return cached
-
-        from finrl.agents.stablebaselines3.models import DRLAgent
-        from finrl.meta.preprocessor.preprocessors import data_split
-
-        start_ts = pd.Timestamp(start)
-        train_start_ts = start_ts - pd.DateOffset(days=HISTORY_DAYS)
-        fetch_start = (train_start_ts - pd.DateOffset(days=COV_LOOKBACK_DAYS * 2)).strftime("%Y-%m-%d")
-
-        df = _fetch_and_engineer(tickers, fetch_start, end)
-        train_start = train_start_ts.strftime("%Y-%m-%d")
-
-        train_df = data_split(df, train_start, start)
-        test_df = data_split(df, start, end)
-        if train_df.empty or test_df.empty:
-            raise RuntimeError(f"Empty train/test split for {tickers} train=[{train_start},{start}) test=[{start},{end})")
-
-        trained, _ = _train_agent(train_df, tickers)
-        test_env_gym = _make_env(test_df, tickers)
-        account_df, _ = DRLAgent.DRL_prediction(model=trained, environment=test_env_gym)
-
-        daily_returns = account_df["daily_return"].to_numpy(dtype=float)
-        equity_curve = np.cumprod(1.0 + daily_returns)
-        total_return = float(equity_curve[-1] - 1.0)
-
-        std = daily_returns.std()
-        sharpe = float(np.sqrt(252) * daily_returns.mean() / std) if std > 0 else None
-
-        running_max = np.maximum.accumulate(equity_curve)
-        drawdowns = (equity_curve - running_max) / running_max
-        max_drawdown = float(drawdowns.min())
-        calmar = float(total_return / abs(max_drawdown)) if max_drawdown < 0 else None
-        win_rate = float((daily_returns > 0).mean())
-
-        bnh_return = _equal_weight_bnh_return(test_df, tickers)
-        alpha_vs_benchmark = total_return - bnh_return
-
-        result = Q5Backtest(
-            total_return=total_return,
-            sharpe=sharpe,
-            max_drawdown=max_drawdown,
-            alpha_vs_benchmark=alpha_vs_benchmark,
-            calmar=calmar,
-            win_rate=win_rate,
-            equity_curve=[float(x) for x in equity_curve],
-            benchmark="equal_weight_bnh",
-            train_period=f"{train_start}/{start}",
-            test_period=f"{start}/{end}",
-            adapter=self.name,
-            cost_usd=0.0,
-            latency_sec=time.time() - t0,
+    def run(
+        self,
+        task_id: str,
+        context: QueryContext,
+        generation_window: Optional[TimeWindow] = None,
+        native_output: Optional[dict] = None,
+        adapter_notes: Optional[str] = None,
+        field_mappings=None,
+        **kwargs,
+    ):
+        self._last_native_output = None
+        self._last_latency_sec = 0.0
+        result = super().run(
+            task_id=task_id, context=context, generation_window=generation_window,
+            native_output=native_output, adapter_notes=adapter_notes, field_mappings=field_mappings,
+            **kwargs,
         )
-        _Q5_CACHE[cache_key] = result
+        updates = {}
+        if native_output is None and self._last_native_output:
+            updates["native_output"] = self._last_native_output
+        if self._last_latency_sec:
+            updates["run"] = result.run.model_copy(update={"latency_sec": self._last_latency_sec})
+        if updates:
+            result = result.model_copy(update=updates)
         return result
 
     # ------------------------------------------------------------------
-    # Smoke test — real q4 + q5 calls, not stubs
+    # Smoke test — real q4 call, not a stub
     # ------------------------------------------------------------------
     def smoke_test(self):
         checks = super().smoke_test()
 
-        q4 = self.q4_portfolio(["AAPL", "MSFT", "NVDA"], "2024-01-15")
-        checks["q4_returns_Q4Portfolio"] = q4 is not None
+        context = QueryContext(
+            as_of="2024-01-15",
+            data_cutoff="2024-01-15",
+            scope=OutputScope.PORTFOLIO,
+            targets=["AAPL", "MSFT", "NVDA"],
+            universe=["AAPL", "MSFT", "NVDA"],
+        )
+        generation_window = TimeWindow(start="2022-07-01", end="2024-01-15")
+
+        q4 = self.q4_policy(context, generation_window)
+        checks["q4_returns_Q4Policy"] = q4 is not None
         if q4 is not None:
-            w_sum = sum(q4.weights.values())
-            checks["q4_weights_sum_le_1"] = w_sum <= 1.0 + 1e-6
-            checks["q4_weights_nonnegative"] = all(v >= 0.0 for v in q4.weights.values())
-            checks["q4_cash_ratio_in_range"] = 0.0 <= q4.cash_ratio <= 1.0
-
-        q5 = self.q5_backtest(["AAPL", "MSFT", "NVDA"], "2024-01-01", "2024-03-31")
-        checks["q5_returns_Q5Backtest"] = q5 is not None
-        if q5 is not None:
-            checks["q5_total_return_is_float"] = isinstance(q5.total_return, float)
-            checks["q5_max_drawdown_sane"] = q5.max_drawdown is None or q5.max_drawdown <= 1e-9
-            checks["q5_sharpe_is_number_or_none"] = q5.sharpe is None or isinstance(q5.sharpe, float)
-
+            checks["q4_initial_weights_nonempty"] = bool(q4.initial_weights)
+            checks["q4_weights_nonnegative"] = all(v >= -1e-6 for v in q4.initial_weights.values())
+            w_sum = sum(q4.initial_weights.values())
+            checks["q4_weights_sum_in_range"] = -1e-6 <= w_sum <= 1.0 + 1e-6
+            checks["q4_generation_window_echoed"] = q4.generation_window == generation_window
+            checks["q4_context_echoed"] = q4.context == context
+            checks["q4_policy_type_is_rolling_optimizer"] = q4.policy_type == "ROLLING_OPTIMIZER"
         return checks
