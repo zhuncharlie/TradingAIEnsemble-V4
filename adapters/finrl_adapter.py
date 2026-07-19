@@ -216,6 +216,7 @@ from CONTRACT.base_adapter import BaseAdapter
 from CONTRACT.schemas import (
     DecisionPolicy,
     ObservationPolicy,
+    PolicyDecisionStep,
     OutputScope,
     PolicyArtifact,
     PolicyType,
@@ -227,6 +228,11 @@ from CONTRACT.schemas import (
     UpdateMode,
     UpdatePolicy,
 )
+
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize
+# below; q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "FinRL"
 if str(VENDOR_DIR) not in sys.path:
@@ -325,6 +331,10 @@ class FinRLAdapter(BaseAdapter):
     questions_answered = ["Q4"]
     upstream_repo = "https://github.com/AI4Finance-Foundation/FinRL"
     requires_env = "finrl_real"
+
+    def __init__(self):
+        super().__init__()
+        self._session: Optional[dict] = None
 
     # ------------------------------------------------------------------
     # Q4 — Policy
@@ -488,6 +498,145 @@ class FinRLAdapter(BaseAdapter):
         }
         self._last_latency_sec = time.time() - t0
         return result
+
+    # ------------------------------------------------------------------
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)
+    # ------------------------------------------------------------------
+    # Real mechanism: upstream's own DRLAgent.DRL_prediction() (models.py:
+    # 155-181) already loops causally, real-day by real-day:
+    #   for i in range(len(environment.df.index.unique())):
+    #       action, _ = model.predict(test_obs, deterministic=True)
+    #       test_obs, rewards, dones, info = test_env.step(action)
+    # producing the full real actions_memory trajectory (via
+    # env.save_action_memory()) as a side effect — the legacy q4_policy()
+    # path lets this real loop run to completion and keeps only
+    # actions_df.iloc[-1]. The STEPWISE decomposition below is a thin
+    # re-sequencing of these SAME real calls (model.predict/env.step), one
+    # harness-driven call at a time, discarding nothing. No retraining ever
+    # happens after q4_initialize (verified: DRL_prediction() never calls
+    # model.learn()), so this is safely FROZEN_LEARNED_POLICY for the
+    # session's lifetime — unlike the legacy path's own ROLLING_OPTIMIZER
+    # label (accurate only across separate q4_policy() calls, which each
+    # retrain from scratch; within one session here, nothing is refit).
+    #
+    # Real day-0 placeholder: StockPortfolioEnv.reset() seeds
+    # self.actions_memory = [[1/N]*N] (env_portfolio.py:222) — a real,
+    # disclosed equal-weight placeholder, not a learned decision. Reported
+    # honestly as-is for step 0, matching what save_action_memory() itself
+    # would report for that row.
+
+    def q4_initialize(
+        self,
+        context: QueryContext,
+        generation_window: TimeWindow,
+        initial_portfolio: PortfolioState,
+        run_config: Q4RunConfig,
+    ) -> Q4Policy:
+        tickers = list(context.universe or context.targets or [])
+        if not tickers:
+            raise ValueError("finrl q4_initialize requires context.universe or context.targets")
+
+        from finrl.meta.preprocessor.preprocessors import data_split
+
+        fetch_start = generation_window.start
+        fetch_end = (pd.Timestamp(generation_window.end) + pd.DateOffset(days=1)).strftime("%Y-%m-%d")
+        df = _fetch_and_engineer(tickers, fetch_start, fetch_end)
+        train_df = data_split(df, fetch_start, fetch_end)
+        trained, env_gym = _train_agent(train_df, tickers)  # real, unchanged training — see module header
+
+        test_env, test_obs = env_gym.get_sb_env()
+        test_env.reset()
+
+        self._session = {
+            "model": trained, "env_gym": env_gym, "test_env": test_env, "test_obs": test_obs,
+            "tickers": tickers, "n_real_days": len(train_df.date.unique()), "step_count": 0,
+        }
+
+        decision_policy = DecisionPolicy(
+            decision_rule=(
+                "Real, unmodified stable_baselines3.A2C policy (upstream FinRL's own "
+                "DRLAgent), queried once per real day via model.predict(deterministic=True) "
+                "then StockPortfolioEnv.step() — same real calls upstream's own "
+                "DRL_prediction() makes internally, driven one step at a time instead of "
+                "letting that loop run to completion."
+            ),
+            output_semantics="target_weights: real post-softmax allocation across tickers (non-negative, sums to ~1.0).",
+            rebalance_frequency="DAILY", holding_horizon=None,
+        )
+        return Q4Policy(
+            context=context, policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            universe_policy=UniversePolicy(mode="fixed", fixed_assets=tickers,
+                                            selector_description="Caller-specified ticker list; no upstream selection."),
+            decision_policy=decision_policy,
+            constraints=PortfolioConstraints(long_only=True, cash_allowed=True),
+        )
+
+    def q4_step(
+        self,
+        timestamp: str,
+        information_cutoff: str,
+        observation: MarketObservation,
+        portfolio_state: PortfolioState,
+    ) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+
+        if s["step_count"] >= s["n_real_days"]:
+            # StockPortfolioEnv's real day pointer (self.day) has no further
+            # rows once step_count reaches the real number of trading days in
+            # generation_window; calling env.step() again would run past
+            # env.terminal into undefined upstream behavior. The harness must
+            # not request more steps than the real training data supports.
+            raise RuntimeError(
+                f"q4_step called beyond real available days: step_count="
+                f"{s['step_count']} >= n_real_days={s['n_real_days']} for this "
+                f"generation_window."
+            )
+
+        if s["step_count"] == 0:
+            weights_now = {t: 1.0 / len(s["tickers"]) for t in s["tickers"]}
+        else:
+            action, _states = s["model"].predict(s["test_obs"], deterministic=True)
+            s["test_obs"], rewards, dones, info = s["test_env"].step(action)
+            # Real, public, unmodified upstream method — re-derives the
+            # trajectory from the env's own already-accumulated
+            # actions_memory/date_memory (env_portfolio.py:247-258) each
+            # call; taking the last row gives exactly this step's real
+            # decision without needing to reach into vec-env internals.
+            actions_df = s["test_env"].env_method(method_name="save_action_memory")[0]
+            last_row = actions_df.iloc[-1]
+            weights_now = {t: float(w) for t, w in last_row.items()}
+
+        s["step_count"] += 1
+        return PolicyDecisionStep(
+            timestamp=timestamp, information_cutoff=information_cutoff,
+            selected_universe=list(s["tickers"]), target_weights=weights_now,
+        )
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            update_policy=UpdatePolicy(
+                mode=UpdateMode.NONE,
+                update_description=(
+                    "Real stable_baselines3.A2C model trained once at q4_initialize; "
+                    "verified never retrained during this session (DRL_prediction()'s "
+                    "real loop only calls model.predict(), never model.learn())."
+                ),
+            ),
+            explanation=(
+                f"Real A2C session over {len(s['tickers'])} tickers across "
+                f"{s['n_real_days']} real trading days, {s['step_count']} real "
+                f"q4_step() calls made."
+            ),
+        )
+        self._session = None
+        return summary
 
     # ------------------------------------------------------------------
     # run() override — attach faithful native_output, reusing the same

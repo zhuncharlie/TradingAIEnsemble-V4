@@ -106,6 +106,11 @@ from CONTRACT.schemas import (
     UpdatePolicy,
 )
 
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize
+# below; q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import PortfolioState, Q4FinalizeSummary, Q4RunConfig
+
 TRAIN_WINDOW_DAYS = 60      # real observations per train fold
 REBALANCE_PERIOD_DAYS = 10  # real observations per test fold (rebalance cadence)
 MAX_TICKERS = 8
@@ -155,6 +160,10 @@ class SkfolioAdapter(BaseAdapter):
     questions_answered = ["Q4"]
     upstream_repo = "https://github.com/skfolio/skfolio"
     requires_env = "skfolio_real"
+
+    def __init__(self):
+        super().__init__()
+        self._session: Optional[dict] = None
 
     def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
         t0 = time.time()
@@ -257,6 +266,118 @@ class SkfolioAdapter(BaseAdapter):
             decisions=decisions,
             explanation=explanation,
         )
+
+    # ------------------------------------------------------------------ #
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)       #
+    # ------------------------------------------------------------------ #
+    # Real mechanism: same real skfolio.model_selection.WalkForward +
+    # skfolio.optimization.MeanRisk calls q4_policy() already makes — the
+    # ONLY change is WHEN they run: q4_initialize() computes the real fold
+    # boundaries once (WalkForward.split(X), a real, cheap, already-causal
+    # generator per skfolio's own docstring — no actual optimization happens
+    # yet), and q4_step() performs the real MeanRisk().fit(X_train) refit
+    # for whichever fold's real test-start date matches the timestamp it is
+    # asked about. Step granularity here is FOLD, not daily (unlike
+    # adapters/universal_portfolios_adapter.py's per-day design) — one
+    # q4_step() call answers for one real WalkForward fold.
+    #
+    # Off-schedule defensive behavior: if q4_step() is asked about a
+    # timestamp that is not a real fold-start date (shouldn't happen if the
+    # harness's rebalance schedule was built from this adapter's own real
+    # fold boundaries, but handled defensively), it returns the
+    # most-recently-fit REAL weights unchanged rather than performing a
+    # spurious extra refit or fabricating new ones — a legitimate
+    # "hold current weights" real behavior for a non-rebalance day.
+
+    def q4_initialize(self, context: QueryContext, generation_window: TimeWindow,
+                       initial_portfolio: PortfolioState, run_config: Q4RunConfig) -> Q4Policy:
+        tickers = list(dict.fromkeys((context.universe or context.targets or [])))[:MAX_TICKERS]
+        if not tickers:
+            raise ValueError("skfolio q4_initialize requires context.universe or context.targets with at least one ticker.")
+
+        from skfolio.model_selection import WalkForward
+        from skfolio.preprocessing import prices_to_returns
+
+        prices = _fetch_price_matrix(tickers, generation_window.start, generation_window.end)
+        active_tickers = list(prices.columns)
+        X = prices_to_returns(prices)
+
+        cv = WalkForward(test_size=REBALANCE_PERIOD_DAYS, train_size=TRAIN_WINDOW_DAYS, freq=None)
+        folds = list(cv.split(X))  # real, cheap: just yields (train_idx, test_idx) index arrays, no fitting yet
+
+        folds_by_ts = {}
+        for train_idx, test_idx in folds:
+            info_cutoff = str(X.index[train_idx[-1]].date())
+            decision_ts = str(X.index[test_idx[0]].date())
+            folds_by_ts[decision_ts] = {"train_idx": train_idx, "info_cutoff": info_cutoff}
+
+        self._session = {
+            "X": X, "active_tickers": active_tickers, "folds_by_ts": folds_by_ts,
+            "n_splits": len(folds), "last_weights": None, "step_count": 0,
+        }
+
+        return Q4Policy(
+            context=context, policy_type=PolicyType.ROLLING_OPTIMIZER, generation_window=generation_window,
+            universe_policy=UniversePolicy(mode="fixed", fixed_assets=active_tickers,
+                                            selector_description="Caller-supplied ticker list; skfolio performs no asset selection of its own."),
+            observation_policy=ObservationPolicy(
+                lookback_window=f"{TRAIN_WINDOW_DAYS}_trading_days (real WalkForward train fold)",
+                features=["daily linear returns (skfolio.preprocessing.prices_to_returns)"],
+                data_sources=["yfinance daily close prices"],
+            ),
+            decision_policy=DecisionPolicy(
+                decision_rule="Real skfolio MeanRisk (mean-variance, long-only, fully invested) refit each WalkForward fold.",
+                rebalance_frequency=f"every {REBALANCE_PERIOD_DAYS} trading days (WalkForward test_size)",
+            ),
+            update_policy=UpdatePolicy(mode=UpdateMode.ROLLING_REFIT, update_frequency=f"every {REBALANCE_PERIOD_DAYS} trading days"),
+            constraints=PortfolioConstraints(long_only=True, net_exposure_min=1.0, net_exposure_max=1.0),
+        )
+
+    def q4_step(self, timestamp: str, information_cutoff: str, observation, portfolio_state: PortfolioState) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+        s["step_count"] += 1
+
+        fold = s["folds_by_ts"].get(timestamp)
+        if fold is None:
+            # Off-schedule day: hold the most recent real weights unchanged.
+            if s["last_weights"] is None:
+                raise ValueError(
+                    f"timestamp {timestamp!r} is not a real WalkForward fold-start date and no prior "
+                    f"real fit exists yet to hold — this session's real fold-start dates are "
+                    f"{sorted(s['folds_by_ts'])[:3]}..."
+                )
+            return PolicyDecisionStep(
+                timestamp=timestamp, information_cutoff=information_cutoff,
+                selected_universe=s["active_tickers"], target_weights=s["last_weights"],
+                explanation="Off-schedule day (not a real WalkForward fold-start date) — holding most recent real fit unchanged.",
+            )
+
+        from skfolio.optimization import MeanRisk
+
+        X_train = s["X"].iloc[fold["train_idx"]]
+        model = MeanRisk()  # real upstream defaults: min_weights=0.0 (long-only), budget=1.0 (fully invested)
+        model.fit(X_train)
+        weights = {asset: float(w) for asset, w in zip(s["X"].columns, model.weights_)}
+        s["last_weights"] = weights
+
+        return _build_decision_step(fold["info_cutoff"], timestamp, weights, s["active_tickers"], len(fold["train_idx"]))
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.ROLLING_OPTIMIZER,
+            update_policy=UpdatePolicy(mode=UpdateMode.ROLLING_REFIT, update_frequency=f"every {REBALANCE_PERIOD_DAYS} trading days"),
+            explanation=(
+                f"Real skfolio WalkForward session over {len(s['active_tickers'])} tickers, "
+                f"{s['n_splits']} real folds available, {s['step_count']} real q4_step() calls made."
+            ),
+        )
+        self._session = None
+        return summary
 
     def run(self, task_id, context, generation_window=None, native_output=None,
             adapter_notes=None, field_mappings=None, **kwargs):

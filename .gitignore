@@ -11,6 +11,8 @@ adapters/vendor/
 !adapter_capability_recovery.csv
 # New-adapter integration deliverable — same category as the above.
 !new_adapter_integration.csv
+# Q4 stepwise support-status deliverable — same category as the above.
+!q4_stepwise_support.csv
 # Comparison-layer chart outputs are paper deliverables, not scratch output.
 !plots/*.png
 !plots/*.html

@@ -166,6 +166,19 @@ from CONTRACT.schemas import (
     UpdatePolicy,
 )
 
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize
+# below; q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
+
+
+class TradeMasterSessionExhausted(RuntimeError):
+    """Raised by q4_step() when the real PortfolioManagementEIIEEnvironment
+    has already reported done=True on a prior call — no more real decisions
+    exist for this session. Distinct from a generic RuntimeError so callers
+    can tell "the real environment ran out of real trading days" apart from
+    an actual bug."""
+
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "TradeMaster"
 if str(VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(VENDOR_DIR))
@@ -393,6 +406,10 @@ class TradeMasterAdapter(BaseAdapter):
     upstream_repo = "https://github.com/TradeMaster-NTU/TradeMaster"
     requires_env = "trademaster_real"
 
+    def __init__(self):
+        super().__init__()
+        self._session: Optional[dict] = None
+
     def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
         t0 = time.time()
         tickers = _tickers_from_context(context)
@@ -526,6 +543,176 @@ class TradeMasterAdapter(BaseAdapter):
         }
         self._last_latency_sec = time.time() - t0
         return result
+
+    # ------------------------------------------------------------------ #
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)       #
+    # ------------------------------------------------------------------ #
+    # Real mechanism: this adapter's own _train_real_agent()/
+    # _run_real_decision_rollout() functions (above) already ARE a real
+    # per-day step loop over the real, frozen PortfolioManagementEIIE agent
+    # — the decomposition below just externalizes that existing loop's body
+    # into q4_step(), called once per harness-driven timestep instead of
+    # being run to completion inside one q4_policy() call. No new algorithm
+    # logic; same real train/test split (TRAIN_FRACTION), same real EIIE
+    # agent/environment/network calls.
+    #
+    # Sequential-environment caveat (real, not a workaround): unlike
+    # universal_portfolios_adapter.py's Algo.next_weights(), which can be
+    # called against an arbitrary date's absolute-price history,
+    # PortfolioManagementEIIEEnvironment.step() only ever advances its own
+    # internal day pointer by one real day per call — it cannot jump to an
+    # arbitrary requested date. q4_step() therefore VALIDATES that the
+    # harness-supplied timestamp/information_cutoff match the real dates the
+    # environment itself is about to produce (a consistency check, not a
+    # lookup) — the caller (harness) must present observations in the exact
+    # real sequence this session's own deterministic train/test split
+    # produces (same generation_window + same real DJ30 data => same real
+    # test-date sequence, independently reproducible by the caller).
+
+    def q4_initialize(
+        self,
+        context: QueryContext,
+        generation_window: TimeWindow,
+        initial_portfolio: PortfolioState,
+        run_config: Q4RunConfig,
+    ) -> Q4Policy:
+        tickers = _tickers_from_context(context)
+
+        import torch
+        device = torch.device("cpu")
+
+        df = _load_real_dj30()
+        df = df[df.tic.isin(tickers)]
+        window_df = df[
+            (df.date >= pd.Timestamp(generation_window.start))
+            & (df.date <= pd.Timestamp(generation_window.end))
+        ].copy()
+        real_dates = sorted(window_df.date.unique())
+        if len(real_dates) < TIME_STEPS * 4:
+            raise RuntimeError(
+                f"Not enough real trading days ({len(real_dates)}) in generation_window "
+                f"[{generation_window.start},{generation_window.end}] for TIME_STEPS={TIME_STEPS} "
+                "lookback + a real train/decide split — widen generation_window."
+            )
+
+        split_idx = max(TIME_STEPS + 1, int(len(real_dates) * TRAIN_FRACTION))
+        split_idx = min(split_idx, len(real_dates) - TIME_STEPS - 2)
+        train_dates = real_dates[: split_idx + 1]
+        test_dates = real_dates[split_idx:]
+
+        train_slice = window_df[window_df.date.isin(train_dates)]
+        test_slice = window_df[window_df.date.isin(test_dates)]
+
+        tmp_dir = tempfile.mkdtemp(prefix="trademaster_adapter_session_")
+        tmp_path = Path(tmp_dir)
+        train_csv = tmp_path / "train.csv"
+        test_csv = tmp_path / "test.csv"
+        _write_env_csv(train_slice, train_csv)
+        _write_env_csv(test_slice, test_csv)
+
+        train_env = _build_env(train_csv, "train", tickers, tmp_path)
+        test_env = _build_env(test_csv, "test", tickers, tmp_path)
+
+        agent = _build_agent(action_dim=train_env.action_dim, state_dim=train_env.state_dim, device=device)
+        _train_real_agent(agent, train_env, device)  # real, unchanged training — strictly before any decision
+        state = test_env.reset()
+
+        self._session = {
+            "agent": agent, "test_env": test_env, "state": state, "tickers": tickers,
+            "device": device, "tmp_dir": tmp_dir, "step_count": 0, "done": False,
+        }
+
+        return Q4Policy(
+            context=context,
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            universe_policy=UniversePolicy(
+                mode="fixed", fixed_assets=tickers,
+                selector_description="Caller-specified subset of TradeMaster's real, shipped DJ30 dataset; see q4_finalize for full citation.",
+            ),
+            decision_policy=DecisionPolicy(
+                decision_rule=(
+                    "Real EIIEConv actor network: 1D convolution over the lookback window per "
+                    "ticker, concatenated with a learnable cash logit, passed through softmax "
+                    "(eiie.py:34-36) — verified non-negative, sums to 1.0 across tickers+cash."
+                ),
+                output_semantics="target_weights: real softmax allocation across tickers+CASH, long-only, fully invested.",
+                rebalance_frequency="DAILY",
+            ),
+        )
+
+    def q4_step(
+        self,
+        timestamp: str,
+        information_cutoff: str,
+        observation: MarketObservation,
+        portfolio_state: PortfolioState,
+    ) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+        if s["done"]:
+            raise TradeMasterSessionExhausted(
+                "the real PortfolioManagementEIIEEnvironment already reported done=True on a "
+                "prior call — no more real decisions exist for this session (not fabricating one)"
+            )
+
+        import torch
+
+        real_cutoff = pd.Timestamp(s["test_env"].data.date.unique()[-1]).strftime("%Y-%m-%d")
+        if real_cutoff != information_cutoff:
+            raise ValueError(
+                f"harness-supplied information_cutoff={information_cutoff!r} does not match the "
+                f"real environment's own current cutoff date {real_cutoff!r} for this session — "
+                f"the harness's observation schedule must exactly match this session's real, "
+                f"deterministic train/test split (same generation_window, same real DJ30 data)"
+            )
+
+        tensor_state = torch.as_tensor(s["state"], dtype=torch.float32, device=s["device"]).unsqueeze(0)
+        action = s["agent"].act(tensor_state)
+        weights = action.detach().cpu().numpy()[0]
+        state, reward, done, info = s["test_env"].step(weights)
+        s["state"] = state
+        s["done"] = bool(done)
+
+        real_timestamp = pd.Timestamp(s["test_env"].date_memory[-1]).strftime("%Y-%m-%d")
+        if real_timestamp != timestamp:
+            raise ValueError(
+                f"harness-supplied timestamp={timestamp!r} does not match the real environment's "
+                f"own resulting date {real_timestamp!r} for this session"
+            )
+
+        target_weights = {"CASH": float(weights[0])}
+        for i, tic in enumerate(s["tickers"]):
+            target_weights[tic] = float(weights[1 + i])
+        s["step_count"] += 1
+
+        return PolicyDecisionStep(
+            timestamp=timestamp, information_cutoff=information_cutoff,
+            selected_universe=list(s["tickers"]), target_weights=target_weights,
+        )
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            update_policy=UpdatePolicy(
+                mode=UpdateMode.NONE,
+                update_description=(
+                    f"Real EIIE actor/critic trained once ({TRAIN_ROUNDS} real explore+update rounds, "
+                    f"horizon_len={HORIZON_LEN}) before this session's first real decision, then queried "
+                    "statically (no further gradient updates) for every real step in this session."
+                ),
+            ),
+            explanation=(
+                f"Real EIIE actor-critic session over {len(s['tickers'])} tickers "
+                f"({', '.join(s['tickers'])}), {s['step_count']} real q4_step() calls made."
+            ),
+        )
+        self._session = None
+        return summary
 
     def run(
         self,

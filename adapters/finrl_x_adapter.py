@@ -330,6 +330,7 @@ from CONTRACT.schemas import (
     EvidenceItem,
     ObservationPolicy,
     OutputScope,
+    PolicyDecisionStep,
     PolicyType,
     PortfolioConstraints,
     Q2State,
@@ -342,6 +343,11 @@ from CONTRACT.schemas import (
     UpdateMode,
     UpdatePolicy,
 )
+
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize
+# below; q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
 
 STRATEGIES_DIR = Path(__file__).resolve().parent / "vendor" / "FinRL-Trading" / "src" / "strategies"
 FINRL_DEP_DIR = Path(__file__).resolve().parent / "vendor" / "FinRL"
@@ -700,6 +706,39 @@ def _train_and_allocate(tickers: List[str], fetch_start: str, fetch_end: str) ->
     return weights
 
 
+def _train_agent_session(tickers: List[str], fetch_start: str, fetch_end: str):
+    """Same real training this file's _train_and_allocate() performs
+    (real StockPortfolioEnv + DRLAgent wrapping real stable_baselines3.A2C,
+    upstream's own default A2C_PARAMS, unchanged TOTAL_TIMESTEPS budget) —
+    but returns the real trained model + env instead of only the final-day
+    weights, so a stepwise session can drive DRLAgent.DRL_prediction()'s
+    real per-day loop one call at a time instead of letting it run to
+    completion. _train_and_allocate() itself is untouched (still used by
+    the legacy q4_policy() path, unchanged)."""
+    from finrl.agents.stablebaselines3.models import DRLAgent
+    from finrl.meta.preprocessor.preprocessors import data_split
+
+    fetch_end_inclusive = (pd.Timestamp(fetch_end) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    df = _fetch_and_engineer(tickers, fetch_start, fetch_end_inclusive)
+    train_df = data_split(df, fetch_start, fetch_end_inclusive)
+
+    stock_dim = len(tickers)
+    from finrl import config
+    from finrl.meta.env_portfolio_allocation.env_portfolio import StockPortfolioEnv
+
+    env_gym = StockPortfolioEnv(
+        df=train_df, hmax=HMAX, initial_amount=INITIAL_AMOUNT,
+        transaction_cost_pct=TRANSACTION_COST_PCT, state_space=stock_dim,
+        stock_dim=stock_dim, tech_indicator_list=config.INDICATORS,
+        action_space=stock_dim, reward_scaling=REWARD_SCALING,
+    )
+    env_vec, _ = env_gym.get_sb_env()
+    agent = DRLAgent(env=env_vec)
+    model = agent.get_model(MODEL_NAME, model_kwargs=config.A2C_PARAMS, verbose=0)
+    trained = DRLAgent.train_model(model=model, tb_log_name=MODEL_NAME, total_timesteps=TOTAL_TIMESTEPS)
+    return trained, env_gym, len(train_df.date.unique())
+
+
 class FinRLXAdapter(BaseAdapter):
     name = "finrl_x"
     questions_answered = ["Q2", "Q3", "Q4"]
@@ -709,6 +748,7 @@ class FinRLXAdapter(BaseAdapter):
     def __init__(self):
         super().__init__()
         self._last_native: Dict[str, dict] = {}
+        self._session: Optional[dict] = None
 
     # ------------------------------------------------------------------
     # Q2 — real rule-based market-regime state (recovered from v1's Q4
@@ -1002,6 +1042,154 @@ class FinRLXAdapter(BaseAdapter):
             decisions=None,
             explanation=explanation,
         )
+
+    # ------------------------------------------------------------------
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)
+    # ------------------------------------------------------------------
+    # Real mechanism: same as adapters/finrl_adapter.py's stepwise migration
+    # (read that file's own comments for the full DRL_prediction()/
+    # actions_memory citation) — this file's real training is factored into
+    # the new _train_agent_session() helper above so the trained model/env
+    # objects can be kept alive across real per-day q4_step() calls instead
+    # of being discarded inside _train_and_allocate().
+    #
+    # Design decision on the real regime/cash-floor overlay (deliberately
+    # NOT recomputed per real day): detect_slow_regime() is fed real WEEKLY
+    # (not daily) ^GSPC/^VIX closes over a 26-week/13-week/3-year lookback —
+    # a slow-moving signal by upstream's own real design, already cached
+    # per-date via _REGIME_CACHE. Recomputing it on every real day within a
+    # session would not reflect any genuinely new information (the legacy
+    # q4_policy() path itself only ever computes it once per call, using
+    # context.data_cutoff/as_of) — so this stepwise session computes the
+    # real regime result ONCE at q4_initialize (same real call, same real
+    # inputs the legacy path uses) and holds regime_cash_floor fixed for
+    # the whole session, applying the SAME real
+    # cash_ratio=max(drl_cash, regime_cash_floor) blend the legacy path
+    # uses, per real step.
+    #
+    # Dynamic universe (top-25% ML selection) is likewise computed once at
+    # q4_initialize (matching the legacy path's own real selection_frequency
+    # = "varies with underlying fundamentals cadence (quarterly)" — not
+    # daily), not re-selected per step.
+
+    def q4_initialize(
+        self,
+        context: QueryContext,
+        generation_window: TimeWindow,
+        initial_portfolio: PortfolioState,
+        run_config: Q4RunConfig,
+    ) -> Q4Policy:
+        ranking, _, _ = _get_ml_selection()
+        n = len(ranking)
+        top_cut = max(2, round(TOP_QUANTILE * n))
+        selected = ranking.head(top_cut)["tic"].tolist()
+
+        trained, env_gym, n_real_days = _train_agent_session(
+            selected, generation_window.start, generation_window.end,
+        )
+        test_env, test_obs = env_gym.get_sb_env()
+        test_env.reset()
+
+        asof_date = context.data_cutoff or context.as_of
+        regime_result = _get_regime(asof_date)  # real, fixed for the session — see docstring above
+
+        self._session = {
+            "model": trained, "test_env": test_env, "test_obs": test_obs,
+            "tickers": selected, "n_real_days": n_real_days, "step_count": 0,
+            "regime_cash_floor": float(regime_result.cash_floor), "regime_state": regime_result.state.value,
+        }
+
+        universe_policy = UniversePolicy(
+            mode="dynamic", max_assets=top_cut,
+            selector_description=(
+                "Top-25% of a scoped NASDAQ-style universe by predicted_return, real ML "
+                "ensemble ranking via upstream ml_bucket_selection.run_bucket() — computed "
+                "once at session start, not re-selected per real day (see docstring above)."
+            ),
+        )
+        decision_policy = DecisionPolicy(
+            decision_rule=(
+                "Real A2C DRL policy (stable_baselines3 via upstream FinRL DRLAgent/"
+                "StockPortfolioEnv), queried once per real day via model.predict()/env.step() "
+                "— same real calls upstream's own DRL_prediction() makes internally — with a "
+                "real regime-based cash-floor overlay (fixed for the session, see docstring)."
+            ),
+            output_semantics="target portfolio weights (non-negative, sum to 1 including CASH)",
+        )
+        return Q4Policy(
+            context=context, policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            universe_policy=universe_policy, decision_policy=decision_policy,
+            constraints=PortfolioConstraints(long_only=True, net_exposure_min=1.0, net_exposure_max=1.0),
+        )
+
+    def q4_step(
+        self,
+        timestamp: str,
+        information_cutoff: str,
+        observation: MarketObservation,
+        portfolio_state: PortfolioState,
+    ) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+
+        if s["step_count"] >= s["n_real_days"]:
+            # Same real bounds guarantee as finrl_adapter.py::q4_step — the
+            # StockPortfolioEnv day pointer has no further rows past
+            # n_real_days for this generation_window.
+            raise RuntimeError(
+                f"q4_step called beyond real available days: step_count="
+                f"{s['step_count']} >= n_real_days={s['n_real_days']} for this "
+                f"generation_window."
+            )
+
+        if s["step_count"] == 0:
+            raw_weights = {t: 1.0 / len(s["tickers"]) for t in s["tickers"]}
+        else:
+            action, _states = s["model"].predict(s["test_obs"], deterministic=True)
+            s["test_obs"], rewards, dones, info = s["test_env"].step(action)
+            actions_df = s["test_env"].env_method(method_name="save_action_memory")[0]
+            last_row = actions_df.iloc[-1]
+            raw_weights = {t: max(0.0, float(w)) for t, w in last_row.items()}
+
+        # Real cash-floor blend, identical formula to the legacy q4_policy()
+        # path, applied per real step using the session-fixed regime result.
+        drl_cash = max(0.0, 1.0 - sum(raw_weights.values()))
+        cash_ratio = max(drl_cash, s["regime_cash_floor"])
+        weights = dict(raw_weights)
+        if cash_ratio > drl_cash and drl_cash < 1.0:
+            scale = (1.0 - cash_ratio) / (1.0 - drl_cash)
+            weights = {k: v * scale for k, v in weights.items()}
+        non_cash_total = sum(v for v in weights.values() if v > 0.0)
+        weights = {k: v for k, v in weights.items() if v > 0.0}
+        weights["CASH"] = max(0.0, 1.0 - non_cash_total)
+
+        s["step_count"] += 1
+        return PolicyDecisionStep(
+            timestamp=timestamp, information_cutoff=information_cutoff,
+            selected_universe=list(s["tickers"]), target_weights=weights,
+        )
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            update_policy=UpdatePolicy(
+                mode=UpdateMode.NONE,
+                update_description="Real A2C model trained once at q4_initialize; never retrained during the session.",
+            ),
+            explanation=(
+                f"Real A2C session over {len(s['tickers'])} ML-selected tickers across "
+                f"{s['n_real_days']} real trading days, {s['step_count']} real q4_step() "
+                f"calls made. Real regime='{s['regime_state']}' "
+                f"(cash_floor={s['regime_cash_floor']:.0%}), fixed for the session."
+            ),
+        )
+        self._session = None
+        return summary
 
     # ------------------------------------------------------------------
     # run() override — attach a faithful native_output (captured as a side

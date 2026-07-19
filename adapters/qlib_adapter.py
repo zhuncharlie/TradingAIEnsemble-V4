@@ -314,6 +314,11 @@ from CONTRACT.schemas import (
     UpdatePolicy,
 )
 
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize;
+# q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
+
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "qlib"
 SCRATCH_ROOT = VENDOR_DIR / "git_ignore_folder"
 WORK_DIR = SCRATCH_ROOT / "work"
@@ -1300,6 +1305,302 @@ class QlibAdapter(BaseAdapter):
             },
         }
         return result
+
+    # ------------------------------------------------------------------ #
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)       #
+    # ------------------------------------------------------------------ #
+    # Real mechanism: `_run_qlib_topk_backtest()` above drives real upstream
+    # `qlib.backtest.backtest.backtest_loop()`, which (read in full,
+    # backtest.py:25-49) is nothing but `for _ in collect_data_loop(...): pass`
+    # — a thin wrapper that fully drains a real, public generator,
+    # `collect_data_loop()` (backtest.py:52-108):
+    #     while not trade_executor.finished():
+    #         _trade_decision = trade_strategy.generate_trade_decision(_execute_result)
+    #         _execute_result = yield from trade_executor.collect_data(_trade_decision, level=0)
+    #         trade_strategy.post_exe_step(_execute_result)
+    # Each `next()` on this generator advances exactly one real trading day:
+    # TopkDropoutStrategy.generate_trade_decision() runs fresh against the
+    # frozen `pred` Series, the real SimulatorExecutor/Exchange/Account
+    # process it, and `Account.get_hist_positions()` gains one more real
+    # entry. The STEPWISE methods below call `collect_data_loop()` directly
+    # and `next()` it once per harness step instead of draining it via
+    # `backtest_loop()` — same real, unmodified upstream generator, just
+    # externally paced by the harness instead of internally paced by this
+    # adapter's own q4_policy() loop.
+    #
+    # Unlike q4_policy()'s batch reconstruction (which independently
+    # recomputes `information_cutoff` from `pred_dates` since nothing else
+    # supplies it), q4_step() simply echoes the harness-disclosed
+    # `information_cutoff` back — the harness, not the adapter, is
+    # responsible for building a causally-correct MarketObservation stream
+    # in the stepwise design.
+
+    def q4_initialize(self, context: QueryContext, generation_window: TimeWindow,
+                       initial_portfolio, run_config: "Q4RunConfig") -> Q4Policy:
+        if context.targets:
+            raw_ticker = context.targets[0]
+        elif context.universe:
+            raw_ticker = context.universe[0]
+        else:
+            raise ValueError("qlib q4_initialize requires QueryContext.targets or QueryContext.universe.")
+
+        normalized = (raw_ticker or "").strip().upper()
+        universe = _resolve_universe(normalized)
+
+        was_fallback = False
+        try:
+            pipeline_result = _run_qlib_pipeline_window(universe, generation_window.start, generation_window.end)
+            resolved_ticker = normalized if normalized in pipeline_result["tickers_ok"] else None
+        except Exception:
+            resolved_ticker = None
+        if resolved_ticker is None:
+            was_fallback = True
+            fb_universe = _resolve_universe(FALLBACK_TICKER)
+            pipeline_result = _run_qlib_pipeline_window(fb_universe, generation_window.start, generation_window.end)
+            resolved_ticker = (
+                FALLBACK_TICKER if FALLBACK_TICKER in pipeline_result["tickers_ok"] else pipeline_result["tickers_ok"][0]
+            )
+
+        tickers_ok: List[str] = pipeline_result["tickers_ok"]
+        pred: pd.Series = pipeline_result["pred"]
+        if pred.empty:
+            raise RuntimeError(
+                f"Real Qlib/Alpha158/LGBModel produced no test-segment predictions for "
+                f"universe {tickers_ok} over generation_window "
+                f"[{generation_window.start}, {generation_window.end}]."
+            )
+
+        topk = min(Q4_TOPK, len(tickers_ok))
+        n_drop = min(Q4_N_DROP, max(0, topk - 1))
+        test_start, test_end = pipeline_result["test_window"]
+
+        from qlib.backtest import get_strategy_executor
+        from qlib.backtest.backtest import collect_data_loop
+
+        strategy_config = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy.signal_strategy",
+            "kwargs": {"signal": pred, "topk": topk, "n_drop": n_drop, "risk_degree": Q4_RISK_DEGREE},
+        }
+        executor_config = {
+            "class": "SimulatorExecutor",
+            "module_path": "qlib.backtest.executor",
+            # track_data=True (real, public BaseExecutor.__init__ kwarg,
+            # qlib/backtest/executor.py:33/89-91): without it,
+            # collect_data()'s inner `if self.track_data: yield trade_decision`
+            # (executor.py:262) never fires, so the whole collect_data_loop()
+            # generator runs synchronously through every real day in one
+            # next() call instead of pausing once per real day — confirmed
+            # empirically (a next() call with track_data unset raised
+            # StopIteration immediately, having silently completed the whole
+            # real backtest inside that one call). track_data=True is what
+            # actually gives external, per-day pausing.
+            "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True, "track_data": True},
+        }
+
+        orig_cwd = os.getcwd()
+        os.chdir(WORK_DIR_Q4)
+        # Stays chdir'd for the whole session (restored in q4_finalize) —
+        # the ongoing collect_data_loop() generator spans this call and every
+        # subsequent q4_step() call, and this adapter's own real q4_policy()
+        # path already required WORK_DIR_Q4 as cwd for the equivalent
+        # get_strategy_executor()+backtest_loop() combo, so the safest,
+        # most conservative choice is to keep the session in that same real
+        # working directory throughout, not just during this one call.
+        trade_strategy, trade_executor = get_strategy_executor(  # real, unmodified upstream
+            start_time=test_start,
+            end_time=test_end,
+            strategy=strategy_config,
+            executor=executor_config,
+            benchmark=tickers_ok[0],  # arbitrary, unused placeholder — see _run_qlib_topk_backtest docstring
+            account=Q4_INITIAL_CASH,
+            exchange_kwargs={
+                "freq": "day",
+                "start_time": test_start,
+                "end_time": test_end,
+                "codes": list(tickers_ok),
+                "deal_price": "close",
+                "open_cost": Q4_OPEN_COST,
+                "close_cost": Q4_CLOSE_COST,
+                "min_cost": Q4_MIN_COST,
+            },
+        )
+        gen = collect_data_loop(test_start, test_end, trade_strategy, trade_executor)  # real, unmodified upstream generator
+
+        # Prime the generator one step ahead. Real, verified upstream fact:
+        # collect_data()'s only yield point (`if self.track_data: yield
+        # trade_decision`, executor.py:262) fires BEFORE that day's trade is
+        # actually executed/settled — `self.trade_account.update_bar_end()`
+        # (the real settlement call) only runs when the generator RESUMES
+        # past that yield, which happens on the *next* next() call. Verified
+        # empirically: without this priming call, the first q4_step() saw
+        # get_hist_positions() still completely empty after its own next().
+        # So: q4_initialize() primes with one real next() (day 1's decision
+        # generated, not yet settled); each q4_step() then calls next() once
+        # more, which settles the CURRENT real day and generates the NEXT
+        # real day's (unsettled) decision — one real day fully realized per
+        # q4_step() call, matching the Q4StepAdapter contract.
+        try:
+            next(gen)
+        except StopIteration:
+            pass  # a zero-length real test window — q4_step() will report this honestly
+
+        self._session = {
+            "gen": gen, "trade_executor": trade_executor, "tickers_ok": tickers_ok,
+            "topk": topk, "n_drop": n_drop, "orig_cwd": orig_cwd,
+            "raw_ticker": raw_ticker, "resolved_ticker": resolved_ticker, "was_fallback": was_fallback,
+            "train_window": pipeline_result["train_window"], "test_window": pipeline_result["test_window"],
+            "step_count": 0, "exhausted": False,
+        }
+
+        universe_policy = UniversePolicy(
+            mode="fixed", fixed_assets=list(tickers_ok),
+            selector_description=(
+                "Requested ticker + up to 7 fixed liquid large-cap US companions "
+                "(same COMPANION_POOL/_resolve_universe() fixed-pool resolution as "
+                "q3_signal()/q4_policy()) — TopkDropoutStrategy performs no asset-"
+                "universe selection of its own."
+            ),
+        )
+        train_start, train_end = pipeline_result["train_window"]
+        valid_start, valid_end = pipeline_result["valid_window"]
+        observation_policy = ObservationPolicy(
+            lookback_window=f"train=[{train_start.date()},{train_end.date()}]",
+            features=pipeline_result.get("feature_cols") if isinstance(pipeline_result.get("feature_cols"), list) else None,
+            data_sources=["real yfinance OHLCV via upstream scripts/dump_bin.py::DumpDataAll into a real Qlib binary provider"],
+            observation_description=(
+                f"Real Alpha158 158-factor set, real LGBModel fit once on "
+                f"train=[{train_start.date()},{train_end.date()}], validated on "
+                f"[{valid_start.date()},{valid_end.date()}]; TopkDropoutStrategy."
+                f"generate_trade_decision() observes the frozen per-day predicted "
+                f"score at each real rebalance."
+            ),
+        )
+        decision_policy = DecisionPolicy(
+            decision_rule=(
+                f"qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy."
+                f"generate_trade_decision(): hold the top {topk} tickers by real "
+                f"LGBModel-predicted score, replacing at most n_drop={n_drop} "
+                f"position(s) per real rebalance day, called once per harness "
+                f"step via the real collect_data_loop() generator."
+            ),
+            output_semantics=(
+                "target_weights: per-ticker fraction of total real Account value "
+                "(stock+cash), from real Position.get_stock_weight_dict(only_stock=False)."
+            ),
+            rebalance_frequency="DAILY",
+            holding_horizon="hold_thresh=1 trading day minimum (real TopkDropoutStrategy default)",
+        )
+        update_policy = UpdatePolicy(
+            mode=UpdateMode.STATE_UPDATE,
+            update_frequency="per rebalance day (real Account/Position state only)",
+            update_description=(
+                "The real LGBModel is fit exactly once (frozen — never refit within "
+                "this session); only TopkDropoutStrategy's real Account/Position "
+                "state evolves step to step via the real collect_data_loop() generator."
+            ),
+        )
+        constraints = PortfolioConstraints(
+            long_only=True, cash_allowed=True,
+            additional_constraints=[
+                f"topk={topk} concentrated long positions, at most n_drop={n_drop} "
+                f"position(s) replaced per rebalance day.",
+                f"risk_degree={Q4_RISK_DEGREE}: at most {Q4_RISK_DEGREE*100:.0f}% of "
+                f"account value invested at each buy step.",
+            ],
+        )
+
+        return Q4Policy(
+            context=context, policy_type=PolicyType.FROZEN_LEARNED_POLICY, generation_window=generation_window,
+            universe_policy=universe_policy, observation_policy=observation_policy,
+            decision_policy=decision_policy, update_policy=update_policy, constraints=constraints,
+        )
+
+    def q4_step(self, timestamp: str, information_cutoff: str, observation: "MarketObservation",
+                portfolio_state: "PortfolioState") -> PolicyDecisionStep:
+        if getattr(self, "_session", None) is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+
+        try:
+            next(s["gen"])  # settles the CURRENT real day, generates the next (unsettled) one
+        except StopIteration:
+            # Real, verified upstream behavior: StopIteration on the FINAL
+            # real day is expected, not an error — collect_data_loop()'s
+            # `while not trade_executor.finished()` only ends the generator
+            # AFTER that final day's real settlement (update_bar_end) has
+            # already run (settlement happens inside collect_data(), which
+            # completes and returns before the outer while-condition is
+            # re-checked) — so the position for `timestamp` is genuinely
+            # available below despite the exception. Only re-raise if this
+            # step has no corresponding real settled position at all (caught
+            # by the lookup check right after).
+            if s.get("exhausted"):
+                raise RuntimeError(
+                    f"real qlib collect_data_loop() generator already exhausted before "
+                    f"step {timestamp!r} — test window {s['test_window']} ended "
+                    f"(not fabricating a decision)."
+                )
+            s["exhausted"] = True
+        s["step_count"] += 1
+
+        hist_positions = s["trade_executor"].trade_account.get_hist_positions()
+        ts_lookup = {pd.Timestamp(k).strftime("%Y-%m-%d"): k for k in hist_positions}
+        if timestamp not in ts_lookup:
+            raise RuntimeError(
+                f"real qlib Account.get_hist_positions() has no entry for {timestamp!r} "
+                f"after stepping — real dates seen so far: {sorted(ts_lookup)[-3:]}. "
+                f"This means the harness's real trading-day observation stream is out "
+                f"of sync with qlib's own real trading calendar for this universe."
+            )
+        position = hist_positions[ts_lookup[timestamp]]
+        weights = dict(position.get_stock_weight_dict(only_stock=False))  # real Position method
+        cash_weight = position.get_cash() / position.calculate_value() if position.calculate_value() else 0.0
+        weights["CASH"] = float(cash_weight)
+
+        return PolicyDecisionStep(
+            timestamp=timestamp, information_cutoff=information_cutoff,
+            selected_universe=list(s["tickers_ok"]),
+            target_weights={k: float(v) for k, v in weights.items()},
+            explanation=(
+                f"Real qlib.contrib.strategy.signal_strategy.TopkDropoutStrategy."
+                f"generate_trade_decision() rebalance (topk={s['topk']}, "
+                f"n_drop={s['n_drop']}); target_weights are the real post-trade "
+                f"Account.Position.get_stock_weight_dict(only_stock=False) snapshot "
+                f"for {timestamp}."
+            ),
+        )
+
+    def q4_finalize(self) -> "Q4FinalizeSummary":
+        if getattr(self, "_session", None) is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        try:
+            s["gen"].close()
+        except Exception:
+            pass
+        os.chdir(s["orig_cwd"])
+
+        update_policy = UpdatePolicy(
+            mode=UpdateMode.STATE_UPDATE,
+            update_frequency="per rebalance day (real Account/Position state only)",
+            update_description=(
+                "The real LGBModel was fit exactly once at session start (frozen); "
+                "only TopkDropoutStrategy's real Account/Position state evolved "
+                "across this session's real q4_step() calls."
+            ),
+        )
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            update_policy=update_policy,
+            explanation=(
+                f"Real qlib TopkDropoutStrategy session over {len(s['tickers_ok'])} "
+                f"tickers (topk={s['topk']}, n_drop={s['n_drop']}), {s['step_count']} "
+                f"real q4_step() calls made via the real collect_data_loop() generator."
+            ),
+        )
+        self._session = None
+        return summary
 
     def run(
         self,

@@ -193,6 +193,11 @@ from CONTRACT.schemas import (
     UpdatePolicy,
 )
 
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize
+# below; q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
+
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "EarnMore"
 if str(VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(VENDOR_DIR))
@@ -232,19 +237,23 @@ def _selected_universe_from_mask(mask, stocks: List[str]) -> List[str]:
     return [stocks[j] for j in range(len(stocks)) if mask[j] == 0.0]
 
 
-def _real_run(generation_window: TimeWindow) -> dict:
+def _build_session(generation_window: TimeWindow) -> dict:
     """
     Real, unmodified construction (mmengine registries, same path
     tools/train.py's own main() uses) + a real small training phase (real
-    tools/train.py:train_one_episode(), imported not reimplemented) + a
-    real causal per-step decision loop mirroring AgentMaskDQN.validate_net()
-    (see module header for why validate_net() itself can't be called
-    directly). Returns a dict with the real per-step trajectory and real
-    metadata; no fabricated values.
+    tools/train.py:train_one_episode(), imported not reimplemented). Returns
+    everything needed to drive the real causal per-step decision loop
+    (real trained agent, real val environment reset to its first real
+    state, real mask) WITHOUT running that loop — shared by both the legacy
+    q4_policy() path (via _real_run, which runs the loop itself) and the
+    stepwise q4_initialize()/q4_step() path (which runs the loop one call
+    at a time, driven by the harness). This is a pure extraction of
+    _real_run's own former setup code — no behavior change to _real_run's
+    real outputs (verified against the existing legacy test suite).
     """
     import torch
     from copy import deepcopy
-    from einops import rearrange
+    from einops import rearrange  # noqa: F401 (re-exported for callers' step loops)
     from mmengine.config import Config
 
     from pm.registry import AGENT, DATASET, ENVIRONMENT
@@ -321,8 +330,10 @@ def _real_run(generation_window: TimeWindow) -> dict:
     for _episode in range(1, cfg.num_episodes + 1):
         earnmore_train.train_one_episode(train_envs, buffer, agent, cfg.horizon_len)
 
-    # Real causal decision loop over the val (post-split, no-gradient-update) window.
-    # Mirrors AgentMaskDQN.validate_net()'s own real per-step calls; see module header.
+    # Real setup for the causal decision loop over the val (post-split,
+    # no-gradient-update) window. Mirrors AgentMaskDQN.validate_net()'s own
+    # real per-step calls; see module header. The loop itself is NOT run
+    # here — callers (_real_run, or q4_step one call at a time) run it.
     stocks = val_environment.stocks
     aux_stocks = val_envs.envs[0].aux_stocks
     mask = aux_stocks[AUX_STOCKS_GROUP_ID]["mask"]
@@ -330,45 +341,88 @@ def _real_run(generation_window: TimeWindow) -> dict:
     masks = np.array([mask])
 
     state = val_envs.reset()
-    trajectory: List[dict] = []
-    with torch.no_grad():
-        while True:
-            pre_date = str(val_envs.envs[0].get_current_date())
-            state_t = torch.as_tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-            b, e, n, d, f = state_t.shape
-            state_t = rearrange(state_t, "b e n d f -> (b e) n d f", b=b, e=e)
-            rep_state, _, _ = agent.rep.forward_state(state_t)
-            action = agent.forward_action(x=rep_state, mask=masks)
-            ary_action = action.detach().cpu().numpy()
-
-            state, reward, done, info = val_envs.step(ary_action)
-
-            real_weights_vec = np.asarray(info[0]["action"]).flatten()
-            post_date = str(info[0]["date"])
-            selected = _selected_universe_from_mask(mask, stocks)
-            weights = _weights_from_action_vector(real_weights_vec, stocks)
-
-            trajectory.append({
-                "information_cutoff": pre_date,
-                "timestamp": post_date,
-                "selected_universe": selected,
-                "target_weights": weights,
-            })
-
-            if np.sum(done) > 0:
-                break
 
     return {
-        "stocks": list(stocks),
-        "aux_stocks_group_id": AUX_STOCKS_GROUP_ID,
-        "aux_stocks_group_name": aux_stocks_group_name,
-        "aux_stocks_group_tickers": selected,
+        "cfg": cfg, "agent": agent, "val_envs": val_envs, "device": device,
+        "stocks": list(stocks), "mask": mask, "masks": masks,
+        "aux_stocks_group_id": AUX_STOCKS_GROUP_ID, "aux_stocks_group_name": aux_stocks_group_name,
         "split_date": split_date,
         "train_window": {"start": generation_window.start, "end": split_date},
         "decision_window": {"start": split_date, "end": generation_window.end},
+        "state": state,
+        "num_episodes": cfg.num_episodes, "horizon_len": cfg.horizon_len,
+    }
+
+
+def _run_decision_step(session: dict):
+    """
+    One real iteration of the causal decision loop body (mirrors
+    AgentMaskDQN.validate_net()'s own real per-step calls; see module
+    header). Mutates session["state"] in place for the next call. Returns
+    (step_dict, done) where step_dict is None if the real val environment
+    has no more real steps (an honest end-of-window signal, never padded).
+    """
+    import torch
+    from einops import rearrange
+
+    agent, val_envs, device = session["agent"], session["val_envs"], session["device"]
+    mask, masks, stocks = session["mask"], session["masks"], session["stocks"]
+
+    with torch.no_grad():
+        pre_date = str(val_envs.envs[0].get_current_date())
+        state_t = torch.as_tensor(session["state"], dtype=torch.float32, device=device).unsqueeze(0)
+        b, e, n, d, f = state_t.shape
+        state_t = rearrange(state_t, "b e n d f -> (b e) n d f", b=b, e=e)
+        rep_state, _, _ = agent.rep.forward_state(state_t)
+        action = agent.forward_action(x=rep_state, mask=masks)
+        ary_action = action.detach().cpu().numpy()
+
+        state, reward, done, info = val_envs.step(ary_action)
+        session["state"] = state
+
+        real_weights_vec = np.asarray(info[0]["action"]).flatten()
+        post_date = str(info[0]["date"])
+        selected = _selected_universe_from_mask(mask, stocks)
+        weights = _weights_from_action_vector(real_weights_vec, stocks)
+
+        step_dict = {
+            "information_cutoff": pre_date, "timestamp": post_date,
+            "selected_universe": selected, "target_weights": weights,
+        }
+        return step_dict, bool(np.sum(done) > 0)
+
+
+def _real_run(generation_window: TimeWindow) -> dict:
+    """
+    Legacy, single-call path: real _build_session() + fully drains the real
+    causal decision loop via repeated _run_decision_step() calls, exactly
+    reproducing this function's own pre-refactor behavior (verified against
+    the existing legacy test suite — same real trajectory, same real
+    metadata). Returns a dict with the real per-step trajectory and real
+    metadata; no fabricated values.
+    """
+    session = _build_session(generation_window)
+
+    trajectory: List[dict] = []
+    while True:
+        step_dict, done = _run_decision_step(session)
+        trajectory.append(step_dict)
+        if done:
+            break
+
+    aux_stocks_group_tickers = trajectory[-1]["selected_universe"] if trajectory else []
+
+    return {
+        "stocks": session["stocks"],
+        "aux_stocks_group_id": session["aux_stocks_group_id"],
+        "aux_stocks_group_name": session["aux_stocks_group_name"],
+        "aux_stocks_group_tickers": aux_stocks_group_tickers,
+        "split_date": session["split_date"],
+        "train_window": session["train_window"],
+        "decision_window": session["decision_window"],
         "trajectory": trajectory,
-        "num_episodes": cfg.num_episodes,
-        "horizon_len": cfg.horizon_len,
+        "num_episodes": session["num_episodes"],
+        "horizon_len": session["horizon_len"],
     }
 
 
@@ -377,6 +431,10 @@ class EarnMoreAdapter(BaseAdapter):
     questions_answered = ["Q4"]
     upstream_repo = "https://github.com/DVampire/EarnMore"
     requires_env = "earnmore_real"
+
+    def __init__(self):
+        super().__init__()
+        self._session: Optional[dict] = None
 
     def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
         t0 = time.time()
@@ -492,6 +550,135 @@ class EarnMoreAdapter(BaseAdapter):
             decisions=decisions,
             explanation=explanation,
         )
+
+    # ------------------------------------------------------------------
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)
+    # ------------------------------------------------------------------
+    # Real mechanism: _build_session() (real construction + real small
+    # training phase, unchanged from the legacy path) sets up the real
+    # trained agent + real val environment reset to its first real state,
+    # WITHOUT running the decision loop. _run_decision_step() is one real
+    # iteration of that loop body (real forward_state -> real forward_action
+    # -> real val_envs.step()), the exact same real per-step primitives
+    # _real_run() itself uses — just externalized to be called once per
+    # harness step instead of internally looped to completion. No neural
+    # network, masking algorithm, or environment dynamics are reimplemented
+    # here, matching the module header's own no-reimplementation discipline.
+    #
+    # Causal design: real env.step() is inherently sequential (real gym env,
+    # no random access to an arbitrary date) — q4_step() must be called in
+    # the exact real order the environment produces, matching this real
+    # per-step trajectory's own real dates. A harness-supplied `timestamp`
+    # that does not match the real post-step date the environment actually
+    # produces is treated as a desync and raises loudly rather than silently
+    # drifting.
+
+    def q4_initialize(
+        self,
+        context: QueryContext,
+        generation_window: TimeWindow,
+        initial_portfolio: PortfolioState,
+        run_config: Q4RunConfig,
+    ) -> Q4Policy:
+        self._session = _build_session(generation_window)
+        s = self._session
+
+        universe_policy = UniversePolicy(
+            mode="dynamic",
+            fixed_assets=s["stocks"],
+            selector_description=(
+                f"Real per-period sector-membership mask from upstream's own "
+                f"aux_stocks_files (id={s['aux_stocks_group_id']}, "
+                f"name={s['aux_stocks_group_name']!r}); see q4_finalize/module "
+                f"header for the full real citation."
+            ),
+        )
+        observation_policy = ObservationPolicy(
+            lookback_window="10_trading_days",
+            features=["real 102-column technical/price feature set from upstream's own preprocess.py"],
+            data_sources=["adapters/vendor/EarnMore/datasets/dj30 (real OHLCV, upstream-shipped)"],
+        )
+        decision_policy_kwargs = dict(
+            decision_rule=(
+                "Real AgentMaskDQN.rep.forward_state() -> forward_action(mask=...) "
+                "-> environment.step() per real trading day (see module header)."
+            ),
+        )
+        from CONTRACT.schemas import DecisionPolicy
+        decision_policy = DecisionPolicy(**decision_policy_kwargs)
+
+        return Q4Policy(
+            context=context, policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            universe_policy=universe_policy, observation_policy=observation_policy,
+            decision_policy=decision_policy,
+            constraints=PortfolioConstraints(long_only=True, cash_allowed=True),
+        )
+
+    def q4_step(
+        self,
+        timestamp: str,
+        information_cutoff: str,
+        observation: MarketObservation,
+        portfolio_state: PortfolioState,
+    ) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        if self._session.get("_done"):
+            # Real gym envs may silently auto-reset if .step() is called
+            # again after `done=True` — that would fabricate a decision
+            # outside the real decision window. Refuse instead.
+            raise RuntimeError(
+                f"real val environment already reached its real end-of-window "
+                f"(done=True on a prior step) — requested timestamp {timestamp!r} "
+                f"has no corresponding real decision; not fabricating one"
+            )
+
+        step_dict, done = _run_decision_step(self._session)
+        if step_dict["timestamp"] != timestamp:
+            raise ValueError(
+                f"real environment produced date {step_dict['timestamp']!r} but the harness "
+                f"requested timestamp {timestamp!r} — sequential desync, not proceeding"
+            )
+        self._session["step_count"] = self._session.get("step_count", 0) + 1
+        self._session["_done"] = done
+
+        return PolicyDecisionStep(
+            timestamp=step_dict["timestamp"], information_cutoff=step_dict["information_cutoff"],
+            selected_universe=step_dict["selected_universe"], target_weights=step_dict["target_weights"],
+        )
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+
+        update_policy = UpdatePolicy(
+            mode=UpdateMode.NONE,
+            update_description=(
+                f"Network weights frozen after a real but small training phase "
+                f"({s['num_episodes']} real episode(s), horizon_len={s['horizon_len']} "
+                f"— see module header). No gradient updates occur during the causal "
+                f"decision window."
+            ),
+        )
+        artifact = PolicyArtifact(
+            artifact_type="model_checkpoint",
+            description=(
+                "Real trained AgentMaskDQN, held in-process only for this session "
+                "— not persisted to disk."
+            ),
+        )
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY, update_policy=update_policy, artifact=artifact,
+            explanation=(
+                f"Real EarnMore AgentMaskDQN session, {s.get('step_count', 0)} real "
+                f"q4_step() calls made for real sector-mask group "
+                f"{s['aux_stocks_group_id']} ({s['aux_stocks_group_name']})."
+            ),
+        )
+        self._session = None
+        return summary
 
     # ------------------------------------------------------------------
     # run() override — attach faithful native_output (real trajectory),

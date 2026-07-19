@@ -142,6 +142,11 @@ from CONTRACT.schemas import (
     UpdatePolicy,
 )
 
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize
+# below; q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
+
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "universal-portfolios"
 if str(VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(VENDOR_DIR))
@@ -223,6 +228,65 @@ def _fetch_prices(tickers: List[str], start: str, end: str) -> pd.DataFrame:
     return prices
 
 
+def _build_policy_metadata(algo, algo_cls, tickers: List[str], n_trading_days: int):
+    """Shared real-metadata construction (universe/observation/decision/
+    update policy + constraints) used by both the legacy q4_policy() path
+    and the stepwise q4_finalize() path — same real citations either way,
+    factored out once rather than duplicated."""
+    universe_policy = UniversePolicy(
+        mode="fixed",
+        fixed_assets=list(tickers),
+        selector_description=(
+            "Caller-specified ticker list; universal-portfolios performs no "
+            "asset selection of its own — every real algorithm in this "
+            "project allocates only across the assets it is given."
+        ),
+    )
+    observation_policy = ObservationPolicy(
+        lookback_window=(
+            f"full generation_window ({n_trading_days} real trading days); "
+            f"algorithm-internal state further bounds how much of that "
+            f"history influences each decision"
+        ),
+        features=["real daily close price relatives (Algo.PRICE_TYPE conversion)"],
+        data_sources=["yfinance (real historical close prices)"],
+        observation_description=(
+            f"Real {algo_cls.__name__}.step() update using only past+current "
+            f"price relatives (verified causal via universal/algo.py:92, "
+            f"history = X.iloc[: t + 1])."
+        ),
+    )
+    decision_policy = DecisionPolicy(
+        decision_rule=(
+            f"Real, unmodified {algo_cls.__module__}.{algo_cls.__name__}.step() — "
+            f"see module header for the per-algorithm real update rule and its "
+            f"real simplex-projection constraint enforcement."
+        ),
+        output_semantics="target_weights: real simplex-projected allocation across tickers (non-negative, sums to 1.0).",
+        rebalance_frequency="EVERY_TRADING_DAY" if getattr(algo, "frequency", 1) == 1 else f"every_{algo.frequency}_periods",
+        holding_horizon=None,
+    )
+    update_policy = UpdatePolicy(
+        mode=UpdateMode.ONLINE_LEARNING,
+        update_frequency="every real trading day within generation_window",
+        update_description=(
+            f"Real {algo_cls.__name__} running state (see module header) updates "
+            f"from each real day's realized price relative; state is not persisted "
+            f"across separate sessions (each session is a fresh cold start)."
+        ),
+    )
+    constraints = PortfolioConstraints(
+        long_only=True,
+        net_exposure_min=1.0,
+        net_exposure_max=1.0,
+        additional_constraints=[
+            f"Real simplex projection in {algo_cls.__name__}.step() (see module header) "
+            f"guarantees non-negative weights summing to 1.0 every period."
+        ],
+    )
+    return universe_policy, observation_policy, decision_policy, update_policy, constraints
+
+
 class UniversalPortfoliosAdapter(BaseAdapter):
     name = "universal_portfolios"
     questions_answered = ["Q4"]
@@ -232,6 +296,7 @@ class UniversalPortfoliosAdapter(BaseAdapter):
     def __init__(self):
         super().__init__()
         self._last_native: dict = {}
+        self._session: Optional[dict] = None
 
     # ------------------------------------------------------------------ #
     # Q4 — real online portfolio selection (ONS / OLMAR)                 #
@@ -353,6 +418,121 @@ class UniversalPortfoliosAdapter(BaseAdapter):
             decisions=decisions,
             explanation=explanation,
         )
+
+    # ------------------------------------------------------------------ #
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)       #
+    # ------------------------------------------------------------------ #
+    # Real mechanism: Algo.next_weights(S, last_b) (universal/algo.py:177-
+    # 184) is a real, public, unmodified per-step entrypoint — it converts
+    # absolute prices to price relatives internally and calls the real
+    # Algo.step() exactly once. This is a genuinely cleaner real call than
+    # reimplementing algo.py:92's price-relative conversion by hand; the
+    # STEPWISE decomposition below is therefore a thin re-sequencing of
+    # already-real, already-public upstream calls, not new algorithm logic.
+    #
+    # Causal design: the decision returned for day t is the algorithm's
+    # CURRENT last_b — i.e. the weight already decided using data through
+    # day t-1 — exactly matching Algo.weights()'s own real loop structure
+    # (`B.iloc[t] = last_b` happens BEFORE that iteration's step() call,
+    # algo.py:82-92). last_b is only advanced AFTER this step's decision is
+    # returned, using today's now-fully-known price — so no future
+    # information ever reaches a decision.
+
+    def q4_initialize(
+        self,
+        context: QueryContext,
+        generation_window: TimeWindow,
+        initial_portfolio: PortfolioState,
+        run_config: Q4RunConfig,
+    ) -> Q4Policy:
+        algo_name = run_config.adapter_kwargs.get("algo_name", DEFAULT_ALGO)
+        tickers = list(dict.fromkeys(context.universe or context.targets or []))
+        if not tickers:
+            raise ValueError("universal_portfolios q4_initialize requires context.universe or context.targets")
+
+        algo_cls = _load_algo_class(algo_name)
+        algo = algo_cls()
+        prices = _fetch_prices(tickers, generation_window.start, generation_window.end)
+
+        X = algo._convert_prices(prices, algo.PRICE_TYPE, algo.REPLACE_MISSING)  # real, unmodified upstream method
+        algo.init_step(X)  # real upstream hook
+        last_b = algo.init_weights(prices.columns)
+        if isinstance(last_b, pd.Series):
+            last_b = last_b.values
+
+        self._session = {
+            "algo": algo, "algo_cls": algo_cls, "algo_name": algo_name,
+            "prices": prices, "tickers": list(prices.columns),
+            "dates": list(prices.index), "min_history": algo.min_history,
+            "last_b": last_b, "step_count": 0,
+        }
+
+        _, observation_policy, decision_policy, update_policy, constraints = _build_policy_metadata(
+            algo, algo_cls, tickers, len(prices),
+        )
+        return Q4Policy(
+            context=context, policy_type=PolicyType.ONLINE_ADAPTIVE_POLICY,
+            generation_window=generation_window,
+            universe_policy=UniversePolicy(mode="fixed", fixed_assets=tickers,
+                                            selector_description="Caller-specified ticker list; see q4_finalize for full real citation."),
+            observation_policy=observation_policy, decision_policy=decision_policy,
+            update_policy=update_policy, constraints=constraints,
+        )
+
+    def q4_step(
+        self,
+        timestamp: str,
+        information_cutoff: str,
+        observation: MarketObservation,
+        portfolio_state: PortfolioState,
+    ) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+        ts = pd.Timestamp(timestamp).tz_localize(None)
+        try:
+            i = s["dates"].index(ts)
+        except ValueError:
+            raise ValueError(
+                f"timestamp {timestamp!r} is not one of the real trading days "
+                f"fetched for this session ({s['dates'][0]}..{s['dates'][-1]})"
+            )
+
+        # The decision for day i is the CURRENT last_b — already decided
+        # using data only through day i-1 (see docstring above).
+        weights_now = {t: float(w) for t, w in zip(s["tickers"], s["last_b"])}
+
+        # Advance last_b using today's now-fully-known price, for tomorrow's
+        # decision — real Algo.next_weights() call, real upstream frequency
+        # gating (matches algo.py:88's own `% self.frequency` check).
+        if i >= s["min_history"] and (i - s["min_history"]) % s["algo"].frequency == 0:
+            S_upto_now = s["prices"].iloc[: i + 1]
+            s["last_b"] = s["algo"].next_weights(S_upto_now, s["last_b"])
+        s["step_count"] += 1
+
+        return PolicyDecisionStep(
+            timestamp=timestamp, information_cutoff=information_cutoff,
+            selected_universe=list(s["tickers"]), target_weights=weights_now,
+        )
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        _, _, _, update_policy, _ = _build_policy_metadata(
+            s["algo"], s["algo_cls"], s["tickers"], len(s["prices"]),
+        )
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.ONLINE_ADAPTIVE_POLICY,
+            update_policy=update_policy,
+            explanation=(
+                f"Real {s['algo_cls'].__name__} session over {len(s['tickers'])} tickers "
+                f"across {len(s['prices'])} real trading days, {s['step_count']} real "
+                f"q4_step() calls made."
+            ),
+        )
+        self._session = None
+        return summary
 
     # ------------------------------------------------------------------ #
     # run() override — attach faithful native_output                    #

@@ -166,15 +166,24 @@ import pandas as pd
 
 from CONTRACT.base_adapter import BaseAdapter
 from CONTRACT.schemas import (
+    DecisionPolicy,
     ObservationPolicy,
     PolicyArtifact,
+    PolicyDecisionStep,
     PolicyType,
     PortfolioConstraints,
     Q4Policy,
     QueryContext,
     TimeWindow,
     UniversePolicy,
+    UpdateMode,
+    UpdatePolicy,
 )
+
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize
+# below; q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "PGPortfolio"
 if str(VENDOR_DIR) not in sys.path:
@@ -326,11 +335,75 @@ def _run_real_training_and_decision(tickers: List[str], start: str, end: str):
     return weights, config, dates[-1].strftime("%Y-%m-%d")
 
 
+def _train_real_agent_for_session(tickers: List[str], start: str, end: str):
+    """
+    Stepwise variant of _run_real_training_and_decision(): identical real
+    training (same NNAgent, same TRAIN_STEPS=60 real gradient steps, same
+    _LAYER_CONFIG) but stops after training instead of also making one
+    terminal decide_by_history() call — the caller (q4_initialize) keeps the
+    real trained agent + real fetched frames alive for repeated real
+    q4_step() calls. A separate function rather than refactoring
+    _run_real_training_and_decision() itself, so q4_policy() (legacy, kept
+    for compatibility) is untouched.
+    """
+    print(f"[pgportfolio] [stepwise] fetching real yfinance OHLC for {tickers} [{start},{end})", flush=True)
+    frames = _fetch_close_hlc(tickers, start, end)
+    n = min(len(df) for df in frames.values())
+    if n < WINDOW_SIZE + 10:
+        raise RuntimeError(
+            f"Not enough real trading days ({n}) for WINDOW_SIZE={WINDOW_SIZE} — widen generation_window."
+        )
+    dates = list(frames[tickers[0]].index[:n])
+    for t in tickers:
+        frames[t] = frames[t].iloc[:n]
+
+    config = {
+        "layers": _LAYER_CONFIG,
+        "training": {
+            "learning_rate": 0.001, "decay_steps": 1000, "decay_rate": 1.0,
+            "training_method": "Adam", "loss_function": "loss_function6",
+            "buffer_biased": 5e-5,
+        },
+        "input": {"window_size": WINDOW_SIZE, "coin_number": len(tickers), "feature_number": FEATURE_NUMBER},
+        "trading": {"trading_consumption": TRADING_CONSUMPTION},
+    }
+
+    from pgportfolio.learn.nnagent import NNAgent
+
+    print("[pgportfolio] [stepwise] building real NNAgent (real EIIE CNN, TF1/tflearn)...", flush=True)
+    agent = NNAgent(config, device="cpu")
+    print("[pgportfolio] [stepwise] real net built OK", flush=True)
+
+    rng = np.random.RandomState(0)
+    last_w = np.array([1.0 / (len(tickers) + 1)] * (len(tickers) + 1), dtype="float32")
+
+    print(f"[pgportfolio] [stepwise] real training loop: {TRAIN_STEPS} steps", flush=True)
+    for step in range(TRAIN_STEPS):
+        idx = rng.randint(WINDOW_SIZE, n - 1)
+        x = _build_tensor(frames, idx, WINDOW_SIZE)[np.newaxis, :, :, :]
+        next_rel = np.array(
+            [[float(frames[t]["Close"].iloc[idx + 1]) / float(frames[t]["Close"].iloc[idx])] for t in tickers],
+            dtype="float32",
+        ).T
+        y = np.zeros((1, FEATURE_NUMBER, len(tickers)), dtype="float32")
+        y[0, 2, :] = next_rel[0]
+        agent.train(x, y, last_w[np.newaxis, 1:], lambda w: None)
+        if step % 20 == 0 or step == TRAIN_STEPS - 1:
+            print(f"[pgportfolio] [stepwise]   real train step {step}/{TRAIN_STEPS}", flush=True)
+
+    print("[pgportfolio] [stepwise] real training complete, session ready for real per-day steps", flush=True)
+    return agent, frames, dates, config, last_w
+
+
 class PGPortfolioAdapter(BaseAdapter):
     name = "pgportfolio"
     questions_answered = ["Q4"]
     upstream_repo = "https://github.com/ZhengyaoJiang/PGPortfolio"
     requires_env = "pgportfolio_real"
+
+    def __init__(self):
+        super().__init__()
+        self._session: Optional[dict] = None
 
     def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
         t0 = time.time()
@@ -411,6 +484,121 @@ class PGPortfolioAdapter(BaseAdapter):
         }
         self._last_latency_sec = time.time() - t0
         return result
+
+    # ------------------------------------------------------------------ #
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)       #
+    # ------------------------------------------------------------------ #
+    # Real mechanism: NNAgent.decide_by_history(history, last_w) (nnagent.py:
+    # 204-213) IS a real, public, per-step inference method — it already
+    # takes exactly one [feature_number, coin_number, window_size] tensor +
+    # the previous weight vector and returns one new weight vector. Unlike
+    # q4_policy() (which calls it exactly once, at the window's terminal
+    # date), q4_step() below calls this same real method once per real
+    # harness-driven day, feeding each call's real output back as the next
+    # call's last_w — a genuinely new real per-day loop, not a
+    # reimplementation of the network's own forward pass (100% real
+    # network.py/nnagent.py code either way).
+    #
+    # Causal design: q4_step(timestamp=day_t) builds its input tensor from
+    # real OHLC data ending at day_t (via _build_tensor(), the same real
+    # helper q4_policy() already uses), so the decision for day_t uses
+    # information only through day_t itself — matching information_cutoff
+    # <= timestamp (the harness supplies information_cutoff; this adapter
+    # does not read anything past the requested timestamp's own row).
+
+    def q4_initialize(
+        self,
+        context: QueryContext,
+        generation_window: TimeWindow,
+        initial_portfolio: PortfolioState,
+        run_config: Q4RunConfig,
+    ) -> Q4Policy:
+        tickers = list(context.universe) if context.universe else list(context.targets or [])
+        if not tickers:
+            raise ValueError("pgportfolio q4_initialize requires QueryContext.universe or .targets (crypto tickers, e.g. BTC-USD)")
+
+        agent, frames, dates, config, last_w = _train_real_agent_for_session(
+            tickers, generation_window.start, generation_window.end,
+        )
+        self._session = {
+            "agent": agent, "frames": frames, "dates": dates, "config": config,
+            "last_w": last_w, "tickers": tickers, "step_count": 0,
+        }
+
+        return Q4Policy(
+            context=context, policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            universe_policy=UniversePolicy(
+                mode="fixed", fixed_assets=tickers,
+                selector_description="Caller-specified crypto ticker list; the real EIIE network performs no asset selection of its own.",
+            ),
+            observation_policy=ObservationPolicy(
+                lookback_window=f"{WINDOW_SIZE}_trading_days",
+                features=["high_rel_close", "low_rel_close", "close_rel_close"],
+                data_sources=["yfinance (real substitution for Poloniex's dead legacy API — see module header)"],
+            ),
+            decision_policy=DecisionPolicy(
+                decision_rule="Real, unmodified pgportfolio.learn.nnagent.NNAgent.decide_by_history(), called once per real day.",
+                rebalance_frequency="EVERY_TRADING_DAY",
+            ),
+            update_policy=UpdatePolicy(mode=UpdateMode.NONE, update_frequency="none — network frozen after q4_initialize()'s real training"),
+            constraints=PortfolioConstraints(long_only=True, net_exposure_min=1.0, net_exposure_max=1.0),
+        )
+
+    def q4_step(
+        self,
+        timestamp: str,
+        information_cutoff: str,
+        observation: MarketObservation,
+        portfolio_state: PortfolioState,
+    ) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+        ts = pd.Timestamp(timestamp).tz_localize(None)
+        try:
+            i = s["dates"].index(ts)
+        except ValueError:
+            raise ValueError(
+                f"timestamp {timestamp!r} is not one of the real trading days fetched for this "
+                f"session ({s['dates'][0]}..{s['dates'][-1]})"
+            )
+        if i < WINDOW_SIZE - 1:
+            raise ValueError(
+                f"timestamp {timestamp!r} (position {i}) is inside the real {WINDOW_SIZE}-day warm-up "
+                f"window and has no real full-window tensor to decide from — harness rebalance_schedule "
+                f"should start at or after day index {WINDOW_SIZE - 1}"
+            )
+
+        hist = _build_tensor(s["frames"], i, WINDOW_SIZE)
+        w = s["agent"].decide_by_history(hist, s["last_w"])
+        s["last_w"] = w
+        s["step_count"] += 1
+
+        weights = {"CASH": float(w[0])}
+        for idx, t in enumerate(s["tickers"]):
+            weights[t] = float(w[idx + 1])
+
+        return PolicyDecisionStep(
+            timestamp=timestamp, information_cutoff=information_cutoff,
+            selected_universe=list(s["tickers"]), target_weights=weights,
+        )
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            update_policy=UpdatePolicy(mode=UpdateMode.NONE, update_frequency="none — network frozen after real training"),
+            explanation=(
+                f"Real EIIE CNN (pgportfolio.learn.nnagent.NNAgent) session over {len(s['tickers'])} "
+                f"real crypto tickers, {s['step_count']} real q4_step() calls made, each a real "
+                f"decide_by_history() inference on real yfinance-derived OHLC."
+            ),
+        )
+        self._session = None
+        return summary
 
     def run(self, task_id, context, generation_window=None, native_output=None,
             adapter_notes=None, field_mappings=None, **kwargs):

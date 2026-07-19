@@ -154,6 +154,7 @@ from CONTRACT.schemas import (
     UpdateMode,
     UpdatePolicy,
 )
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
 
 VENDOR_DIR = Path(__file__).resolve().parent / "vendor" / "FinAgent"
 if str(VENDOR_DIR) not in sys.path:
@@ -409,6 +410,7 @@ class FinAgentAdapter(BaseAdapter):
     def __init__(self):
         super().__init__()
         self._last_native_output: Optional[dict] = None
+        self._session: Optional[dict] = None
 
     # ------------------------------------------------------------------
     # Q1 — single real decision at context.as_of
@@ -532,6 +534,131 @@ class FinAgentAdapter(BaseAdapter):
                 f"decisions, each from a real DeepSeek call via finagent's own DecisionTrading class."
             ),
         )
+
+    # ------------------------------------------------------------------
+    # Q4 stepwise protocol (harness/q4_protocol.py) — additive only.
+    # Externalizes the exact same real env.reset()/_real_decision()/env.step()
+    # loop q4_policy() already runs above, so the harness (not this adapter)
+    # controls step timing. q4_policy() itself is untouched byte-for-byte.
+    # ------------------------------------------------------------------
+    def q4_initialize(
+        self,
+        context: QueryContext,
+        generation_window: TimeWindow,
+        initial_portfolio: PortfolioState,
+        run_config: Q4RunConfig,
+    ) -> Q4Policy:
+        ticker = _ticker_from_context(context)
+        env, scratch = _build_env(ticker, generation_window.start, generation_window.end)
+        _, info = env.reset()
+
+        self._session = {
+            "env": env, "scratch": scratch, "ticker": ticker,
+            "info": info, "done": False, "step_count": 0, "native_steps": [],
+        }
+
+        constraints = PortfolioConstraints(long_only=True, cash_allowed=True)
+        universe_policy = UniversePolicy(
+            mode="fixed", fixed_assets=[ticker],
+            selector_description="Single-asset scope — EnvironmentTrading.position is a scalar int (verified via finagent/environment/trading.py), no multi-asset selection exists in this project.",
+        )
+        observation_policy = ObservationPolicy(
+            lookback_window=f"{LOOK_BACK_DAYS}_trading_days",
+            features=["price", "cash", "position", "total_profit", "total_return", "recent_news_headlines"],
+            data_sources=["yfinance (adapter-fetched, real OHLCV + real headlines)"],
+            observation_description=(
+                "Real EnvironmentTrading.get_state() window, constructed with look_forward_days=0 "
+                "(adapter-level causality fix — see module docstring)."
+            ),
+        )
+        decision_policy = DecisionPolicy(
+            decision_rule=(
+                "Real finagent.prompt.trading.decision.DecisionTrading LLM call per real trading day, "
+                "real DeepSeek completion, real current environment state as input. Reflection/memory "
+                "stages are honestly skipped (see module header) — blocked by a missing "
+                "embeddings-capable credential, not fabricated."
+            ),
+            output_semantics="BUY/SELL/HOLD -> real EnvironmentTrading.step() order sizing -> target_weights derived from real post-step cash/position/value.",
+            rebalance_frequency="DAILY",
+        )
+        update_policy = UpdatePolicy(
+            mode=UpdateMode.ONLINE_LEARNING,
+            update_frequency="per real trading day",
+            update_description="A fresh real LLM decision is requested every day from real, current environment state; no persisted/frozen model.",
+        )
+        return Q4Policy(
+            context=context, policy_type=PolicyType.ONLINE_ADAPTIVE_POLICY,
+            generation_window=generation_window,
+            universe_policy=universe_policy, observation_policy=observation_policy,
+            decision_policy=decision_policy, update_policy=update_policy, constraints=constraints,
+        )
+
+    def q4_step(
+        self,
+        timestamp: str,
+        information_cutoff: str,
+        observation: MarketObservation,
+        portfolio_state: PortfolioState,
+    ) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+        if s["done"]:
+            raise RuntimeError("q4_step called after the real EnvironmentTrading episode already reached done=True")
+
+        env, info, ticker, scratch = s["env"], s["info"], s["ticker"], s["scratch"]
+
+        real_cutoff = info["date"]
+        if real_cutoff != information_cutoff:
+            raise ValueError(
+                f"harness-disclosed information_cutoff={information_cutoff!r} does not match this "
+                f"session's own real current environment date ({real_cutoff!r}) — observation stream "
+                f"is misaligned with this adapter's real sequential environment state"
+            )
+
+        action_str, reasoning, raw = _real_decision(env, info, ticker, scratch)
+        env_action = _ACTION_TO_ENV.get(action_str, 0)
+
+        pre_date = info["date"]
+        state, reward, done, truncated, info = env.step(env_action)
+        weights = _weights_from_info(info, ticker)
+
+        if info["date"] != timestamp:
+            raise ValueError(
+                f"harness-disclosed timestamp={timestamp!r} does not match this session's real "
+                f"post-step environment date ({info['date']!r}) for pre_date={pre_date!r}"
+            )
+
+        s["info"] = info
+        s["done"] = bool(done)
+        s["step_count"] += 1
+        s["native_steps"].append({"date": info["date"], "action": action_str, "reasoning": reasoning, "info": info, "raw_response": raw})
+
+        return PolicyDecisionStep(
+            timestamp=timestamp, information_cutoff=information_cutoff,
+            target_weights=weights, explanation=reasoning or None,
+        )
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.ONLINE_ADAPTIVE_POLICY,
+            update_policy=UpdatePolicy(
+                mode=UpdateMode.ONLINE_LEARNING,
+                update_frequency="per real trading day",
+                update_description="A fresh real LLM decision is requested every day from real, current environment state; no persisted/frozen model.",
+            ),
+            explanation=(
+                f"Real day-by-day EnvironmentTrading stepwise session for {s['ticker']}: "
+                f"{s['step_count']} real q4_step() calls, each from a real DeepSeek call via "
+                f"finagent's own DecisionTrading class."
+            ),
+        )
+        self._last_native_output = {"upstream": {"ticker": s["ticker"], "steps": s["native_steps"]}}
+        self._session = None
+        return summary
 
     # ------------------------------------------------------------------
     # run() override — attach faithful native_output

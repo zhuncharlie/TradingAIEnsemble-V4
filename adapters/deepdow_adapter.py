@@ -133,6 +133,11 @@ from CONTRACT.schemas import (
     UpdatePolicy,
 )
 
+# Stepwise protocol types (harness/, outside CONTRACT/ — see
+# Q4_STEPWISE_MIGRATION.md). Only used by q4_initialize/q4_step/q4_finalize
+# below; q4_policy() (legacy, kept for compatibility) does not depend on them.
+from harness.q4_protocol import MarketObservation, PortfolioState, Q4FinalizeSummary, Q4RunConfig
+
 LOOKBACK = 20        # real trading days fed into the network per decision
 HORIZON = 5          # real forward-return window used only for the training loss
 GAP = 0              # no gap between lookback window end and horizon start
@@ -237,11 +242,45 @@ def _split_train_test(n_dates: int, lookback: int) -> Tuple[int, int]:
     return split, n_dates
 
 
+def _build_policy_metadata(active_tickers: List[str], n_train: int, n_test: int):
+    """Shared real-metadata construction used by both the legacy q4_policy()
+    path and the stepwise q4_initialize()/q4_finalize() paths — same real
+    citations either way, factored out once rather than duplicated (same
+    pattern adapters/universal_portfolios_adapter.py uses)."""
+    universe_policy = UniversePolicy(
+        mode="fixed",
+        fixed_assets=active_tickers,
+        selector_description="Caller-supplied ticker list (context.universe/targets); deepdow performs no asset selection of its own.",
+    )
+    observation_policy = ObservationPolicy(
+        lookback_window=f"{LOOKBACK}_trading_days (real GreatNet input window)",
+        features=["daily log returns"],
+        data_sources=["yfinance daily close prices"],
+        observation_description="Real trailing log-return window, flattened and passed through GreatNet's real Linear+SoftmaxAllocator head.",
+    )
+    decision_policy = DecisionPolicy(
+        decision_rule="Real deepdow GreatNet (Linear -> SoftmaxAllocator, upstream's own tutorial architecture), trained once, then queried per real day.",
+        output_semantics="target portfolio weights (non-negative, sum to 1, no cash)",
+        rebalance_frequency="daily (one real forward pass per real trading day in the test half)",
+    )
+    update_policy = UpdatePolicy(
+        mode=UpdateMode.NONE,
+        update_frequency="never after initial training",
+        update_description="GreatNet is trained once on the real train half of generation_window and then queried statically (frozen weights) across the real test half.",
+    )
+    constraints = PortfolioConstraints(long_only=True, net_exposure_min=1.0, net_exposure_max=1.0)
+    return universe_policy, observation_policy, decision_policy, update_policy, constraints
+
+
 class DeepdowAdapter(BaseAdapter):
     name = "deepdow"
     questions_answered = ["Q4"]
     upstream_repo = "https://github.com/jankrepl/deepdow"
     requires_env = "deepdow_real"
+
+    def __init__(self):
+        super().__init__()
+        self._session: Optional[dict] = None
 
     def q4_policy(self, context: QueryContext, generation_window: TimeWindow, **kwargs) -> Optional[Q4Policy]:
         t0 = time.time()
@@ -382,6 +421,183 @@ class DeepdowAdapter(BaseAdapter):
             decisions=decisions,
             explanation=explanation,
         )
+
+    # ------------------------------------------------------------------ #
+    # Stepwise Q4 protocol (harness/q4_protocol.py::Q4StepAdapter)       #
+    # ------------------------------------------------------------------ #
+    # Real mechanism: no bespoke upstream per-step API exists in deepdow
+    # (it trains on batched rolling-window tensors, not a sequential API) —
+    # the adapter's own `for idx in indices_test: network(x_t)` loop
+    # (q4_policy() above) already IS the natural decomposition point: a
+    # plain, real `torch.nn.Module.forward()` call per real day. The
+    # STEPWISE decomposition below only externalizes that existing loop —
+    # the training (q4_initialize) and per-day inference (q4_step) real
+    # calls are byte-for-byte the same real deepdow/torch calls q4_policy()
+    # already makes, just split across method boundaries instead of one
+    # function body.
+    #
+    # Causal design: identical to q4_policy()'s own real causal split (see
+    # module header) — q4_initialize() trains GreatNet ONCE on the real
+    # train half only (never sees test-half data); q4_step() only ever
+    # queries the frozen, already-trained network on a real, strictly-past
+    # lookback window (`x_t = returns[t-lookback:t]`), never updating any
+    # weight after training. No retraining happens inside q4_step().
+
+    def _prepare_session(self, tickers: List[str], generation_window: TimeWindow) -> dict:
+        """Real fetch + real train/test split + real GreatNet training —
+        byte-for-byte the same real calls q4_policy() makes (kept as a
+        separate function, not shared with q4_policy(), so the legacy path
+        stays completely untouched per the active task's compatibility
+        requirement)."""
+        import numpy as np
+        import torch
+        from deepdow.data import InRAMDataset, RigidDataLoader
+        from deepdow.experiments import Run
+        from deepdow.losses import MeanReturns, SharpeRatio
+
+        prices = _fetch_price_matrix(tickers, generation_window.start, generation_window.end)
+        active_tickers = list(prices.columns)
+        n_assets = len(active_tickers)
+
+        log_returns = np.log(prices / prices.shift(1)).dropna()
+        dates = log_returns.index
+        returns_arr = log_returns.values
+        n_timesteps = returns_arr.shape[0]
+
+        n_samples = n_timesteps - LOOKBACK - HORIZON - GAP + 1
+        if n_samples < MIN_TRAIN_SAMPLES + 1:
+            raise RuntimeError(
+                f"generation_window too short for deepdow: only {n_samples} real rolling samples "
+                f"available (need >= {MIN_TRAIN_SAMPLES + 1}). Widen generation_window."
+            )
+
+        X_list, y_list, sample_end_idx = [], [], []
+        for i in range(LOOKBACK, n_timesteps - HORIZON - GAP + 1):
+            X_list.append(returns_arr[i - LOOKBACK:i, :])
+            y_list.append(returns_arr[i + GAP:i + GAP + HORIZON, :])
+            sample_end_idx.append(i)
+
+        X = np.stack(X_list, axis=0)[:, None, ...].astype(np.float32)
+        y = np.stack(y_list, axis=0)[:, None, ...].astype(np.float32)
+        sample_end_idx = np.array(sample_end_idx)
+        sample_timestamps = dates[sample_end_idx]
+
+        split_pos, _ = _split_train_test(len(sample_end_idx), LOOKBACK)
+        if split_pos >= len(sample_end_idx) - 1:
+            raise RuntimeError(
+                "generation_window too short for deepdow: not enough real days left for a "
+                "test/decision half after a real training half. Widen generation_window."
+            )
+
+        indices_train = list(range(split_pos))
+        indices_test = list(range(split_pos, len(sample_end_idx)))
+
+        dataset = InRAMDataset(X, y, timestamps=sample_timestamps)
+        dataloader_train = RigidDataLoader(dataset, indices=indices_train, batch_size=BATCH_SIZE)
+
+        torch.manual_seed(0)
+        network = _make_great_net(n_assets, LOOKBACK)
+        network = network.train()
+
+        loss = MeanReturns() + SharpeRatio()
+        run = Run(network, loss, dataloader_train, optimizer=torch.optim.Adam(network.parameters(), amsgrad=True))
+        run.launch(N_EPOCHS)  # real, unmodified deepdow training loop
+        network = network.eval()
+
+        # timestamp string -> position in `indices_test`, so q4_step() can
+        # look up the right real sample without a linear scan every call.
+        test_ts_to_idx = {str(sample_timestamps[idx].date()): idx for idx in indices_test}
+
+        return {
+            "network": network, "X": X, "dates": dates, "sample_end_idx": sample_end_idx,
+            "sample_timestamps": sample_timestamps, "active_tickers": active_tickers,
+            "indices_train": indices_train, "indices_test": indices_test,
+            "test_ts_to_idx": test_ts_to_idx, "last_weights": {}, "step_count": 0,
+        }
+
+    def q4_initialize(
+        self,
+        context: QueryContext,
+        generation_window: TimeWindow,
+        initial_portfolio: PortfolioState,
+        run_config: Q4RunConfig,
+    ) -> Q4Policy:
+        tickers = list(dict.fromkeys((context.universe or context.targets or [])))[:MAX_TICKERS]
+        if len(tickers) < 2:
+            raise ValueError("deepdow q4_initialize requires context.universe/targets with at least 2 tickers.")
+
+        self._session = self._prepare_session(tickers, generation_window)
+        s = self._session
+
+        _, observation_policy, decision_policy, update_policy, constraints = _build_policy_metadata(
+            s["active_tickers"], len(s["indices_train"]), len(s["indices_test"]),
+        )
+        universe_policy = UniversePolicy(
+            mode="fixed", fixed_assets=s["active_tickers"],
+            selector_description="Caller-supplied ticker list; deepdow performs no asset selection of its own.",
+        )
+        return Q4Policy(
+            context=context, policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            generation_window=generation_window,
+            universe_policy=universe_policy, observation_policy=observation_policy,
+            decision_policy=decision_policy, update_policy=update_policy, constraints=constraints,
+        )
+
+    def q4_step(
+        self,
+        timestamp: str,
+        information_cutoff: str,
+        observation: MarketObservation,
+        portfolio_state: PortfolioState,
+    ) -> PolicyDecisionStep:
+        if self._session is None:
+            raise RuntimeError("q4_step called before q4_initialize")
+        s = self._session
+
+        idx = s["test_ts_to_idx"].get(timestamp)
+        if idx is None:
+            raise ValueError(
+                f"timestamp {timestamp!r} is not one of the real test-half decision days "
+                f"this session's train/test split produced"
+            )
+
+        import torch
+
+        with torch.no_grad():
+            x_t = torch.from_numpy(s["X"][idx:idx + 1])  # real, strictly-past-only lookback window
+            w = s["network"](x_t)[0].numpy()
+        weights = {t: float(v) for t, v in zip(s["active_tickers"], w)}
+        s["last_weights"] = weights
+        s["step_count"] += 1
+
+        real_cutoff = str(s["dates"][s["sample_end_idx"][idx] - 1].date())
+        if real_cutoff != information_cutoff:
+            raise ValueError(
+                f"harness-disclosed information_cutoff={information_cutoff!r} does not match this "
+                f"session's own real date arithmetic ({real_cutoff!r}) for timestamp={timestamp!r} "
+                f"— observation stream is misaligned with this adapter's real train/test split"
+            )
+
+        return _build_decision_step(timestamp, information_cutoff, weights, s["active_tickers"])
+
+    def q4_finalize(self) -> Q4FinalizeSummary:
+        if self._session is None:
+            raise RuntimeError("q4_finalize called before q4_initialize")
+        s = self._session
+        _, _, _, update_policy, _ = _build_policy_metadata(
+            s["active_tickers"], len(s["indices_train"]), len(s["indices_test"]),
+        )
+        summary = Q4FinalizeSummary(
+            policy_type=PolicyType.FROZEN_LEARNED_POLICY,
+            update_policy=update_policy,
+            explanation=(
+                f"Real deepdow GreatNet session over {len(s['active_tickers'])} tickers, trained on "
+                f"{len(s['indices_train'])} real rolling samples, {s['step_count']} real q4_step() "
+                f"calls made against the real frozen network."
+            ),
+        )
+        self._session = None
+        return summary
 
     def run(self, task_id, context, generation_window=None, native_output=None,
             adapter_notes=None, field_mappings=None, **kwargs):
