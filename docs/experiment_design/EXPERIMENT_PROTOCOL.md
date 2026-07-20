@@ -1,682 +1,937 @@
-# EXPERIMENT_PROTOCOL.md
+# Experiment Protocol — Formal Design
 
-**Status**: formal experiment design document for `trading-ai-ensemble`.
-**Author role**: experiment designer only, per this task's brief — this
-document and its three companions (`DATA_SPLIT_PROTOCOL.md`,
-`BASELINE_DESIGN.md`, `METRIC_DESIGN.md`, all in this directory) do not
-modify adapters, `CONTRACT/`, `harness/`, or any Python code. Every
-concrete fact cited below (adapter names, Q-coverage, schema fields,
-runnability status) was verified against the current repo state during
-this design pass, not assumed from memory or from stale documentation.
+**Role**: experiment protocol design only. No experiment code was written, no
+experiment was run, no adapter/schema/harness file was touched, no other
+session's directory was modified. This file and its siblings in
+`docs/experiment_design/` are the only files this session wrote.
 
----
-
-## 1. Research framing (recap, not redefinition)
-
-Per `CLAUDE.md` and the task brief: the object of study is **not** "which
-AI trading system predicts best." It is: how to turn a large set of
-heterogeneous, independently-authored financial AI systems into a unified,
-auditable information source, and whether *reliability- and
-consistency-aware* use of that information source improves final decision
-quality (risk-adjusted return, drawdown, tail risk) beyond naive ensembling.
-
-Two layers, in a strict producer/consumer relationship:
-
-```
-Raw adapters (26, schema v2.0.0, Q1-Q4)
-      |
-      v
-Canonical Q1-Q4 outputs  ---------------------------
-      |                                             |
-      v                                             |
-Layer 1 — reliability / calibration / stability /    |
-          contradiction / compression-loss features  |
-      |                                             |
-      v                                             |
-Layer 2 — routing / intervention / selective          <---- (raw Q1-Q4
-          prediction / shadow-policy / meta-fusion            also feeds
-      |                                                       Layer 2
-      v                                                       directly)
-Final portfolio decision
-```
-
-Layer 2 always consumes **both** Layer 1's derived features and the raw
-Q1-Q4 outputs — never Layer 1 features alone — matching the brief's
-explicit diagram.
+**Skills used, and how**: `experiment-plan`'s Phase 0–4 methodology
+(freeze claims → build experimental storyline → specify blocks → execution
+order) was applied directly to produce this document's structure — its
+default machinery writes to `refine-logs/EXPERIMENT_PLAN.md` in a
+paper-planning-specific template; this task requires a specific file path
+and a specific per-block field set (research question / hypothesis / input
+/ target / experimental unit / sample construction / baseline / method /
+metric / expected evidence / failure interpretation / dependencies / cost /
+priority / main-vs-appendix), so the skill's *methodology* was followed and
+its output redirected and reshaped into the required structure, rather than
+its literal `Write`-to-`refine-logs/` template — disclosed here rather than
+silently substituted, consistent with how Session 1 disclosed the same kind
+of adaptation for `kill-argument`/`research-refine` against a non-LaTeX,
+non-training-recipe target. `ablation-planner`'s Codex-leads-design
+methodology was applied to the Cross-Cutting Evaluation ablations (§6)
+prospectively — the skill's literal trigger condition ("main results pass
+`result-to-claim`") cannot be met because no experiment has run yet; it was
+therefore used to design *what* ablations the eventual results will need,
+not to plan post-hoc ablations of existing results. Both adaptations are
+logged with real Codex MCP thread IDs where a Codex call was made (§6).
 
 ---
 
-## 2. Ground truth used to design this protocol (verified this session)
+## 1. Scope and inputs
 
-- **Schema**: `CONTRACT/schemas.py`, `SCHEMA_VERSION = "2.0.0"`. Four
-  questions only — **Q5 (Backtest) was removed** in the v1→v2 rewrite
-  (`milestones/2026-07-16_schema-v1-milestone.md` is the v1 rollback
-  point). This matters: the pilot study below built several mechanisms
-  (contradiction rules, fusion validation-multiplier) directly on
-  `Q5Backtest` fields that no longer exist.
-- **Adapters**: 26 real production adapters under `adapters/*.py`
-  (`example_stub_adapter.py` excluded as the non-deliverable reference
-  stub, per `analysis/icaif_data_loader.py`'s own exclusion convention).
-  Verified Q-coverage by scanning for real (non-stub) `q1_action`/
-  `q2_state`/`q3_signal`/`q4_policy`/`q4_initialize`/`q4_step` overrides:
-
-  | Q | Adapters (count) |
-  |---|---|
-  | Q1 Action | `ai_hedge_fund, deepalpha, finagent, finmem, finrobot, tradingagents` (6) |
-  | Q2 State | `finbert, fingpt, finrl_x, finrobot, prediction_arena, quantmuse, tradingagents` (7) |
-  | Q3 Signal | `alphaforge, alphagen, atlas, deepalpha, finclaw, finrl_x, qlib, quantmuse, rdagent, vibe_trading` (10) |
-  | Q4 Policy | `agentictrading, deepdow, earnmore, finagent, finclaw, finrl, finrl_x, pgportfolio, qlib, skfolio, trademaster, universal_portfolios, vibe_trading` (13) |
-
-  Coverage is uneven (Q4 has more than 2× Q1/Q2's density) — echoes, but
-  does not simply repeat, the pilot's "Q3 is 2.7× Q1/Q4" finding under the
-  old 15-adapter/Q1-Q5 set; **D1 below must re-measure this from scratch**,
-  not assume the old ratio transfers.
-- **Runnability** (`results/unified_harness/unified_harness_summary.json`,
-  run `2026-07-18`, `as_of=2024-01-15`, universe `AAPL/MSFT/NVDA`): 21/26
-  `PASSED`, 3 `FAILED` (`fingpt` — env error; `tradingagents`, `finagent` —
-  280s timeout, both LLM-latency-bound), 2 `BLOCKED` (`finmem` — needs an
-  OpenAI-compatible credential for embeddings; `pgportfolio` — live
-  `yfinance` rate limit on crypto pair, transient/external). Any experiment
-  requiring all 26 adapters online simultaneously will hit this ceiling —
-  design experiments to degrade gracefully to the 21 currently-passing
-  adapters and report the gap, not silently drop failing adapters from the
-  denominator.
-- **Q4 execution taxonomy** (`q4_stepwise_support.csv`): 10 adapters are
-  true `STEPWISE` (causal per-step trajectory), 2 are `STATIC_ONLY`
-  (`agentictrading`, `finclaw` — one-shot, no trajectory to evaluate),
-  `vibe_trading` is `STEPWISE_UNSUPPORTED` served via `LEGACY_INTERNAL_LOOP`
-  replay. This taxonomy gates which portfolio metrics are even computable
-  per adapter — detailed in `METRIC_DESIGN.md` §2.2, must not be ignored
-  when comparing Q4 adapters head-to-head.
-- **Data**: `yfinance` (already the project's price provider) confirmed
-  capable of 10 years of daily history for the existing liquid-ticker
-  universe (2016-07-18 → 2026-07-17, verified live this session). The
-  configured `massive.com` MCP (`mcp__massive__*`) was also probed live:
-  its current plan returns real daily aggregates only back to ~2024-07-19
-  and gives `HTTP 403 NOT_AUTHORIZED — "Your plan doesn't include this
-  data timeframe"` for anything earlier. **10 years of price data is
-  achievable now via `yfinance`; the massive.com plan upgrade the user
-  offered to configure is not required for this purpose** — it would still
-  be useful for data `yfinance` doesn't have (options, point-in-time news,
-  fundamentals), which is a separate, real gap documented in
-  `DATA_SPLIT_PROTOCOL.md` §1 (it's exactly what would let Class-L/
-  news-dependent adapters be replayed historically, which they currently
-  cannot be). Full detail and the adapter replay-class split this drives:
-  `DATA_SPLIT_PROTOCOL.md` §§1–3.
+This protocol is grounded in, and must be read together with:
+- `docs/research_positioning/ICAIF_POSITIONING_REPORT.md`,
+  `NOVELTY_AUDIT.md`, `CLAIM_CANDIDATES.md`,
+  `_working/REFINED_CORE_CLAIM.md` (Session 1) — full synthesis and
+  absorption/rejection log in `SESSION1_INTEGRATION_NOTES.md`.
+- `PROJECT_SCHEMA_AUDIT.md`, `ADAPTER_CAPABILITY_RECOVERY.md`,
+  `NEW_ADAPTER_INTEGRATION.md`, `CONTRACT/schemas.py` (engineering
+  substrate — read-only) — precise field names, adapter live-readiness, and
+  the `Q4Policy.generation_window` "harness-supplied, adapter must not
+  alter it" contract requirement are used verbatim throughout this
+  document and its siblings.
 
 ---
 
-## 3. Relationship to the pilot study (`reports/icaif_experiments/`)
+## 2. Hypothesis formalization
 
-An informal 5-experiment pilot already ran, against the **v1 schema
-(Q1-Q5) and 15 adapters**, producing real findings this protocol treats as
-informative precedent, not as reusable ground truth or as pre-existing TEST
-results:
+### 2.1 Primary hypothesis (H1)
 
-- Confirmed structurally: all systems fit the Q-taxonomy; coverage is
-  uneven; most secondary fields are well-filled except `bull_case`/
-  `bear_case`; self-reported confidence is 7 mutually incompatible
-  measurement mechanisms, none calibrated; 129 real cross-adapter
-  contradictions were detected and were invisible to headline-only
-  comparison; naive confidence-weighted fusion *underperformed* plain
-  majority vote (57.1% vs 60.7% hit rate), traced to one miscalibrated
-  high-confidence adapter (`deepalpha`) dominating the weighted average.
-- Self-reported limitations this protocol is explicitly designed to close:
-  no significance testing (`METRIC_DESIGN.md` §4), small samples (`DATA_
-  SPLIT_PROTOCOL.md`'s regime/shared-window design exists partly to grow
-  this), `Q4`/`Q5` alignment done via best-effort `task_id` join for 37% of
-  contradiction cases (moot for `Q5`-based rules since `Q5` no longer
-  exists; `D4` below must redesign around this rather than inherit it),
-  and calibration reliability not yet folded into the fusion weight (this
-  is literally what `M2` below exists to fix).
-- **Not reusable as-is**: the pilot's contradiction rulebook (8 rules) and
-  fusion module (`analysis/icaif_fusion.py`) reference `Q5Backtest` fields
-  that were removed in schema v2.0.0. `D4` and `M1`–`M4` below must
-  redesign, not port, these mechanisms. Flagged in detail in
-  `BASELINE_DESIGN.md` §6.
+Session 1's refined core claim (`_working/REFINED_CORE_CLAIM.md`) is
+operationalized here into a fully testable form, per this session's remit.
 
----
+**H1 (falsifiable form)**: Let a *structural contradiction event* be defined
+only by the pre-registered ontology in §2.2 (not by mere strength/appetite
+disagreement). For a given (adapter-pair-or-adapter, ticker, `as_of`,
+horizon) decision point, let `C` be a binary/severity-scored contradiction
+indicator computed only from information available at `information_cutoff
+<= as_of`, and let `E` be a forward realized-error/degraded-quality measure
+computed only from information strictly after `as_of` (§2.3). Controlling
+for each system's own self-reported `ConfidenceEstimate.value` (and its
+`kind`, per Session 1's confidence-kind-conditioning finding) as a
+covariate, **H1 asserts `C` carries non-zero incremental information about
+`E`** — i.e., a model of `E` on confidence alone is significantly
+outperformed by a model of `E` on confidence + `C`.
 
-## 4. Experiment taxonomy
+**H0 (null, the falsification target)**: the incremental-information
+coefficient on `C` is zero (equivalently: confidence-only and
+confidence+`C` models are not significantly different) once confidence is
+controlled for. H1 is **rejected** if H0 cannot be rejected at the
+pre-registered significance/effect-size bar in §2.4 across the
+pre-registered robustness strata.
 
-Sixteen candidate experiments were supplied in the task brief (Exp1–Exp16).
-Per the brief's own instruction not to leave these as 16 disjoint items,
-they are consolidated into four families below. Every experiment specifies:
-**Hypothesis / Method / Baseline / Data window / Metric / Expected result /
-Failure interpretation**. "Baseline" and "Metric" reference
-`BASELINE_DESIGN.md` and `METRIC_DESIGN.md` by section rather than
-redefining them here.
+### 2.2 Pre-registered contradiction ontology (written now, before any measurement)
 
-### Family D — Diagnostic (Layer 1: what is actually true about the data/adapters)
+Per Session 1's explicit, unresolved flag ("the contradiction ontology
+itself must be pre-registered... before any measurement is run" — this was
+out of Session 1's scope and is squarely this session's job), the following
+ontology is fixed. **Only these count as `C=1` (structural contradiction).
+Everything else — differences in risk appetite, conviction strength,
+horizon, or a coherent high-risk/high-conviction trade — is explicitly
+`C=0` and must never be counted as contradiction**, per
+`CLAUDE.md`'s no-fabrication spirit (do not manufacture a stronger signal
+than what is structurally there).
 
-#### D1. Coverage, Declaration Integrity & Compression Audit
-- **Hypothesis**: (a) is a **sanity check, not a real finding** — every
-  file under `adapters/*.py` was written specifically to implement
-  `BaseAdapter`'s Q1-Q4 methods, so "the taxonomy covers all 26 adapters"
-  is close to true by construction; D1 reports it but does not treat a
-  positive result as evidence of anything beyond "the contract was
-  followed." The actual testable hypotheses are: (b) declared
-  (`questions_answered`) vs. statically-implemented vs. actually-observed
-  capability disagree in practice (this can genuinely fail either way);
-  (c) headline-field-only comparison discards recoverable, non-trivial
-  information (also genuinely falsifiable).
-- **Method**: reuse-and-extend `analysis/icaif_data_loader.py`'s AST-scan
-  + result-JSON cross-check methodology (schema-introspective, not
-  Q5-dependent, so it survives the v1→v2 migration largely intact) against
-  all 26 adapters. Compute field fill-rate (`METRIC_DESIGN.md` §1.8) and
-  evidence-atom unlock count per Q.
-- **Baseline**: `BASELINE_DESIGN.md` §4 (headline-only vs. interwoven;
-  declared vs. observed) — methodological contrasts, not scored baselines.
-- **Data window**: all available Plane-B decisions to date across both
-  adapter classes (`DATA_SPLIT_PROTOCOL.md` §2.2) — this is inventory, not
-  a held-out evaluation, so CAL/VAL/TEST boundaries don't apply.
-- **Metric**: `METRIC_DESIGN.md` §1.8.
-- **Expected result**: 100% structural coverage (every adapter maps onto
-  ≥1 Q) holds again, per the pilot's finding and the pattern of schema
-  design; coverage density ratio across Q1-Q4 is *not* assumed to match
-  the pilot's 2.7× and must be re-measured fresh (Q4 is now the largest
-  category by adapter count, unlike the pilot's Q3-heavy 15-adapter set —
-  a genuinely different distribution is plausible and would itself be a
-  finding).
-- **Failure interpretation**: if declared/implemented/observed disagree
-  for a nontrivial fraction of adapters, that is not a failed experiment —
-  it is the primary intended finding (as it was in the pilot, which found
-  0 mismatches only after tightening its own scan logic); report exact
-  mismatch list per `coverage_audit_findings.csv`-equivalent output, do not
-  suppress it because it's inconvenient.
+| Class | Rule | Not contradiction (explicitly excluded) |
+|---|---|---|
+| **Cross-adapter directional conflict** | Two adapters' `Q1Action.action` (mapped BUY→+1/SELL→-1/HOLD→0) or `Q3Signal.direction` (LONG/SHORT/NEUTRAL) are literally opposite (+1 vs -1, LONG vs SHORT) on the *same* `(ticker, as_of, horizon)` | Two adapters both BUY but with different `action_strength`/`confidence`; one BUY one HOLD (HOLD is not an opposite of BUY) |
+| **Cross-adapter risk-flag conflict** | One adapter's `Q1Action.action=BUY` (or `Q3Signal.direction=LONG`) on ticker X at time `t` co-occurs with another adapter's `Q2State` for the same ticker/market at the same `t` reporting a state on the `dimension="risk"` (or equivalent open-vocabulary risk/volatility dimension) at or above a pre-registered extreme threshold (top decile of that adapter's own historical `value_numeric`/`value_category` distribution — adapter-relative, not an arbitrary absolute cutoff) | A single adapter's own BUY co-occurring with its own or another adapter's *moderate* risk state; risk flags on a *different* ticker/market than the action targets |
+| **Intra-adapter Q1/Q3 direction mismatch** | The *same* adapter's `Q1Action.action` and `Q3Signal.direction` disagree in sign for the *same* `(ticker, as_of, horizon)` in the *same* result envelope (e.g. `action=BUY` but `direction=SHORT`) | Q1 present without a corresponding Q3 for that ticker/horizon (not comparable, not contradiction) |
+| **Intra-adapter Q2→Q4 self-referential violation** | The *same* adapter's own `Q2State` risk/volatility dimension is at the adapter-relative extreme threshold (as above) at step `t`, and that same adapter's next `PolicyDecisionStep` (t' > t, same policy) *increases* gross exposure (`sum(abs(target_weights))`) or reduces `cash`/`CASH` weight relative to step `t`, with no offsetting `explanation` referencing the risk state | `Action=BUY` co-occurring with `Risk=HIGH` in a single static snapshot (Session 1's own explicit non-example); a policy that reduces risk after flagging it |
+| **Intra-adapter action/logic inconsistency** | The adapter's own stated `decision_policy.decision_rule` (if present) is directly contradicted by the realized `action`/`target_weights` under that adapter's own documented rule (e.g. a stated "sell when signal < 0" rule with a positive signal but a SELL action) — evaluated only where a machine-checkable rule exists; not evaluated from free-text `explanation` | Any case requiring semantic judgment of free-text `explanation`/`bull_case`/`bear_case` — deliberately excluded to avoid fabricating a contradiction from prose interpretation |
 
-#### D2. Confidence Semantics & Calibration Audit
-- **Hypothesis**: (a) `ConfidenceEstimate.kind` is populated meaningfully
-  and distinguishes genuinely different measurement mechanisms (as it was
-  designed to, post-pilot); (b) regardless of `kind`, self-reported
-  confidence/strength values do not reliably predict forward-return hit
-  rate; (c) at least one adapter is measurably overconfident.
-- **Method**: two sub-steps, both mandatory and in order: **D2a** — audit
-  whether `kind` is populated and whether its value is defensible given
-  each adapter's actual computation (source-level check, as the pilot did
-  by hand for 9 adapters — extend to all confidence/strength-bearing
-  adapters across all 26). **D2b** — bucketed calibration
-  (`METRIC_DESIGN.md` §1.2), ECE/Brier only where `kind=PROBABILITY`
-  (§1.3), overconfidence flagging (§1.4).
-- **Baseline**: `BASELINE_DESIGN.md` §4 row 3 (raw value vs. kind-gated
-  value).
-- **Data window**: CAL window per adapter class (`DATA_SPLIT_PROTOCOL.md`
-  §3.1/§3.2) — this experiment's output (the reliability profile,
-  `METRIC_DESIGN.md` §1.9) is exactly what CAL is for.
-- **Metric**: `METRIC_DESIGN.md` §§1.2–1.4, §0.
-- **Expected result**: `kind` diversity persists (multiple mechanisms
-  remain genuinely different even when labeled); calibration error
-  remains material for most non-`PROBABILITY` adapters, consistent with
-  pilot direction; at least the pilot's flagged case (`deepalpha` Q1,
-  high-confidence/low-hit-rate) either replicates or is shown to have been
-  fixed by the recovered `confidence_interval` field noted in
-  `ADAPTER_CAPABILITY_RECOVERY.md`.
-- **Failure interpretation**: if `kind=PROBABILITY` is never populated
-  honestly by any adapter, that is a valid, reportable finding (schema
-  provides the mechanism, adapters don't yet use it) — not a reason to
-  compute ECE on non-probability values anyway.
+**Primary vs. secondary exposure (tightened after adversarial review, §8)**:
+a hostile review correctly flagged that leaving severity scoring
+"optionally scaled" reads as registered flexibility. Fix: **H1's primary
+exposure is the binary `C` (did any of the five classes above fire, yes or
+no) — full stop, no scaling, no optionality.** The severity score below is
+retained only as a **secondary, explicitly-labeled-exploratory** measure
+(used for L2.1/L2.4's weighting/intervention thresholds, where a graded
+signal is operationally useful) and must never be substituted for binary
+`C` in H1's own primary test. Severity score definition (secondary use
+only): count of distinct classes triggered simultaneously for the same
+decision point, scaled by the magnitude of the directional conflict (e.g.
+LONG vs SHORT scores higher than LONG vs NEUTRAL-adjacent-to-SHORT) using
+a fixed linear scale fixed at the pilot stage (not "optional" — a single
+concrete scaling function must be written down in the pilot-stage record
+before any validation-stage data is touched, per `EXPERIMENT_DEPENDENCY_
+MAP.md` §6's freeze rule). The cross-adapter risk-flag conflict class's
+"adapter-relative extreme threshold" (top decile of the adapter's own
+historical distribution) is likewise frozen as a fixed numeric percentile
+(90th) at the pilot stage using pilot-window data only, then locked for
+validation and test — "adapter-relative" describes *what the threshold is
+computed from* (each adapter's own distribution), not license to
+re-compute or adjust it after the pilot stage.
 
-#### D3. Stability & Determinism Audit
-- **Hypothesis**: at least one adapter exhibits materially non-deterministic
-  output on repeated calls at identical `(ticker, as_of)`, and this is
-  traceable to a specific, reportable root cause (as the pilot found for
-  `deepalpha`'s uncached, unseeded ensemble retraining).
-- **Method**: N≥5 repeat calls per `(adapter, ticker, as_of)` for a
-  sampled subset of Class-R adapters (repeat calls are cheap and honest
-  only for Class R — Class L repeat calls against "today" are not
-  repeats of the same information state, so D3 is Class-R-scoped by
-  construction).
-- **Baseline**: `BASELINE_DESIGN.md` §4 row 4.
-- **Data window**: any single CAL-window date per adapter, repeated.
-- **Metric**: `METRIC_DESIGN.md` §1.5.
-- **Expected result**: most Class-R adapters are near-deterministic (fixed
-  seeds / no retraining per call, per `q4_stepwise_support.csv`'s
-  "frozen"/"no retraining" annotations for `deepdow`, `earnmore`, `qlib`,
-  `trademaster`, `finrl`, `finrl_x`); any adapter that retrains per-call
-  without a fixed seed is flagged by name with root cause, matching the
-  `deepalpha` precedent.
-- **Failure interpretation**: universal determinism (0 instability found)
-  would be a genuine, reportable, mildly surprising result given the
-  pilot's finding — verify the repeat-call harness itself is actually
-  invoking a fresh process/state before trusting a "stable" result over an
-  artifact of accidental caching.
+### 2.3 Operational "degraded forecast/policy quality" (`E`)
 
-#### D4. Cross-Field & Cross-Q Contradiction Detection (rulebook redesign required)
-- **Hypothesis**: real, detectable contradictions exist across and within
-  adapters under the v2 (Q1-Q4-only) schema; contradiction flags carry
-  predictive power (flagged decisions underperform unflagged ones at the
-  same horizon).
-- **Method**: redesign the pilot's 8-rule rulebook to remove all `Q5`
-  dependencies. Concrete mapping: rules keyed on Q1/Q2/Q3 pairs (`BUY_WITH_
-  HIGH_RISK`, `ACTION_ALPHA_DIRECTION_CONFLICT`, `POSITIVE_SENTIMENT_BEAR_
-  REGIME`, `HIGH_CONFIDENCE_POOR_CALIBRATION` fed by D2's output) port
-  directly; rules keyed on `Q5Backtest.validation`/`max_drawdown`
-  (`LONG_WITH_WEAK_VALIDATION`, `HIGH_WEIGHT_HIGH_DRAWDOWN`) need a
-  replacement signal — candidates: `Q4Policy.constraints`/
-  `constraint_violations` (native v2 field, `METRIC_DESIGN.md` §2.3) for a
-  drawdown-adjacent risk signal, and D2's own calibration-flag output as
-  the "weak validation" replacement (an adapter's own poor calibration
-  standing in for the missing backtest-validation status). This
-  substitution must be stated explicitly wherever used, not silently
-  presented as equivalent to the original rule.
-- **Baseline**: `BASELINE_DESIGN.md` §4 row 5 (adapter-reported regime vs.
-  independent SPY-derived regime tag) feeds the redesigned
-  `POSITIVE_SENTIMENT_BEAR_REGIME`-equivalent rule.
-- **Data window**: shared recent window (`DATA_SPLIT_PROTOCOL.md` §3.3)
-  for exact-join rules; full per-class CAL/VAL windows for best-effort
-  `task_id`-joined rules.
-- **Metric**: `METRIC_DESIGN.md` §1.6–1.7, significance test per §4.
-- **Expected result**: contradictions continue to concentrate on adapters
-  answering multiple Qs (structurally more opportunities to self-conflict)
-  — re-verify rather than assume `deepalpha` remains the top offender,
-  since the adapter set and its instrumentation have both changed since
-  the pilot.
-- **Failure interpretation**: `0` cases for a given rule is not evidence
-  the rule is broken (the pilot already saw this for
-  `POSITIVE_SENTIMENT_BEAR_REGIME`, because no `BEAR` regime ever appeared
-  in that sample) — report `0`-count rules with the reason (no
-  triggering state observed vs. rule genuinely never fires) rather than
-  dropping them silently.
+- **Q1/Q3 (prediction quality)**: sign mismatch between the decision's
+  directional call (`action`/`direction`) and the realized sign of forward
+  return at the stated `context.horizon` (1d/5d/20d, per Session 1's
+  candidate horizons), computed strictly from data with timestamp >
+  `as_of`. Continuous variant: realized forward return times the decision's
+  directional sign (negative = wrong-way), for magnitude-sensitive tests.
+- **Q4 (policy quality)**: forward realized return of the
+  `PolicyDecisionStep.target_weights` (or `initial_weights` for
+  single-point policies) over the step's implied holding period, net of a
+  transaction-cost model (§ BASELINE_DESIGN.md / METRIC_DESIGN.md),
+  compared against a matched same-universe equal-weight baseline over the
+  identical window (a relative, not absolute, degradation measure, to
+  control for market-wide moves).
+- Both variants require the **information-cutoff-to-outcome time ordering**
+  to be strictly enforced: `E` is computed only from timestamps after the
+  `as_of`/`information_cutoff` that produced `C`. This reuses the
+  `PolicyDecisionStep` causality invariant (`information_cutoff <=
+  timestamp`) already enforced by `CONTRACT/schemas.py` and already
+  live-verified with 0 violations across 344 real decisions in
+  `ADAPTER_CAPABILITY_RECOVERY.md`/`NEW_ADAPTER_INTEGRATION.md` — this
+  protocol extends the same invariant to the *evaluation* layer, not just
+  the decision layer.
 
-#### D5. Regime & Market-State Reliability Profiling
-- **Hypothesis**: adapter reliability (hit rate, calibration, contradiction
-  rate) is regime-dependent — some adapters are reliable in trending
-  markets and not in choppy ones, or vice versa. D5 tests only this
-  descriptive claim; it does not test whether the pattern is exploitable —
-  that is `M2`'s hypothesis, kept separate here so the two experiments'
-  falsifiability boundaries don't blur (a positive D5 result motivates
-  running `M2`, it does not substitute for it). Directly answers the
-  brief's explicit ask: "测试不同市场（或市场情绪）下，哪些adapters表现较好".
-- **Method**: slice D1–D4's outputs by the independent regime tag
-  (`DATA_SPLIT_PROTOCOL.md` §4.1), build the `(adapter, regime)`
-  reliability-profile table (`METRIC_DESIGN.md` §1.9).
-- **Baseline**: none — this is a measurement, ranked against itself across
-  regimes, not against an external baseline.
-- **Data window**: full CAL+VAL history per class, sliced by regime;
-  small-`n` regime cells reported honestly (§4 FDR correction applies when
-  ranking across many regime×adapter cells at once).
-- **Metric**: `METRIC_DESIGN.md` §1.9, FDR-corrected ranking per §4.
-- **Expected result**: at least a partial regime-dependent ranking shift
-  (i.e., not the same top-3 adapters in every regime) — this is the
-  minimum finding needed to justify `M2` (reliability-aware routing) as
-  more than a re-statement of "just use the globally best adapter."
-- **Failure interpretation**: if reliability ranking is regime-invariant
-  (same ordering everywhere), that is a real, negative, reportable result
-  for `M2`'s premise — `M2` would then reduce to `BASELINE_DESIGN.md` §2.3
-  (single best adapter) and should be reported as such, not forced to look
-  more sophisticated than it is.
+### 2.3.1 H1-specific negative controls (added after adversarial review, §8)
 
-#### D6. Risk, Exposure & Native Policy Validation Audit
-- **Hypothesis**: (a) Q4 adapters differ materially in realized gross/net
-  exposure, concentration, and turnover even when nominally similar in
-  stated `PortfolioConstraints`; (b) Q4 adapters differ materially in
-  native (un-fused) risk-adjusted performance — this half directly answers
-  the brief's **Exp4 Policy Validation** ask (total/annualized return,
-  Sharpe, Sortino, max drawdown, Calmar, alpha, per adapter, on its own,
-  independent of any fusion or baseline-selection purpose). Folded into D6
-  rather than kept as a separate experiment per the brief's own
-  instruction not to leave 16 disjoint items — but given its own explicit
-  hypothesis/output here so it isn't only a silent byproduct of `M1`'s
-  baseline-selection step.
-- **Method**: compute `METRIC_DESIGN.md` §2.1 (return-based) **and**
-  §2.2–2.3 (risk/turnover/constraint-compliance) directly from
-  `Q4Policy`/`PolicyDecisionStep` native fields (no derivation needed
-  beyond what the schema already carries) across all 13 Q4-answering
-  adapters, gated by execution class (§2 above). Report as a per-adapter
-  leaderboard, not only as an intermediate input to `BASELINE_DESIGN.md`
-  §3.4's single-best selection.
-- **Baseline**: `BASELINE_DESIGN.md` §3 (buy-and-hold, vol-target, cash,
-  single-best) for context, not as something D6 itself must "beat" — D6 is
-  descriptive.
-- **Data window**: full CAL+VAL per adapter's reachable window.
-- **Metric**: `METRIC_DESIGN.md` §2.1–2.3.
-- **Expected result**: `STATIC_ONLY` adapters show trivially-zero turnover
-  by construction (not a finding, a definitional fact — must be labeled as
-  such, not reported as "low turnover = good").
-- **Failure interpretation**: any adapter with recorded
-  `constraint_violations` invalidates its other metrics for that run until
-  investigated — treat as a data-quality gate, not a performance data
-  point to average in.
+A hostile-review pass (§8) found H1's original design — confidence-only vs.
+confidence+`C` — insufficient to distinguish "structural contradiction (§2.2)
+is special" from "any disagreement predicts errors, unsurprisingly." **H1's
+own nested-model test (§2.4) must therefore include these controls as
+required covariates/comparators, not optional extras**:
+- a **generic cross-adapter disagreement magnitude** term (e.g. entropy/
+  dispersion of raw directional votes, computed identically to L2.4's
+  entropy/dispersion baseline in `BASELINE_DESIGN.md` §4, but here as a
+  covariate inside H1's own model, not a separate downstream comparison);
+- a **missingness/coverage indicator** (does the decision tuple have fewer
+  eligible adapters present than the modal count — a low-coverage tuple can
+  spuriously correlate with both `C` and `E`);
+- an **adapter-pair effect term** — the *same single term* used in §2.3.2's
+  pooled model (not a second, separately-specified term here; §2.3.1's
+  controls and §2.3.2's pooled-model structure are one model specification,
+  not two stacked ones) — defaulting to a **random effect / partial
+  pooling**, not a fixed effect, unless pilot-stage diagnostics show sparse
+  per-pair sample sizes make a fixed effect clearly preferable (fixed
+  effects on sparse categories can cost more power than they buy in
+  rigor — this default is a direct fix from the research-refine-adapted
+  pass in §8);
+- a **pre-specified per-class breakdown** of §2.2's five ontology classes
+  (report each class's own incremental contribution, not only the pooled
+  `C` score) so a reviewer can see the effect is not concentrated in one
+  narrow class standing in for the whole ontology.
+H1 is only reported as supported if `C`'s incremental-information
+coefficient remains significant **after** controlling for generic
+disagreement magnitude and the other controls above — this is a strictly
+harder bar than the original design and is the direct fix for the
+"structural contradiction is not shown to be different from ordinary
+disagreement" critique.
 
-#### D7. Abstention / Low-Reliability Behavior Audit
-- **Hypothesis**: adapters do not currently exhibit systematic abstention
-  behavior (HOLD-heavy or cash-heavy output correlating with genuinely
-  lower-confidence or lower-reliability states) — i.e., there is headroom
-  for `M3`/explicit intervention to add value beyond what adapters already
-  do on their own.
-- **Method**: correlate D2's per-decision calibration standing with
-  HOLD/NEUTRAL/cash-weight frequency, per adapter.
-- **Baseline**: `BASELINE_DESIGN.md` §2.1/§3.3 (majority vote, cash) as
-  reference points for "what abstention would look like if applied."
-- **Data window**: CAL+VAL.
-- **Metric**: correlation coefficient (with CI, per §4) between D2's
-  calibration flag and abstention-like output frequency.
-- **Expected result**: weak-to-no existing correlation (adapters don't
-  self-modulate based on reliability) — this is what justifies building
-  `M3` at all.
-- **Failure interpretation**: a strong existing correlation would mean
-  some adapters already self-abstain effectively — reportable as a
-  positive finding about that specific adapter, and grounds to scope `M3`
-  down to the adapters that don't already do this, rather than applying it
-  uniformly.
+### 2.3.2 Primary estimand: pooled, not stratum-cherry-picked (added after adversarial review, §8)
 
-### Family M — Method (Layer 2: does using Layer 1 improve decisions)
+The original design's H1 acceptance criterion ("significant in **at least
+one** horizon × regime stratum") is **demoted to a secondary, exploratory,
+hypothesis-generating result.** **H1's primary, paper-headline acceptance
+criterion is now a single pooled test**: one nested model fit across all
+eligible (adapter-pair-or-adapter × regime × horizon) strata jointly, with
+adapter-pair and regime/horizon as fixed or random effects (decision left
+to the pilot stage, recorded before validation), testing the *pooled*
+incremental-information coefficient on `C` (plus §2.3.1's controls). The
+per-stratum breakdown (with BH-FDR correction, §2.4) is reported
+*alongside* the pooled result as color/robustness detail, never
+substituted for it. This directly closes the "a corrected positive result
+in one surviving stratum gets called 'H1 supported'" attack — the
+headline claim now requires the pooled, whole-deployment effect, and
+stratum-level results can only *qualify* (regime-conditional framing,
+§2.4/Fallback (c)) an already-pooled-significant result, not manufacture
+support on their own.
 
-#### M1. Baseline Fusion Bench
-- **Hypothesis**: none (this experiment exists to produce numbers, not test
-  one) — establishes what every M2–M4 method must beat.
-- **Method**: run all of `BASELINE_DESIGN.md` §2–3 under identical
-  causality/window/cost rules.
-- **Baseline**: is the baseline bank itself.
-- **Data window**: VAL (iteration) then TEST (final report), per
-  `DATA_SPLIT_PROTOCOL.md` §3.
-- **Metric**: `METRIC_DESIGN.md` §§1.1, 2.1–2.3, §4.
-- **Expected result**: replicates the pilot's direction (naive majority
-  vote competitive with or better than naive confidence-weighting) as a
-  sanity check that the harness is behaving consistently pre/post schema
-  migration — a large unexplained deviation from pilot direction here
-  would be a signal to debug the harness before trusting M2–M4.
-- **Failure interpretation**: if this bench cannot be run to completion
-  (e.g. too many Class-L adapters unavailable per the 5/26 currently
-  failing/blocked), report the achieved coverage (e.g. "bench run on 21/26
-  adapters, `fingpt`/`finmem`/`tradingagents`/`finagent`/`pgportfolio`
-  excluded, reasons stated") rather than blocking the whole protocol on
-  100% adapter availability.
+### 2.4 Statistical test and robustness requirements
 
-#### M2. Reliability-Aware Routing & Weighting
-- **Hypothesis**: weighting/selecting adapters by D5's regime-conditioned
-  reliability profile (rather than global confidence-weighting) beats both
-  M1's confidence-weighted baseline and majority vote — this is the
-  specific fix the pilot identified as its "missing fifth dimension."
-- **Method**: fold D2's calibration reliability and D5's regime-conditioned
-  hit rate into the fusion weight (formalized replacement for the pilot's
-  `interwoven_calibrated_fusion`, which had risk/validation/contradiction/
-  evidence multipliers but no calibration-reliability term).
-- **Baseline**: `BASELINE_DESIGN.md` §2.1–§2.4 + M1's numbers.
-- **Data window**: fit on CAL, threshold/weight selection on VAL, single
-  evaluation on TEST.
-- **Metric**: `METRIC_DESIGN.md` §§1.1, 2.1, §4 (must beat M1's best
-  baseline with a statistically defensible margin, not just a point
-  estimate).
-- **Expected result**: hit rate and/or Sharpe improvement over M1's best
-  baseline, driven specifically by down-weighting the regime-and-
-  calibration-flagged adapter(s) that dominated the pilot's negative
-  result (`deepalpha`-equivalent case, re-verified not assumed).
-- **Failure interpretation**: if M2 does not beat M1, the mechanism must be
-  diagnosed (which specific weight/adapter drove the shortfall — same
-  case-study depth the pilot applied to its own negative result on
-  `interwoven_calibrated_fusion`, e.g. `EXPERIMENT_REPORT.md` §8's
-  GLD/2026-06-08 trace) — a negative M2 result reported without a
-  mechanism trace does not meet this protocol's bar.
+- **Primary test**: nested-model incremental-information test — a model of
+  `E` on confidence alone vs. confidence + `C` (logistic regression for
+  binary `E`, OLS/quantile regression for continuous `E`); likelihood-ratio
+  or F-test for the added-variable significance of `C`.
+- **Autocorrelation correction**: financial time series are not i.i.d. —
+  use **block bootstrap** (block length ≥ the longest horizon tested, i.e.
+  ≥ 20 trading days for the 20d-horizon test) for confidence intervals on
+  the incremental-information coefficient, not a naive i.i.d. bootstrap.
+- **Multiple-comparison correction**: tests are run per (adapter-pair-or-
+  adapter class × regime × horizon) stratum; apply Benjamini-Hochberg FDR
+  correction across the full stratum grid before declaring any individual
+  stratum significant.
+- **Effect size, not just p-value**: report the incremental-information
+  coefficient's magnitude and a practical-significance threshold. A hostile
+  review (§8) correctly noted that deferring this to "an exact numeric
+  threshold fixed at pilot stage" without specifying *how* is itself a
+  form of registered flexibility. **Fix — the procedure, not just a bare
+  deferral, is pre-registered now**: at the pilot stage, compute a power
+  analysis using the pilot slice's own observed variance in `E` and
+  observed `C` incidence rate, targeting **80% power to detect the
+  smallest incremental-AUC/pseudo-R² gain considered practically meaningful
+  a priori (a placeholder judgment call, not a data-driven one: 0.02
+  incremental AUC / pseudo-R², a conventional small-to-medium effect
+  threshold in comparable applied-ML calibration literature) at
+  alpha=0.05 after BH-FDR correction**; the resulting minimum sample size
+  (minimum number of eligible decision tuples with computed `E`) is then
+  checked against the actual TIER-1-eligible sample from
+  `ADAPTER_REGISTRY_REQUIREMENTS.md`/`DATA_SPLIT_PROTOCOL.md` §5 **before**
+  the validation stage begins. If the eligible sample is under-powered for
+  the 0.02 threshold, the threshold (not the sample) is what may be
+  revised — and only once, with the revision and its justification
+  recorded in `EXPERIMENT_DEPENDENCY_MAP.md`'s pilot-stage record before
+  any validation-stage result is seen. This procedure is the pre-registered
+  artifact; the resulting number is a pilot-stage output, not a
+  post-hoc-adjustable free parameter.
+- **Robustness requirement for H1 to be reported as supported**: the
+  incremental-information effect must (a) survive FDR correction in at
+  least one horizon and one regime stratum with adequate power, (b) not be
+  attributable to a single adapter pair or single ticker (checked via a
+  leave-one-adapter-out and leave-one-ticker-out sensitivity check), and
+  (c) be directionally consistent (not sign-flipping) across the strata
+  where it is significant. H1 explicitly tolerates *regime-conditional*
+  support (a qualified, not universal, positive result) — see Fallback
+  Claims below.
 
-#### M3. Contradiction-Aware Intervention
-- **Hypothesis**: applying D4's contradiction flags as an intervention
-  trigger (abstain / reduce position / hold cash / down-weight the
-  flagged adapter) improves risk-adjusted return (lower drawdown/CVaR,
-  even if raw return is flat or slightly lower) versus M1/M2 without
-  intervention.
-- **Method**: wrap M2 (or M1's best baseline if M2 underperforms) with a
-  D4-triggered intervention rule; report both with- and without-
-  intervention variants side by side.
-- **Baseline**: M1, M2 (this is explicitly an ablation-style A/B against
-  the method it's layered on, not a from-scratch comparison).
-- **Data window**: VAL for the intervention rule's threshold, TEST once.
-- **Metric**: `METRIC_DESIGN.md` §2.1 (Sortino/Calmar/CVaR weighted more
-  heavily than raw Sharpe here, since the hypothesis is about risk
-  reduction specifically), §4.
-- **Expected result**: measurable CVaR/max-drawdown improvement, plausibly
-  at some raw-return cost (an intervention that abstains sometimes gives
-  up some upside) — report the trade-off explicitly, don't cherry-pick
-  whichever metric looks better.
-- **Failure interpretation**: intervention that reduces both risk and
-  return with no favorable trade-off anywhere is a valid negative result —
-  report the threshold sensitivity (was it too aggressive?) before
-  discarding the mechanism outright.
+### 2.4.1 Minimum coverage for H1 to remain claim-bearing (added after adversarial review, §8; simplified after a second research-refine-adapted pass, thread `019f7c8c-bf7c-7b23-b596-02cf2bba2264`)
 
-#### M4. Multi-View Meta-Fusion / Shadow Q4 Construction
-- **Hypothesis**: a learned combination of raw Q1-Q4 outputs plus D1–D7
-  Layer 1 features outperforms any hand-specified rule from M1–M3.
-- **Method**: construct a shadow Q4 policy per the brief's explicit
-  decomposition (Q1 → selection, Q3 → ranking, Q2 → risk adjustment),
-  fit a meta-fusion mapping `[Q1..Q4, D1..D7 features] → decision` on
-  CAL, select architecture/hyperparameters on VAL, evaluate once on TEST.
-  This is the most ambitious experiment in the protocol and the most
-  exposed to overfitting given the sample sizes documented in `DATA_SPLIT_
-  PROTOCOL.md` — keep the model class simple (linear/logistic combination
-  or shallow tree over engineered features) unless VAL-window sample size
-  genuinely supports more capacity.
-- **Baseline**: M1, M2, M3, all evaluated identically.
-- **Data window**: strict CAL/VAL/TEST separation, single TEST evaluation
-  — this is the experiment most at risk of test-tuning if run casually;
-  `DATA_SPLIT_PROTOCOL.md` §5's embargo rule is non-negotiable here.
-- **Metric**: full `METRIC_DESIGN.md` §2 suite, §4 significance testing
-  mandatory (this is the headline result candidate for any eventual paper
-  claim, so it is exactly what `result-to-claim` (§6 below) must gate).
-- **Expected result**: modest but real improvement over M2/M3 if the
-  Layer 1 features genuinely carry incremental information beyond what
-  M2's simpler reliability weighting already captures; a *lack* of
-  improvement over M2/M3 alone is scientifically interesting (Layer 1
-  richer features may be redundant with the simpler reliability signal).
-- **Failure interpretation**: if M4 outperforms only on VAL and not on
-  TEST, that is overfitting, reported as such, not laundered into "M4
-  needs more tuning" (which would just be test-tuning by another name).
+A hostile review flagged that adapter/universe/horizon eligibility and
+per-stratum failure attrition could narrow scope after the fact without a
+floor. A follow-up research-refine-adapted pass then flagged the *first*
+draft of this fix as over-prescriptive for a pre-registration document —
+"feels more like a pilot-stage scope-calibration rule than something
+strongly justified now" — and recommended pre-registering the *principle
+and downgrade path* now, finalizing the *exact numeric tiers* at the pilot
+stage rather than hand-picking specific numbers (4 paradigms, 8 adapters,
+etc.) before any pilot data exists to justify them. **Simplified fix,
+adopted**: the principle is fixed now — **H1 may only be reported as the
+paper's primary, full-scope claim if the eligible pooled-test sample
+(§2.3.2) spans a majority of Session 1's catalogued 6+ paradigms and a
+sample size adequate for the §2.4 power-analysis procedure at the
+regime/horizon-stratification level the pooled model actually uses** — and
+the exact minimum counts (how many paradigms/adapters/horizons/regime
+strata specifically) are computed *as part of* the same pilot-stage power
+analysis in §2.4 (one combined pilot-stage calculation, not two separate
+gates), then recorded in `EXPERIMENT_DEPENDENCY_MAP.md`'s pilot-stage
+record before validation begins. If the TIER-1-eligible roster cannot meet
+the pilot-computed floor, H1 must be reported with an explicitly narrowed
+scope claim (per `RISK_AND_FAILURE_PLAN.md` §12's scope-language
+discipline) rather than as the originally-intended cross-paradigm,
+26-adapter-scale claim — a pre-registered downgrade path, not a silent
+one, now computed once rather than asserted twice.
 
-### Family A — Ablation
+### 2.5 Secondary hypotheses
 
-#### A1. Information Pathway Ablation
-- **Hypothesis**: performance degrades monotonically (or near-monotonically)
-  as informational pathways are removed from the winning M-method, i.e.
-  the richer Q2/Q4/evidence/confidence information genuinely earns its
-  keep rather than being decorative.
-- **Method**: re-run the winning method from M1–M4 (whichever passes
-  `result-to-claim`, §6) restricted to: Q1-only, Q3-only, Q1+Q3,
-  Q1+Q2+Q3, Q4-only, all-Q; each with/without confidence, with/without
-  evidence fields. Use the `ablation-planner` skill (§6) to structure the
-  run matrix once the base method is fixed — do not hand-run this ad hoc.
-- **Baseline**: the full-information arm of the *same* method
-  (`BASELINE_DESIGN.md` §5 — explicitly not compared against §2–3's
-  baseline bank).
-- **Data window**: TEST, reusing the exact split the winning method was
-  frozen on (no new tuning).
-- **Metric**: same metric(s) the winning method was selected on, §4
-  significance applied to each pairwise pathway comparison with FDR
-  correction (many comparisons at once).
-- **Expected result**: `all-Q` ≥ `Q1+Q2+Q3` ≥ `{Q1+Q3, Q1-only, Q3-only}`,
-  with `Q4-only` incomparable (different task) rather than ranked in the
-  same list.
-- **Failure interpretation**: non-monotonic results (e.g. `Q1+Q3` beating
-  `all-Q`) are informative, not a bug — would indicate some included
-  pathway is net-harmful (adding noise) rather than merely
-  low-information, worth its own follow-up rather than being averaged away.
+| ID | Statement | Primary experiment group(s) |
+|---|---|---|
+| H2 | Reliability-/contradiction-weighted fusion (measured calibration + `C`-penalty) improves risk-adjusted decision quality over naive-aggregation baselines (majority vote, equal-weight, self-reported-confidence-weight) | L2.1 |
+| H3 | Contradiction-aware intervention (abstain/reduce-position) lowers downside risk (drawdown/tail risk) relative to always-fuse and random-intervention baselines, even without improving raw return | L2.4 |
+| H4 | Reliability (calibration error, hit-rate, `C` rate) is regime- and horizon-dependent | L1.4 |
+| H5 | Layer 1 diagnostic features add incremental decision value beyond raw Q1–Q4 outputs alone | Cross-cutting X.2 (pathway ablation), feeding L2.1/L2.2 |
+| H6 | Shadow Q4 policies (recombining one system's Q1/Q3 with another's Q2/Q4 risk adjustment) convert otherwise Q4-weak systems' Q1/Q3 information into competitive portfolio value | L2.3 |
+| H7 | Reliability-aware routing outperforms one-size-fits-all fusion under regime/horizon conditioning | L2.2 vs. L2.1 head-to-head |
 
-#### A2. Layer 1 Feature Ablation
-- **Hypothesis**: M2–M4's improvement over M1 is attributable to specific
-  Layer 1 features (calibration reliability, contradiction flags,
-  stability score), not all equally — directly answers the brief's "哪些字段
-  真正有价值" question at the Layer-1-feature level rather than the raw-field
-  level (that's A1's job).
-- **Method**: leave-one-feature-out re-runs of the winning M2–M4 method,
-  removing calibration-reliability, contradiction-flags, or
-  stability-score one at a time.
-- **Baseline**: the full-feature arm of the same method.
-- **Data window**: TEST, same frozen split as A1.
-- **Metric**: same as A1, per-feature attribution via performance delta.
-- **Expected result**: calibration-reliability is load-bearing (it's the
-  specific gap the pilot identified and M2 was built to close) —
-  contradiction-flags and stability-score's marginal contribution is
-  genuinely open.
-- **Failure interpretation**: if removing a feature *improves* performance,
-  that feature is actively harmful in its current form — report and route
-  back to D2/D3/D4 for re-diagnosis rather than just dropping it silently
-  from M2-M4.
+### 2.6 Fallback claims (pre-registered now, per §8's explicit instruction not to invent these after seeing final-test results)
 
-### Family Ro — Robustness
-
-#### Ro1. Regime Robustness
-- **Hypothesis**: M2–M4's edge over M1 (if any, established in Family M)
-  holds within each individual regime slice from D5, not just on average
-  across a sample dominated by one regime.
-- **Method**: re-score Family M's TEST-window results split by D5's regime
-  tags.
-- **Baseline**: Family M's own aggregate result.
-- **Data window**: TEST, split post-hoc by regime (no new decisions
-  generated, purely a re-slicing of already-frozen TEST results — this
-  does not violate the single-TEST-touch rule since it's the same
-  evaluation, sliced).
-- **Metric**: same as the Family M experiment being checked, per regime
-  slice, small-n caveat per `METRIC_DESIGN.md` §4.
-- **Expected result**: edge holds directionally in most regimes, may be
-  statistically insignificant in low-n regimes (report as such, not as
-  disconfirming).
-- **Failure interpretation**: an edge driven entirely by one regime (e.g.
-  only `BULL_LOWVOL`) that reverses in others is a materially important
-  caveat for any claim from Family M — must be stated in any downstream
-  paper claim, not buried.
-
-#### Ro2. Adapter Dropout / Leave-One-Out Robustness
-- **Hypothesis**: Family M's results are not driven by a single dominant
-  adapter (the pilot's `deepalpha` pattern — one adapter involved in 83/129
-  contradiction cases and dominating the negative confidence-weighting
-  result).
-- **Method**: leave-one-adapter-out re-runs of the winning M-method on
-  TEST (post-hoc re-scoring where possible, matching Ro1's non-violating
-  re-slicing approach; a true LOO re-fit would require touching CAL/VAL
-  again and must be scoped as a VAL-window-only exercise if so, to avoid a
-  second TEST touch).
-- **Baseline**: the full-adapter-set result.
-- **Data window**: VAL (if refitting) or a post-hoc TEST re-slice (if not).
-- **Metric**: performance delta per dropped adapter, ranked.
-- **Expected result**: some concentration is likely (echoing the pilot),
-  but the method should not collapse entirely when any single adapter is
-  removed — if it does, that's a real fragility finding.
-- **Failure interpretation**: high sensitivity to one adapter is not
-  disqualifying by itself but must be reported prominently — it means the
-  "ensemble" claim is weaker than it appears and any paper claim should be
-  scoped accordingly (`result-to-claim`, §6, should specifically check
-  this before green-lighting an "ensemble improves robustness" claim).
-
-#### Ro3. Historical Event Stress Test
-- **Hypothesis**: exploratory only — no confirmatory hypothesis is claimed
-  given small event counts; the goal is to characterize behavior during
-  acute stress, not to confirm a pre-registered effect size.
-- **Method**: run available Class-R adapters against the declared event
-  windows in `DATA_SPLIT_PROTOCOL.md` §4.2, verifying reachability per
-  adapter before inclusion (do not assume reachability).
-- **Baseline**: `BASELINE_DESIGN.md` §3.1/§3.3 (buy-and-hold, cash) for the
-  same event window.
-- **Data window**: the declared event windows only, out-of-sample relative
-  to any CAL/VAL/TEST split (these dates may fall inside TRAIN for some
-  adapters — report this explicitly per adapter rather than treating it as
-  a clean out-of-sample test where it isn't).
-- **Metric**: drawdown, CVaR, and qualitative behavior description
-  (`METRIC_DESIGN.md` §2.1).
-- **Expected result**: no specific expected direction — report what
-  happened.
-- **Failure interpretation**: explicitly not falsifiable at this sample
-  size (typically N=1 event per adapter) — any claim drawn from Ro3 alone
-  must be labeled illustrative/case-study, never statistically supported,
-  and `result-to-claim` (§6) must reject any attempt to promote a Ro3
-  finding to a confirmed claim.
+| If this happens... | ...the pre-registered acceptable conclusion is |
+|---|---|
+| L2.1/L2.2 (fusion/routing) fail to beat baselines on raw return | H1 alone, if it holds, remains a complete, independent contribution per Session 1's `REFINED_CORE_CLAIM.md` design — report fusion/routing as negative/null decision-layer results, not as invalidating H1 |
+| Only downside-risk reduction holds (H3), not return improvement | Reframe the paper's decision-layer contribution as "a risk-management tool, not an alpha source" — an explicitly legitimate, pre-registered fallback framing, not a downgrade to be hidden |
+| H1 holds only in some regimes, not universally | Report as regime-conditional predictive validity (a qualified, not universal, form of H1) — still counts as support per §2.4's explicit tolerance for regime-conditional results |
+| Calibration (Q2 diagnostic group L1.2) is poor project-wide, but `C`/coherence (L1.3) is still diagnostic | Supports Session 1's Candidate-2 framing that calibration and contradiction are different diagnostic axes — report both findings, do not let poor calibration be read as invalidating the contradiction result |
+| The eligible (TIER-1, see `DATA_SPLIT_PROTOCOL.md`) adapter subset is smaller than the full 26 | Scope every claim explicitly to "N adapters, M paradigms actually used in the historical main experiment" — never claim the full 26-adapter, 6+-paradigm scope if the eligible subset is smaller; see `ADAPTER_REGISTRY_REQUIREMENTS.md` for the eligibility gate |
+| Q4 projects are not fully comparable under one protocol | This is exactly why the Controlled Scientific Track (§4) exists; if even that track cannot produce a clean comparison for a given adapter pair, exclude that pair from the controlled comparison and report it only on the Native Capability Track with an explicit non-comparability caveat — never force an unfair comparison to hit a paper deadline |
 
 ---
 
-## 5. Data/Baseline/Metric cross-reference summary
+## 3. Original Exp2–Exp18 → new experiment-group mapping
 
-| Family | Primary data window | Primary baseline source | Primary metric source |
-|---|---|---|---|
-| D1–D7 | `DATA_SPLIT_PROTOCOL.md` §2 (inventory) / §3 CAL | `BASELINE_DESIGN.md` §4 | `METRIC_DESIGN.md` §1 |
-| M1–M4 | `DATA_SPLIT_PROTOCOL.md` §3 (CAL→VAL→TEST) | `BASELINE_DESIGN.md` §2–3 | `METRIC_DESIGN.md` §2–4 |
-| A1–A2 | `DATA_SPLIT_PROTOCOL.md` §3 TEST (frozen, reused) | `BASELINE_DESIGN.md` §5 | `METRIC_DESIGN.md` §4 |
-| Ro1–Ro3 | `DATA_SPLIT_PROTOCOL.md` §3 TEST / §4.2 events | Family M's own results | `METRIC_DESIGN.md` §2, §4 |
+Every original item is accounted for exactly once as a *primary* home,
+with cross-references where an item legitimately feeds more than one group.
+Two items (Exp1, Exp7) do not appear in the user's own numbered list and
+are not invented here.
 
----
-
-## 6. ARIS skill usage plan
-
-- **`research-refine`** — used during this design pass itself (see §7) as
-  a critical-review gate on this document before treating it as final.
-- **`experiment-plan`** — this document *is* the deliverable that skill
-  would normally produce; not separately re-invoked, since the roadmap
-  already exists here in the brief's required format.
-- **`ablation-planner`** — to be invoked once a Family M experiment passes
-  `result-to-claim` (i.e. once there's a real result worth ablating),
-  structuring A1/A2's run matrix rather than hand-building it.
-- **`experiment-audit`** — to be invoked before any results from this
-  protocol are written up as claims, checking for the integrity failure
-  modes it's built to catch (fake ground truth, phantom results,
-  insufficient scope) — particularly relevant given how much of D1–D7
-  depends on honestly reporting `insufficient_data`/small-n rather than
-  padding samples.
-- **`result-to-claim`** — the gate between any Family M/A/Ro result and a
-  written claim; explicitly required before M4 or Ro3 findings are
-  promoted to paper-level claims, per their failure-interpretation notes
-  above.
+| Original | New home | Disposition |
+|---|---|---|
+| Exp2 (Field Value / Compression Loss) | **L1.1** | Kept as a dedicated diagnostic group — directly answers CLAUDE.md §4's provenance-separation requirement |
+| Exp3 (Confidence Calibration) | **L1.2** | Merged with Exp8 — kept together because Session 1's Claim 2 dossier found the calibration-by-mechanism-kind and stability/determinism diagnostics only become non-obvious *jointly* |
+| Exp4 (Cross-Adapter Contradiction) | **L1.3** (primary hypothesis carrier) | Merged with Exp10 — cross-adapter and intra-adapter contradiction are measured by one shared severity-scored `C` (§2.2), not two disconnected diagnostics |
+| Exp5 (Q4 Policy Validation) | **L1.5** | Merged with Exp6 — kept as one "Q4 Audit" group per the task brief's explicit instruction to merge but report performance/risk separately |
+| Exp6 (Q4 Risk/Exposure Audit) | **L1.5** | (see Exp5) |
+| Exp8 (Stability/Repeatability) | **L1.2** | (see Exp3); also feeds Cross-Cutting X.3 (seed/repeated-run analysis reuses this group's machinery) |
+| Exp9 (Regime-Stratified Reliability) | **L1.4** | Kept standalone — Session 1 Candidate 3 explicitly scoped this as a supporting ablation feeding L2.1/L2.2, not a silo |
+| Exp10 (Cross-Q Coherence) | **L1.3** | (see Exp4) — deliberately **not** conflated with cross-adapter contradiction as one flat count; §2.2's ontology keeps the five classes distinct even though they feed one severity score |
+| Exp11 (Source/Field Ablation) | **Cross-cutting X.1** | Kept cross-cutting, not folded into L1.1, because it cuts across every Layer 1 *and* Layer 2 group's inputs |
+| Exp12 (Selective Prediction/Abstention) | **L2.4** | Merged with Exp15 — per Session 1 Candidate 5's finding that these are the same mechanism (threshold-triggered abstention) described from a general-reliability angle (Exp12) and a contradiction-specific angle (Exp15); kept as one group evaluated on both triggers |
+| Exp13 (Reliability-Aware Routing) | **L2.2** | Kept standalone — deliberately **not** merged with L2.1 (fusion) despite the task brief's own suggested outline listing "Fusion / Routing" as one group, because Session 1's positioning treats fusion (vs. TrustTrade/ContestTrade) and routing (vs. FineFT) as two separately-scored, separately-competed decision-layer contributions (6/10 and 7/10 respectively) that must be benchmarked against *different* baselines — collapsing them would blur two distinct novelty claims into one experiment group. See `SESSION1_INTEGRATION_NOTES.md` |
+| Exp14 (Shadow Q4 Policy Construction) | **L2.3** | Kept standalone — Session 1's Codex Phase C called this "the stronger, more defensible half" of the routing claim; it deserves its own group, not a sub-bullet of L2.2 |
+| Exp15 (Contradiction-Aware Intervention) | **L2.4** | (see Exp12) |
+| Exp16 (Validation-Conditioned Policy Selection) | **L2.5** | Kept as a supporting/optional group — not directly required by H1 or the two lead decision-layer claims, but required as a baseline family (rolling-performance selector) for L2.2's baseline ladder per Session 1's non-negotiable-experiment list |
+| Exp17 (Multi-View Meta-Fusion) | **L2.1** (simplified instance) + **L2.6** (general form) | Split deliberately: L2.1 uses a *simple, interpretable, weighted-vote* instance of this mechanism as the main-paper primary fusion method (smallest adequate mechanism, per `research-refine`'s governing principle); the full learned meta-layer is kept as L2.6, an optional-enhancement/appendix-only comparison against L2.1, explicitly to test whether the added complexity of a learned meta-model earns its keep over the simple weighted-vote version |
+| Exp18 (Information Pathway Ablation) | **Cross-cutting X.2** | Kept distinct from Exp11/X.1 per the task brief's own instruction — X.1 is field/source-level, X.2 is end-to-end-pathway-level |
 
 ---
 
-## 7. Design-pass verification note
+## 4. Shared Evaluation Protocol — three tracks
 
-Per the task's explicit instruction to fan out subagents to save time, this
-design pass used a research fork to independently synthesize the pilot
-study's methodology/limitations (cross-checked against this document's own
-direct reading of the same source files) and made two live, non-simulated
-checks against real systems: (1) `mcp__massive__call_api` against
-`/v2/aggs/ticker/AAPL/range/1/day/...` to determine actual historical data
-availability, and (2) a live `yfinance` pull to confirm the 10-year
-alternative actually works, rather than asserting either from memory. Both
-findings are load-bearing for `DATA_SPLIT_PROTOCOL.md` §2.1 and are why
-this protocol does not block on a massive.com plan upgrade for the
-core 10-year backtest requirement.
+Directly answers Session 1 adversarial review's structural gap (fusion,
+routing, and abstention did not yet share one evaluation protocol). Full
+field-by-field specification is in `DATA_SPLIT_PROTOCOL.md` §4; summarized
+here because every experiment group below is tagged with the track it runs
+on.
 
-A separate critique pass was attempted via direct Codex MCP call
-(`mcp__codex__codex`, since the `research-refine` skill's Problem-Anchor/
-Method-Thesis scaffold is built for refining a vague research idea into a
-paper proposal, not for critiquing an already-finished experiment-design
-document, and would have produced a mismatched artifact). The Codex MCP
-call failed 3/3 attempts with a network-layer error (`stream disconnected
-... error sending request for url https://chatgpt.com/backend-api/codex/
-responses`), not a prompt or scope issue. A self-critique was run in its
-place — see `docs/research_reports/2026-07-19_experiment_protocol_self_
-review.md` for the full findings (2 CRITICAL, 5 IMPORTANT, 2 MINOR) and
-which were fixed directly in these four documents vs. left open. This
-document should be treated as **self-reviewed, not externally reviewed by
-a second model** — re-running the Codex critique once connectivity is
-restored is recommended before treating this protocol as final.
-
-A second, independently-launched session working the same brief also
-converged on this document (see `docs/research_reports/
-coordinator2_review_of_experiment_protocol.md`) — its independent research
-(separate forks, separate live `massive.com`/`yfinance` checks) reached the
-same adapter roster, Q-coverage counts, unreliable-adapter list, and
-`atlas` ticker-mislabeling finding, and it deferred to this document rather
-than overwriting it, per the standing multi-agent rule. Its one flagged gap
-(no standalone native-Q4-policy return diagnostic) is incorporated into D6
-above.
+1. **Compatibility Track** — adapter-specific minimal runnable config
+   (per-adapter universe/generation-window substitutions, as already used
+   ad hoc in `NEW_ADAPTER_INTEGRATION.md`'s unified-harness run). Used
+   *only* for engineering coverage/smoke verification. **Never used to
+   support a claim.**
+2. **Controlled Scientific Track** — one shared `as_of`/`data_cutoff`
+   sequence, one shared universe mapping, one shared trading calendar, one
+   shared transaction-cost model, one shared benchmark, one shared
+   execution-delay assumption, one shared risk-free rate, one shared
+   rebalancing/missing-output/failure-handling/cash-treatment policy, one
+   shared leverage/exposure audit, one shared result-aggregation method.
+   **This is the only track any Layer 2 comparison (L2.1–L2.6) or H1–H7
+   claim may be evaluated on.**
+3. **Native Capability Track** — each adapter's closest-to-native
+   configuration (e.g. skfolio's `WalkForward` cross-validation loop run
+   exactly as its own paper intends, TradeMaster's native DJ30-only
+   universe). Used *only* for L1.1's compression-loss analysis (native
+   capability vs. unified-schema capability) — **never used for a
+   cross-system claim**, since native configs are not mutually comparable
+   by construction.
 
 ---
 
-## 8. Multi-agent governance for future work on this protocol
+## 5. Layer 1 diagnostic groups
 
-Per this session's standing instruction: parallel subagents must not edit
-the same final document directly. Going forward, any subagent asked to
-extend, validate, or run this protocol writes its independent findings to
-`docs/research_reports/` (one file per agent/topic, never a shared file
-two agents write concurrently); only the coordinator (whichever session is
-acting in that role) merges accepted findings into
-`docs/research_positioning/` and/or updates the four documents in this
-`docs/experiment_design/` directory. Before editing any of these four
-files, check `docs/research_reports/` and recent git history for
-in-flight work from another agent on the same file.
+### L1.1 — Representation and Field Value
+
+- **Research question**: does the unified schema lose decision-relevant
+  information present in native upstream output?
+- **Hypothesis**: some canonical fields carry near-zero incremental
+  predictive/decision value while some native fields excluded from the
+  canonical schema (per `PROJECT_SCHEMA_AUDIT.md` §9's three
+  `OPTIONAL_EXTENSION` candidates and §10's excluded-capability list) would
+  add value if surfaced.
+- **Input**: native upstream output (Native Capability Track) vs. canonical
+  `AdapterResult` (Controlled Scientific Track), for the TIER-1 eligible
+  adapter set (`ADAPTER_REGISTRY_REQUIREMENTS.md`).
+- **Target**: information-retention score (already partially estimated in
+  `PROJECT_SCHEMA_AUDIT.md` §7 per-project, 45–95% range) recomputed on a
+  decision-relevance basis, not just field-coverage basis.
+- **Experimental unit**: one (adapter, canonical field) pair.
+- **Sample construction**: all `FieldMapping` records already produced by
+  every TIER-1 adapter's own `field_mappings` output (schema-native
+  provenance, no new instrumentation needed) plus the 474-row
+  `PROJECT_SCHEMA_AUDIT.csv` as the native-side reference.
+- **Baseline**: raw native fields (no mapping loss) vs. canonical-core-only
+  vs. canonical-core+optional.
+- **Method**: field-coverage ratio (already computed) + a *predictive-value*
+  regression of forward `E` (§2.3) on each field's presence/value,
+  controlling for the rest — an incremental-value test structurally
+  identical to H1's, applied per field instead of per contradiction event.
+- **Metric**: field coverage, native retention %, extraction loss,
+  missingness, incremental predictive value (§METRIC_DESIGN.md §Layer1
+  Representation).
+- **Expected evidence**: a ranked list of which canonical fields are
+  load-bearing vs. decorative, and whether any `OPTIONAL_EXTENSION`
+  candidate (`iteration_history`, `sub_opinions`, `EvidenceItem.relevance_
+  score`) shows enough incremental value to justify a future schema
+  version bump (a recommendation, not a decision this protocol can make —
+  `CONTRACT/` stays protected per CLAUDE.md §3).
+- **Failure interpretation**: if canonical fields show no measurable
+  information loss relative to native, the "unified schema as audit
+  substrate" framing is *strengthened*, not weakened — a null result here
+  is good news for Session 1's positioning, and should be reported as such.
+- **Dependencies**: none upstream (can start immediately — field mappings
+  already exist for every TIER-1 adapter).
+- **Estimated cost**: low — no new adapter calls, pure post-hoc analysis of
+  already-produced `field_mappings`/`native_output`.
+- **Priority**: MUST-RUN (feeds L1.2/L1.3 as a sanity precondition — see
+  `EXPERIMENT_DEPENDENCY_MAP.md`).
+- **Main paper or appendix**: main paper (short section), full field-level
+  table in appendix.
+
+### L1.2 — Calibration and Stability
+
+- **Research question**: does confidence/strength predict forward outcome
+  quality, and is it reproducible under repeated identical queries?
+- **Hypothesis**: naive per-adapter calibration hides a structural pattern
+  visible only when conditioned on `ConfidenceKind` and on
+  determinism-vs-non-determinism (Session 1 Candidate 2's finding).
+- **Input**: `Q1Action.confidence`/`Q3Signal.confidence`/`strength`, keyed
+  by `ConfidenceKind` (6 kinds in `CONTRACT/schemas.py`); K repeated calls
+  per frozen `(adapter, ticker/universe, as_of, data_cutoff, horizon)`.
+- **Target**: forward 1d/5d/20d realized return sign/magnitude (same `E`
+  construction as §2.3); output variance across the K repeats.
+- **Experimental unit**: one (adapter, ticker, `as_of`, horizon) decision,
+  observed K times for the stability half.
+- **Sample construction**: draw from the Controlled Scientific Track's
+  validation-window decision set; K to be fixed at the pilot stage (§7),
+  budgeted separately per adapter class (deterministic adapters need K=1
+  sanity-only; stochastic ML/RL and LLM adapters need K≥3, cost-gated by
+  `RunMetadata.cost_usd`/`latency_sec` — real historical costs already
+  observed in `ADAPTER_CAPABILITY_RECOVERY.md`, e.g. `tradingagents`
+  ~9-10 real LLM calls per single run, inform this budget).
+- **Baseline**: none needed for calibration (it's a diagnostic, not a
+  competition); for stability, compare against a "perfectly stable" ideal
+  (zero variance) and report the empirically observed distribution.
+- **Method**: reliability diagrams / ECE / Brier score per `ConfidenceKind`
+  bucket; action-flip rate, score variance, weight-vector distance across
+  K repeats, split by adapter determinism class (deterministic / stochastic
+  ML-RL / LLM).
+- **Metric**: see `METRIC_DESIGN.md` §Layer1 Calibration and §Layer1
+  Stability.
+- **Expected evidence**: calibration quality ranked by confidence-kind (not
+  by adapter identity alone); a documented, already-known real defect
+  (unseeded per-call retraining in one adapter, per Session 1's Candidate 2
+  dossier) should reproduce as a stability outlier — a useful sanity check
+  that the diagnostic actually detects a known-real issue.
+- **Failure interpretation**: uniformly poor calibration across all kinds
+  is itself a reportable finding (motivates L2.1's move away from
+  self-reported confidence) — not a failed experiment; see Fallback Claims
+  §2.6.
+- **Dependencies**: L1.1 (field mappings must be validated first so
+  confidence-kind labels are trustworthy).
+- **Estimated cost**: medium — K-repeat calls to stochastic/LLM adapters
+  incur real API cost; budget gate required (see
+  `RISK_AND_FAILURE_PLAN.md`).
+- **Priority**: MUST-RUN.
+- **Main paper or appendix**: main paper (motivates L2.1's design), full
+  per-adapter tables in appendix.
+
+### L1.3 — Structural Contradiction and Cross-Q Coherence (primary hypothesis carrier)
+
+- **Research question**: H1 (§2.1) directly.
+- **Hypothesis**: H1.
+- **Input**: the pre-registered contradiction ontology (§2.2) applied to
+  every eligible decision pair/tuple in the Controlled Scientific Track.
+- **Target**: `E` (§2.3), at the pre-registered horizons.
+- **Experimental unit**: one contradiction *event* (a specific ontology
+  class firing on a specific tuple at a specific `as_of`).
+- **Sample construction**: all TIER-1-eligible adapter pairs (cross-adapter
+  classes) and all TIER-1 adapters individually (intra-adapter classes),
+  over the validation-window decision set (never the final test set for
+  ontology tuning — tuning must freeze on validation only, per §9's
+  causality rules).
+- **Baseline**: confidence-only model of `E` (§2.4's nested-model design
+  *is* the baseline, not a separate system).
+- **Method**: §2.4's nested-model incremental-information test, block
+  bootstrap, FDR-corrected across strata.
+- **Metric**: contradiction incidence, severity, breadth, persistence,
+  contradiction-conditioned error, contradiction-conditioned drawdown,
+  coherence-violation rate (see `METRIC_DESIGN.md`).
+- **Expected evidence**: H1 supported (possibly regime-conditionally, per
+  §2.4's explicit tolerance).
+- **Failure interpretation**: H0 not rejected → this is the single most
+  consequential possible failure in the whole protocol (per Session 1's
+  `REFINED_CORE_CLAIM.md`: "a more basic and more informative failure than
+  either decision-layer mechanism underperforming... a signal to rethink
+  the whole submission"). If this happens, escalate to a human checkpoint
+  before continuing to L2.1–L2.6 (see `EXPERIMENT_DEPENDENCY_MAP.md`'s kill
+  criteria).
+- **Dependencies**: L1.1, L1.2 (confidence-kind labels must be validated so
+  the confidence covariate in §2.4's nested model is trustworthy).
+- **Estimated cost**: low-medium — reuses decisions already generated for
+  L1.2; ontology evaluation itself is pure post-hoc computation.
+- **Priority**: MUST-RUN, highest priority of all groups.
+- **Main paper or appendix**: main paper, the headline result.
+
+### L1.4 — Regime-Conditioned Reliability
+
+- **Research question**: H4.
+- **Hypothesis**: H4 (regime/horizon-dependence of reliability, tolerating
+  a null result per Session 1 Candidate 3).
+- **Input**: L1.2/L1.3 outputs, stratified by a pre-registered regime
+  label.
+- **Target**: same reliability metrics as L1.2/L1.3, computed per regime
+  stratum.
+- **Experimental unit**: one (adapter-or-pair, regime, horizon) stratum.
+- **Sample construction**: regime labels must be defined **using only
+  information available up to each stratum's own decision points** — a
+  regime classifier trained/fit on the full historical span including
+  future-relative-to-decision data would leak; see `DATA_SPLIT_PROTOCOL.md`
+  §6 for the exact regime-labeling causality rule.
+- **Baseline**: pooled (non-regime-stratified) reliability as the
+  reference.
+- **Method**: stratified re-computation of L1.2/L1.3's metrics; a
+  regime-by-metric interaction test.
+- **Metric**: conditional hit rate, conditional calibration, conditional
+  policy performance, adapter/pair rank stability across regimes.
+- **Expected evidence**: an adapter×regime×horizon reliability table,
+  feeding L2.2's routing signal directly.
+- **Failure interpretation**: a null result (regime-invariant reliability)
+  is explicitly pre-registered as informative, not thin — per Fallback
+  Claims §2.6 and Session 1 Candidate 3's positioning.
+- **Dependencies**: L1.2, L1.3.
+- **Estimated cost**: low — post-hoc stratification of already-computed
+  metrics.
+- **Priority**: MUST-RUN (feeds L2.2 directly), but its *standalone*
+  narrative weight is secondary — see `CLAIM_TO_EXPERIMENT_MATRIX.md`.
+- **Main paper or appendix**: main paper as a supporting section/ablation
+  for L2.1/L2.2, not a standalone claim (per Session 1 Candidate 3).
+
+### L1.5 — Q4 Performance and Risk Audit
+
+- **Research question**: how do native Q4 policies actually perform and
+  what risk do they carry, under one common evaluation engine?
+- **Hypothesis**: none (this is a descriptive audit, not a claim test) —
+  it is a **required precondition** for L2.2/L2.3/L2.5/L2.6's baselines.
+- **Input**: `Q4Policy`/`PolicyDecisionStep` output from every TIER-1 Q4
+  adapter (7 confirmed Q4-causal adapters with 0 violations across 344 real
+  decisions per `ADAPTER_CAPABILITY_RECOVERY.md`/`NEW_ADAPTER_INTEGRATION.
+  md`, plus the newly-integrated Q4 adapters).
+- **Target**: forward realized performance and risk profile of each
+  policy's decision trajectory.
+- **Experimental unit**: one adapter's Q4 policy trajectory over the
+  Controlled Scientific Track's validation/test window.
+- **Sample construction**: only adapters whose `PolicyType` genuinely
+  produces a causal trajectory (`decisions` populated via repeated
+  per-step calls) or an honestly single-point `STATIC_ALLOCATION` — reuse
+  `finrl_adapter.py`'s already-documented, already-correct exclusion of its
+  own in-sample trajectory (a causality-correct precedent this protocol
+  extends system-wide, not a new rule).
+- **Baseline**: CASH, equal-weight buy-and-hold, market benchmark (see
+  `BASELINE_DESIGN.md`).
+- **Method**: standard portfolio performance/risk computation under the
+  Controlled Scientific Track's shared transaction-cost/benchmark/
+  rebalancing assumptions.
+- **Metric**: performance metrics and risk metrics, reported **separately**
+  per the task brief's explicit instruction (see `METRIC_DESIGN.md`).
+- **Expected evidence**: a per-adapter Q4 performance+risk table under one
+  fair protocol — this table itself is the direct answer to Session 1
+  adversarial review's "financial-evaluation hygiene" risk-table entry.
+- **Failure interpretation**: wide native-vs-controlled performance
+  divergence for a given adapter is expected and informative (quantifies
+  the cost of unification) — report, do not suppress.
+- **Dependencies**: none upstream; depends on `Q4_EXPERIMENT_REQUIREMENTS.md`
+  being satisfied by Session 4's rolling protocol before this group can run
+  on more than a pilot slice.
+- **Estimated cost**: medium-high — full rolling execution over a real
+  validation window for every Q4 adapter.
+- **Priority**: MUST-RUN (feeds every L2 group as the fixed-system
+  baseline).
+- **Main paper or appendix**: main paper (performance table), full risk
+  breakdown in appendix.
 
 ---
 
-## 9. Explicit non-goals / out of scope for this document
+## 6. Layer 2 method groups
 
-- No adapter, `CONTRACT/`, `harness/`, or other Python code was written or
-  modified to produce this protocol.
-- This document does not itself run any experiment — it specifies what to
-  run, on what data, against what baseline, measured how, and how to
-  interpret both success and failure.
-- Calendar boundaries in `DATA_SPLIT_PROTOCOL.md` §3.1 and the T0 date in
-  §3.2 are left as open scheduling decisions for whoever executes this
-  protocol, not fixed here.
+Every group below runs **only** on the Controlled Scientific Track (§4) and
+consumes **both** raw canonical Q1–Q4 outputs and Layer 1 diagnostic
+features, per the task brief's explicit two-layer wiring requirement — see
+the ablation in Cross-Cutting X.2 for the "raw-only / Layer1-only / both"
+decomposition that makes this wiring's necessity falsifiable rather than
+assumed.
+
+### L2.1 — Reliability-/Contradiction-Weighted Fusion
+
+- **Research question**: H2 (does calibration+contradiction-weighted
+  fusion beat naive aggregation and, non-negotiably per Session 1, a
+  TrustTrade-style agreement-weighting baseline and a ContestTrade-style
+  outcome-utility-weighting baseline?).
+- **Input**: Q1/Q3 votes from TIER-1 adapters + L1.2 calibration weights +
+  L1.3 contradiction penalty.
+- **Target**: fused directional decision; evaluated on `E` (prediction
+  accuracy) and, where a Q4 wrapper is added, on portfolio performance/risk
+  (reusing L1.5's engine).
+- **Experimental unit**: one fused decision per `(ticker, as_of, horizon)`.
+- **Sample construction**: Controlled Scientific Track validation set for
+  weight-fitting (calibration weights are fit only on validation, never on
+  test, per §9); final test set for the one-shot evaluation.
+- **Baseline**: majority vote, equal-weight vote, raw-self-reported-
+  confidence weighting, **TrustTrade-style cross-agent agreement weighting
+  (non-negotiable per Session 1)**, **ContestTrade-style outcome-utility
+  weighting (non-negotiable per Session 1)** — see `BASELINE_DESIGN.md`.
+- **Method**: L2.1's own mechanism is the *simplified* Exp17 instance — a
+  linear/weighted-vote combination (not a trained black-box meta-model;
+  that is reserved for L2.6) weighted by (a) measured out-of-sample
+  calibration and (b) a penalty when §2.2's `C` fires.
+- **Metric**: directional accuracy, Brier, selective risk; portfolio-level
+  metrics where wrapped into a Q4 decision (`METRIC_DESIGN.md`).
+- **Expected evidence**: L2.1 beats naive baselines AND the TrustTrade-
+  /ContestTrade-style baselines, **with the "correct lone dissenter"
+  ablation** (a case-study slice where calibration-weighting and
+  agreement-weighting provably diverge, per Session 1's non-negotiable
+  condition) showing calibration-weighting's structural advantage
+  concretely, not just in the aggregate metric.
+- **Failure interpretation**: if L2.1 does not beat the TrustTrade-style
+  baseline, Session 1's own Codex reviewers already predicted this is the
+  single most likely failure mode ("danger zone") — report honestly; H1
+  (§2.1) is unaffected by this outcome (Fallback Claims §2.6).
+- **Dependencies**: L1.1, L1.2, L1.3 (feature freeze), L1.5 (baseline
+  engine).
+- **Estimated cost**: medium — mostly post-hoc recombination of already-
+  computed decisions plus the two competitor-baseline implementations.
+- **Priority**: MUST-RUN, primary decision-layer claim.
+- **Main paper or appendix**: main paper.
+
+### L2.2 — Reliability-Aware Routing
+
+- **Research question**: H7; is routing across independently-authored real
+  systems, under one causal harness, better than a FineFT-style
+  within-framework VAE-routing baseline retrained on this project's data?
+- **Input**: L1.4's adapter×regime×horizon reliability table; L1.5's fixed
+  Q4 policies as the routable candidate set.
+- **Target**: routed decision trajectory, evaluated via L1.5's engine.
+- **Experimental unit**: one routing decision per legal rebalance point.
+- **Sample construction**: router fit on validation only; final test is a
+  single held-out evaluation (§9).
+- **Baseline**: random router, static global-best adapter, round-robin,
+  regime-blind learned router, recent-performance router,
+  **FineFT-style within-framework VAE-routing baseline retrained on this
+  harness's data (non-negotiable per Session 1)**, oracle upper bound
+  (**deployability flag = non-deployable**, upper-bound-only, per
+  `BASELINE_DESIGN.md`).
+- **Method**: rule-based or lightweight learned router conditioned on
+  regime/horizon/L1.4's measured reliability; must never see future
+  performance (see `RISK_AND_FAILURE_PLAN.md`'s leakage section).
+- **Metric**: L1.5's performance+risk metrics, plus routing-specific
+  metrics (regret vs. oracle, router stability).
+- **Expected evidence**: routing beats the full baseline ladder including
+  FineFT-style routing — the single most demanding bar in this protocol,
+  Session 1 flagged this as the least-implemented, highest-risk claim.
+- **Failure interpretation**: a result no better than the best fixed system
+  or naive blending is the specific failure mode Session 1's Codex reviewer
+  named ("standard dynamic ensemble selection") — report as a negative
+  result for the *routing* sub-claim without automatically invalidating
+  L2.3 (shadow policy), which Session 1 rates as the stronger half.
+- **Dependencies**: L1.4, L1.5.
+- **Estimated cost**: high — full multi-baseline ladder under rolling
+  execution.
+- **Priority**: MUST-RUN, second primary decision-layer claim.
+- **Main paper or appendix**: main paper.
+
+### L2.3 — Shadow Q4 Policy Construction
+
+- **Research question**: H6.
+- **Input**: one system's Q1/Q3 selection+ranking output + another
+  system's Q2/Q4 risk-adjustment output, recombined causally.
+- **Target**: synthetic shadow policy trajectory, evaluated via L1.5's
+  engine.
+- **Experimental unit**: one shadow-policy decision trajectory per
+  (selection-source, risk-source) pair tested.
+- **Sample construction**: pairs chosen to maximize paradigm diversity
+  (e.g. an alpha-factor-mining adapter's Q3 ranking + a portfolio-RL
+  adapter's Q2/Q4 risk adjustment) — a small, deliberately-scoped pair set,
+  not a combinatorial sweep across all adapter pairs (cost control, see
+  `RISK_AND_FAILURE_PLAN.md`).
+- **Baseline**: each source system's own native Q4 policy (fixed), equal-
+  weight blend.
+- **Method**: causal recombination under the shared execution harness
+  (`Q4_EXPERIMENT_REQUIREMENTS.md`); the Q1/Q3/Q4 decomposition must be
+  well-defined and causal, not post-hoc signal stacking (Session 1's
+  explicit condition for this to read as principled).
+- **Metric**: L1.5's performance+risk metrics.
+- **Expected evidence**: shadow policies outperform at least one of their
+  two source systems' native policies on a risk-adjusted basis.
+- **Failure interpretation**: if shadow recombination looks arbitrary/
+  underprincipled, this is a framing failure Session 1's Codex reviewer
+  explicitly warned about — the decomposition rule must be published
+  before results, not adjusted after.
+- **Dependencies**: L1.5.
+- **Estimated cost**: medium.
+- **Priority**: MUST-RUN — per Session 1, this is "the stronger, more
+  defensible half" of the routing/shadow-Q4 claim.
+- **Main paper or appendix**: main paper.
+
+### L2.4 — Contradiction-/Reliability-Aware Intervention (Abstention)
+
+- **Research question**: H3; is structural contradiction (§2.2) a useful
+  risk-reduction trigger in its own right, distinct from ordinary
+  uncertainty/confidence/dispersion baselines (per Session 1 Codex Phase C)?
+- **Input**: L1.3's `C` signal (and severity score) + L1.2's calibration/
+  stability signal.
+- **Target**: abstain/reduce-position/increase-cash decision, evaluated on
+  drawdown/tail-risk primarily, return secondarily.
+- **Experimental unit**: one intervention decision per legal rebalance
+  point.
+- **Sample construction**: same validation/test split as L2.1 (they share
+  the same diagnostic signal by design, per Session 1's fuse-vs-abstain
+  framing).
+- **Baseline**: no intervention, random intervention, fixed cash buffer,
+  binary-disagreement-count rule, entropy/dispersion rule (see
+  `BASELINE_DESIGN.md`).
+- **Method**: threshold-triggered abstain/reduce/increase-cash policy keyed
+  to `C` and L1.2's reliability score; thresholds fit on validation only.
+- **Metric**: coverage-risk curve, selective accuracy, drawdown reduction,
+  turnover reduction, portfolio opportunity cost (`METRIC_DESIGN.md`).
+- **Expected evidence**: intervention beats the dispersion/entropy baseline
+  specifically on drawdown/tail-risk, demonstrating that *structural*
+  contradiction (not mere disagreement magnitude) is the useful signal —
+  this is the exact ablation Session 1's Codex reviewer said the paper
+  needs.
+- **Failure interpretation**: if intervention performs no better than a
+  generic dispersion rule, this specifically weakens the "structural
+  contradiction is special" framing (not H1 itself, which only requires
+  incremental *predictive* information, not intervention *value*) —
+  report as a distinct, separable finding.
+- **Dependencies**: L1.2, L1.3.
+- **Estimated cost**: low-medium — reuses L2.1's signal computation.
+- **Priority**: MUST-RUN as an ablation arm of L2.1 (per Session 1's fold-
+  in recommendation), not a standalone claim.
+- **Main paper or appendix**: main paper (as an ablation subsection inside
+  L2.1's results), not a separate headline section.
+
+### L2.5 — Validation-Conditioned Policy Selection
+
+- **Research question**: can rolling validation performance alone (Sharpe,
+  drawdown, turnover, stability, regime-conditioned performance,
+  contradiction with Q1–Q3) dynamically select the active Q4 policy?
+- **Input**: L1.5's rolling performance/risk history.
+- **Target**: dynamically-selected policy trajectory.
+- **Baseline/Method/Metric**: reuses L1.5's engine and L2.2's baseline
+  ladder machinery (this group *is* one of L2.2's required baselines —
+  "rolling-performance selector" — promoted to its own experiment group
+  because the task brief lists it as Exp16 in its own right).
+- **Dependencies**: L1.5.
+- **Estimated cost**: low (shares machinery with L2.2).
+- **Priority**: NICE-TO-HAVE / supporting — required as an L2.2 baseline,
+  optional as a standalone result.
+- **Main paper or appendix**: appendix (as a baseline ladder entry inside
+  L2.2); not a headline result on its own.
+
+### L2.6 — Lightweight Multi-View Meta-Fusion
+
+- **Research question**: does a trained (but still lightweight,
+  interpretable-first per the task brief's explicit instruction) meta-layer
+  over Q1–Q4 + Layer 1 features beat L2.1's simple weighted-vote fusion
+  enough to justify its added complexity?
+- **Input**: full Q1–Q4 + all Layer 1 diagnostic features.
+- **Target**: final action/ranking/weight-adjustment/policy-selection/risk-
+  budget decision (task brief's candidate output list).
+- **Baseline**: **L2.1 itself is the primary baseline this group must
+  beat** — per `research-refine`'s "smallest adequate mechanism" principle,
+  this group exists specifically to prove complexity is earning its keep,
+  not to add a second unmotivated fusion method.
+- **Method**: shallow/interpretable model class first (linear, shallow
+  tree/boosting); explicitly avoid an opaque deep meta-model unless the
+  simpler classes demonstrably fail (task brief's explicit instruction to
+  prefer lightweight/interpretable).
+- **Metric**: same as L2.1, plus a complexity-adjusted comparison (does the
+  gain, if any, exceed what added parameters/opacity would predict by
+  chance — see `RISK_AND_FAILURE_PLAN.md`'s overfitting section).
+- **Failure interpretation**: no material gain over L2.1 is a **positive**
+  finding for the paper's parsimony argument, not a failed experiment —
+  explicitly framed this way in advance.
+- **Dependencies**: L2.1 (must exist first as the baseline to beat).
+- **Estimated cost**: medium.
+- **Priority**: NICE-TO-HAVE / optional enhancement.
+- **Main paper or appendix**: appendix only, unless it meaningfully beats
+  L2.1 (in which case it is a candidate to *replace* L2.1 as the main
+  fusion result — a decision left to the human checkpoint after results
+  exist, per `EXPERIMENT_DEPENDENCY_MAP.md`).
+
+---
+
+## 7. Cross-cutting evaluation
+
+### X.1 — Field and Source Ablation
+
+Ladder (not combinatorial): Q1-only → Q1+confidence → Q1 without
+explanation → Q2 state-only → Q2 without drivers → Q3 values-only → Q3
+without evidence → Q4 without trajectory → Q4 without policy metadata →
+native-fields-only → derived-fields-only → remove provenance → remove
+Layer 1 reliability features. A **primary rung + a small supplementary set**
+(per the task brief's explicit instruction to avoid combination explosion)
+— the primary rung is "raw Q1–Q4 only" vs. "raw + Layer 1 features," since
+that is the one ablation every Layer 2 claim structurally depends on
+(§5 intro; H5).
+
+### X.2 — Information Pathway Ablation
+
+Q1-only / Q2-only / Q3-only / Q4-only / Q1+Q3 / Q1+Q2+Q3 / Q4+validation-
+history / raw-Q1–Q4-only / Layer1-features-only / raw+Layer1 / all — run
+against L2.1's fusion output and L2.2's routing output as the two
+consuming methods. This is the ablation that makes the two-layer wiring
+requirement (raw *and* Layer 1 features must both feed Layer 2) falsifiable
+rather than assumed, directly answering §5's "not two disconnected
+experiment sets" instruction.
+
+### X.3 — Robustness, Transaction-Cost Sensitivity, Seed/Repeated-Run, Cost & Latency
+
+- Transaction-cost sensitivity: re-run L1.5/L2.1–L2.3's headline results
+  under 2–3 cost regimes (zero cost as an upper bound, a realistic
+  cost, a stressed/high cost) to check claim stability.
+- Seed/repeated-run: reuses L1.2's stability machinery, applied to any
+  stochastic component *this protocol itself* introduces (e.g. L2.6's
+  trained meta-model, if pursued) — distinct from L1.2's *adapter-level*
+  stability audit.
+- Cost and latency: aggregate `RunMetadata.cost_usd`/`latency_sec` (already
+  a schema-native field, populated by every adapter) across the full
+  experiment set — required for the compute-budget gates in
+  `EXPERIMENT_DEPENDENCY_MAP.md` and for honest disclosure per the
+  Session-1-cited "benchmark disclosure" literature finding (arXiv
+  2605.21404 — financial/agent benchmarks under-disclose cost/methodology
+  relative to classical benchmarks).
+
+### X.4 — Failure Case Analysis
+
+Qualitative review of the largest-error/largest-contradiction-severity
+cases in L1.3/L2.1/L2.4's output, cross-referenced against
+`ADAPTER_CAPABILITY_RECOVERY.md`'s already-documented real defects (e.g.
+the FinRL in-sample-trajectory exclusion, the FinBERT non-point-in-time
+news source) to check whether known engineering limitations, rather than
+the phenomena under test, explain outlier cases.
+
+## 8. Adversarial review (`kill-argument`-adapted)
+
+`kill-argument`'s literal trigger targets LaTeX theorem-papers; its
+attack→adjudicate methodology was applied directly to this markdown
+protocol instead (disclosed, matching the pattern Session 1 used for the
+same adaptation). Two real, fresh `mcp__codex__codex` calls, never
+`codex-reply` (per the skill's fresh-thread requirement): attack thread
+`019f7c86-3730-7823-bb0a-5a8a2a367376`, adjudication thread
+`019f7c88-0e7b-7f40-809b-2b7a92753ce4`, both `model_reasoning_effort:
+high`, `sandbox: read-only`. Full transcript in
+`_working/ADVERSARIAL_REVIEW.md`.
+
+**Attack (verbatim summary)**: H1's acceptance surface is not fully
+frozen — contradiction severity is "optionally scaled," the practical-
+significance threshold is deferred without a specified procedure, H1 can
+be declared supported from a single significant stratum (inviting
+post-hoc stratum selection), and adapter/universe/horizon eligibility can
+narrow scope after the fact — collectively enough registered flexibility
+that a positive result could reflect validation-stage selection rather
+than a genuine model-agnostic signal.
+
+**Adjudication**: 5 atomic points, **0 answered_by_current_text, 4
+partially_answered (major), 1 still_unresolved (critical — H1 was not
+shown to be distinguishable from generic cross-adapter disagreement,
+independent of the structural-contradiction ontology specifically)**.
+Per the skill's verdict-mapping convention (any `still_unresolved` at
+critical severity → **FAIL**, `reason_code: unresolved_critical`), this
+protocol's H1 design **failed** this adversarial pass as originally
+written.
+
+**Fixes applied in direct response** (§2.3.1, §2.3.2, §2.4, §2.4.1, §2.2):
+H1-specific negative controls (generic disagreement, missingness, adapter-
+pair fixed effects, per-ontology-class breakdown) added as required
+covariates, not optional; the primary acceptance criterion changed from
+"significant in ≥1 stratum" to a pooled whole-deployment test (stratum
+results demoted to secondary/exploratory); a concrete power-analysis
+*procedure* (not a bare deferral) pre-registered for the practical-
+significance threshold; severity scoring demoted from H1's primary
+exposure to a secondary, fixed-formula-only measure, with binary `C` as
+the sole primary exposure; a minimum-coverage floor (paradigms/adapters/
+horizons/regimes) added for H1 to remain the paper's primary claim.
+
+**Second pass — `research-refine`-adapted check for over-correction**: per
+that skill's governing "smallest adequate mechanism" principle, a real
+Codex call (thread `019f7c8c-bf7c-7b23-b596-02cf2bba2264`,
+`model_reasoning_effort: high`) checked whether the five fixes above
+over-corrected into unnecessary complexity. Verdict: **REVISE** (not
+READY, not RETHINK) — two concrete simplifications, both adopted:
+(a) §2.3.1's adapter-pair control and §2.3.2's pooled-model adapter-pair
+effect are now written as **one model specification**, not two stacked
+terms, defaulting to a random effect/partial pooling rather than a fixed
+effect (sparse fixed effects can cost more power than they buy in rigor);
+(b) §2.4.1's minimum-coverage floor was rewritten from hand-picked numeric
+counts (which the reviewer judged over-prescriptive for a pre-registration
+document with no pilot data yet) to a principle-plus-downgrade-path now,
+with the exact numeric tiers computed *as part of* §2.4's power-analysis
+procedure at the pilot stage — one combined calculation, not two separate
+gates.
+
+**What this session does not claim**: these fixes were made by the same
+session that received the critique, not independently re-adjudicated by a
+fresh reviewer thread — per `kill-argument`'s own rule that "the verdict
+is computed by the skill, not by the adjudicator" (i.e. self-grading after
+a fix is not equivalent to a real pass), **this protocol's H1 design
+should be treated as FAIL-with-fixes-applied-but-not-re-verified**, not as
+a confirmed PASS, even after the second (research-refine-adapted, REVISE-
+verdict) pass — that pass checked for over-correction, it did not
+re-run the original kill-argument adjudication against the revised text.
+A genuine re-adjudication (a fresh Codex thread, reading only the
+post-fix files, blind to this history) is the correct next step before
+this protocol is treated as fully hardened — flagged here explicitly
+rather than silently upgrading the verdict, and listed as an open item in
+the final terminal summary.
+
+### Ablation-design cross-check (genuine `ablation-planner`-adapted Codex call)
+
+`ablation-planner`'s literal trigger ("after `result-to-claim` passes") is
+unmet — no experiment has run. Its Codex-leads-design methodology was
+applied prospectively instead: a real `mcp__codex__codex` call
+(thread `019f7c7c-b95d-7361-a190-3a7f89e9ef74`, `model_reasoning_effort:
+high`, `sandbox: read-only`) reviewed X.1/X.2 above and returned three
+concrete findings, all incorporated:
+
+1. **The single primary rung needs one more sibling to stay diagnostic of
+   H1 specifically, not just "Layer 1 helps."** Verbatim: *"reviewers may
+   ask whether the gain comes specifically from contradiction or from any
+   Layer-1 metadata bundle... the main table should include at least
+   `raw + Layer1-minus-contradiction` or `raw + contradiction-only`.
+   Otherwise H1 is diluted."* **Incorporated**: X.1's main-paper-load-
+   bearing rung is now a 3-point comparison, not 2: `raw Q1–Q4 only` vs.
+   `raw + Layer1-minus-contradiction` (calibration/stability/regime
+   features, no `C`) vs. `raw + full Layer1 (incl. contradiction)` — this
+   isolates §2.2's `C` signal specifically from the rest of the Layer 1
+   bundle, which the flat "raw vs. raw+Layer1" framing in the original
+   draft could not do.
+   2. **Confirmed, not new**: the leave-one-adapter/leave-one-ticker
+   robustness check already specified in §2.4's H1 robustness requirement
+   is independently the reviewer's top-priority missing ablation
+   ("more important than finer Q-field ablations... If only one pair or
+   ticker carries the effect, H1 is not model-agnostic"). No draft change
+   needed here — this is a genuine independent confirmation that §2.4 was
+   already right to require it, not a new addition.
+3. **Cuts/demotions to appendix-only**, all accepted: `Q3 values-only`
+   (underspecified without a fixed economic meaning), `Q4 without policy
+   metadata` (narrow, relevant only if policy metadata proves central to
+   L2.2 routing — re-promote only if L2.2 results show it matters),
+   `native-fields-only`/`derived-fields-only` (appendix-only — an
+   adapter-engineering diagnostic, closer to L1.1 than to a Layer-2
+   hypothesis test), and one of `Q2 without drivers`/`Q3 without evidence`
+   (redundant — keep one, drop the other; keep `Q3 without evidence` as
+   more directly load-bearing for the calibration story, drop `Q2 without
+   drivers`).
+
