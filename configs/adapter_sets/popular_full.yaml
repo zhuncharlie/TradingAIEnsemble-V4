@@ -1,5 +1,19 @@
 # configs/adapter_sets/popular_full.yaml
 #
+# *** DEPRECATED (Session 3, docs/adapter_management/ADAPTER_REGISTRY_MIGRATION_
+# REPORT.md) — kept as a legacy set, NOT deleted, NOT silently changed. ***
+# Despite its name, this file was never actually gated on a star-count threshold —
+# it excludes only `atlas` on a correctness basis (see below), so "popular" here
+# meant "broad, minus one known-corrupting adapter," not "stars >= 1000." This is
+# a real naming problem: 9 of this file's 25 adapters have fewer than 1000 stars
+# (agentictrading 350, alphaforge 402, deepalpha 10, earnmore 71, finagent 75,
+# finclaw n/a, prediction_arena 76, universal_portfolios 859, and finmem is
+# excluded from this set only in paper_core, not here — finmem itself is 927).
+# For an actual popularity-gated set, use `popular_1000_plus.yaml`. For a broad,
+# uncorrupted (atlas-excluded) comparison set matching THIS file's original
+# intent, this file remains valid and unchanged — its adapter list is preserved
+# exactly as before; only this header is new.
+#
 # Tier: POPULAR_FULL — extended_all minus the one adapter whose known
 # defect would silently corrupt any broad multi-adapter comparison rather
 # than merely underperform in it. Everything else stays, including

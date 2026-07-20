@@ -91,6 +91,46 @@ than what is structurally there).
 | **Intra-adapter Q2→Q4 self-referential violation** | The *same* adapter's own `Q2State` risk/volatility dimension is at the adapter-relative extreme threshold (as above) at step `t`, and that same adapter's next `PolicyDecisionStep` (t' > t, same policy) *increases* gross exposure (`sum(abs(target_weights))`) or reduces `cash`/`CASH` weight relative to step `t`, with no offsetting `explanation` referencing the risk state | `Action=BUY` co-occurring with `Risk=HIGH` in a single static snapshot (Session 1's own explicit non-example); a policy that reduces risk after flagging it |
 | **Intra-adapter action/logic inconsistency** | The adapter's own stated `decision_policy.decision_rule` (if present) is directly contradicted by the realized `action`/`target_weights` under that adapter's own documented rule (e.g. a stated "sell when signal < 0" rule with a positive signal but a SELL action) — evaluated only where a machine-checkable rule exists; not evaluated from free-text `explanation` | Any case requiring semantic judgment of free-text `explanation`/`bull_case`/`bear_case` — deliberately excluded to avoid fabricating a contradiction from prose interpretation |
 
+**Deterministic operationalization of three table cells the fresh blind
+review (thread `019f7e01-0fe6-7092-ad68-1b1f1f7e3e94`, question 2/8) found
+left implementer discretion — fixed now, not left to judgment at
+implementation time**:
+1. *"or equivalent open-vocabulary risk/volatility dimension"* (row 2): the
+   fixed, closed whitelist of `StateEstimate.dimension` string values that
+   count as the risk/volatility dimension for this rule is: `"risk"`,
+   `"volatility"`, `"downside_risk"`, `"tail_risk"`, `"uncertainty"` —
+   exact, case-insensitive string match only, no fuzzy/semantic matching.
+   Any other dimension string (e.g. `"sentiment"`, `"liquidity"`,
+   `"market_regime"`) does **not** count for this rule, even if it might
+   plausibly correlate with risk. This whitelist may be extended only
+   during the pilot stage, recorded once in `EXPERIMENT_DEPENDENCY_MAP.md`'s
+   pilot record, and frozen before validation — never extended after seeing
+   a validation or test result.
+2. *"with no offsetting `explanation` referencing the risk state"* (row 4):
+   **removed as a criterion.** The fresh review is right that "offsetting
+   explanation" requires semantic judgment of free text, which the
+   project's own next table row (row 5) explicitly excludes as a
+   contradiction-detection input to avoid fabricating a contradiction from
+   prose interpretation — row 4 cannot consistently use the criterion row 5
+   forbids. **Fix**: row 4's rule is now purely structural — the
+   exposure-increase/cash-reduction condition alone (with no
+   free-text-based override or exception) determines `C=1` for this class.
+   An adapter's own free-text justification for the increase may be
+   surfaced as `explanation`/evidence in a case-study write-up, but it never
+   changes the binary `C` label.
+3. *"evaluated only where a machine-checkable rule exists"* (row 5): a
+   `decision_policy.decision_rule` string counts as machine-checkable only
+   if it matches one of a fixed set of parseable templates, fixed at the
+   pilot stage before validation (e.g. `"{action} when {signal_field}
+   {comparator} {threshold}"` patterns with a numeric threshold and a
+   comparator in `{<, <=, >, >=, ==}`) — recorded in the pilot-stage record
+   as an explicit regex/parser spec, not decided ad hoc per adapter at
+   evaluation time. An adapter whose `decision_rule` does not match any
+   registered template contributes `C=0` for this class always (not
+   evaluated as "no rule" vs. "unparseable rule" — both mean the class
+   cannot fire for that adapter, a conservative default that never inflates
+   `C`).
+
 **Primary vs. secondary exposure (tightened after adversarial review, §8)**:
 a hostile review correctly flagged that leaving severity scoring
 "optionally scaled" reads as registered flexibility. Fix: **H1's primary
@@ -116,16 +156,38 @@ re-compute or adjust it after the pilot stage.
 
 ### 2.3 Operational "degraded forecast/policy quality" (`E`)
 
-- **Q1/Q3 (prediction quality)**: sign mismatch between the decision's
-  directional call (`action`/`direction`) and the realized sign of forward
-  return at the stated `context.horizon` (1d/5d/20d, per Session 1's
-  candidate horizons), computed strictly from data with timestamp >
-  `as_of`. Continuous variant: realized forward return times the decision's
-  directional sign (negative = wrong-way), for magnitude-sensitive tests.
-- **Q4 (policy quality)**: forward realized return of the
-  `PolicyDecisionStep.target_weights` (or `initial_weights` for
-  single-point policies) over the step's implied holding period, net of a
-  transaction-cost model (§ BASELINE_DESIGN.md / METRIC_DESIGN.md),
+**Primary outcome family, fixed now (added after the Session 3 fresh
+blind review, thread `019f7e01-0fe6-7092-ad68-1b1f1f7e3e94`, which found
+`E` "mixes Q1/Q3 directional error and Q4 policy degradation under one
+H1 without a clearly locked primary outcome family")**: H1's pooled
+headline test (§2.3.2) uses **only the Q1/Q3 prediction-quality variant**
+below as its primary `E`, because it is computable for every TIER-1
+adapter regardless of Q4 capability, keeping the pooled sample
+homogeneous. The Q4 policy-quality variant is a **separate, secondary
+robustness check**, run only on the Q4-capable subset, reported alongside
+but never pooled into the same headline model as the Q1/Q3 variant — mixing
+outcome types with different units and different eligible samples into one
+pooled coefficient would itself be a design flaw, not a strength.
+
+- **Q1/Q3 (prediction quality, primary)**: sign mismatch between the
+  decision's directional call (`action`/`direction`) and the realized sign
+  of forward return at the stated `context.horizon` (1d/5d/20d, per
+  Session 1's candidate horizons), computed strictly from data with
+  timestamp > `as_of`. Continuous variant: realized forward return times
+  the decision's directional sign (negative = wrong-way), for
+  magnitude-sensitive tests. **HOLD/NEUTRAL handling (fixed now, per the
+  fresh review's question 8)**: a decision with `action=HOLD` (and no
+  `Q3Signal.direction`, or `direction=NEUTRAL`) makes no directional call
+  and is therefore **excluded from the Q1/Q3 `E` computation entirely**
+  (not scored as correct, not scored as incorrect, not imputed) — only
+  decisions with a genuine directional call (`BUY`/`SELL` or
+  `LONG`/`SHORT`) enter the sign-mismatch test. This is symmetric with
+  §2.2's directional-conflict ontology class, which already excludes
+  HOLD from counting as a contradiction with BUY/SELL for the same reason.
+- **Q4 (policy quality, secondary robustness check only)**: forward realized
+  return of the `PolicyDecisionStep.target_weights` (or `initial_weights`
+  for single-point policies) over the step's implied holding period, net of
+  a transaction-cost model (§ BASELINE_DESIGN.md / METRIC_DESIGN.md),
   compared against a matched same-universe equal-weight baseline over the
   identical window (a relative, not absolute, degradation measure, to
   control for market-wide moves).
@@ -143,13 +205,28 @@ re-compute or adjust it after the pilot stage.
 
 A hostile-review pass (§8) found H1's original design — confidence-only vs.
 confidence+`C` — insufficient to distinguish "structural contradiction (§2.2)
-is special" from "any disagreement predicts errors, unsurprisingly." **H1's
-own nested-model test (§2.4) must therefore include these controls as
-required covariates/comparators, not optional extras**:
-- a **generic cross-adapter disagreement magnitude** term (e.g. entropy/
-  dispersion of raw directional votes, computed identically to L2.4's
-  entropy/dispersion baseline in `BASELINE_DESIGN.md` §4, but here as a
-  covariate inside H1's own model, not a separate downstream comparison);
+is special" from "any disagreement predicts errors, unsurprisingly." A
+second, fresh blind review (thread `019f7e01-0fe6-7092-ad68-1b1f1f7e3e94`,
+Task A of the Session 3 pre-pilot readiness pass) confirmed the risk
+persists specifically because §2.2's first ontology class ("cross-adapter
+directional conflict") is itself *a form of* disagreement, so the burden is
+on `C` to add information beyond a *precisely defined* disagreement score,
+not merely to be labeled differently. **H1's own nested-model test (§2.4)
+must therefore include these controls as required covariates/comparators,
+not optional extras**:
+- a **generic cross-adapter disagreement magnitude** term, precisely
+  defined (fixed now, per the fresh review's finding that "e.g.
+  entropy/dispersion" was underspecified): at each `(ticker, as_of,
+  horizon)` tuple, map every eligible adapter's directional call to
+  {-1, 0, +1} (SELL/SHORT=-1, HOLD/NEUTRAL=0, BUY/LONG=+1), form the
+  empirical distribution of these values across the eligible adapters
+  present at that tuple, and compute its **Shannon entropy in bits,
+  normalized by log2(3)** (the maximum possible entropy over a 3-outcome
+  distribution) to a fixed [0,1] scale. This is the one, sole, precisely-
+  specified disagreement-magnitude covariate for H1's own model — the
+  same construction is reused (not redefined) as L2.4's entropy baseline
+  in `BASELINE_DESIGN.md` §4, so the two are guaranteed identical by
+  construction, not merely "computed identically" by convention;
 - a **missingness/coverage indicator** (does the decision tuple have fewer
   eligible adapters present than the modal count — a low-coverage tuple can
   spuriously correlate with both `C` and `E`);
@@ -173,6 +250,25 @@ harder bar than the original design and is the direct fix for the
 "structural contradiction is not shown to be different from ordinary
 disagreement" critique.
 
+**Unit of analysis, fixed now (added after the fresh blind review's
+finding #9, thread `019f7e01-0fe6-7092-ad68-1b1f1f7e3e94`: "cross-adapter
+pairs can create many correlated rows from the same ticker/time/outcome,
+raising pseudo-replication risk")**: H1's primary pooled test (§2.3.2)
+uses **one row per `(ticker, as_of, horizon)` tuple**, not one row per
+adapter-pair. At each tuple, `C` is aggregated across every eligible
+adapter/adapter-pair present (`C=1` if **any** of §2.2's five classes
+fires for **any** eligible adapter or adapter-pair at that tuple; the
+generic-disagreement-magnitude covariate above is likewise computed once
+per tuple, across all eligible adapters' votes jointly, not per pair).
+This is the deliberate fix for pseudo-replication: multiple adapter pairs
+sharing the same underlying market outcome at the same tuple would
+otherwise inflate the effective sample size and understate variance if
+each pair contributed its own row. The **per-class breakdown** and any
+pair-level exploratory analysis (e.g. "which specific adapter pairs drive
+the tuple-level `C=1` flag most often") are explicitly secondary,
+tuple-conditional detail — never a second, competing unit of analysis for
+the headline pooled test.
+
 ### 2.3.2 Primary estimand: pooled, not stratum-cherry-picked (added after adversarial review, §8)
 
 The original design's H1 acceptance criterion ("significant in **at least
@@ -180,8 +276,12 @@ one** horizon × regime stratum") is **demoted to a secondary, exploratory,
 hypothesis-generating result.** **H1's primary, paper-headline acceptance
 criterion is now a single pooled test**: one nested model fit across all
 eligible (adapter-pair-or-adapter × regime × horizon) strata jointly, with
-adapter-pair and regime/horizon as fixed or random effects (decision left
-to the pilot stage, recorded before validation), testing the *pooled*
+the single adapter-pair effect term specified in §2.3.1 (default random
+effect/partial pooling, fixed-effect only if pilot-stage sparsity
+diagnostics justify it — the same term, not a second one; corrected here
+for consistency with §2.3.1) and regime/horizon as fixed or random effects
+(that specific choice, for regime/horizon only, is left to the pilot
+stage, recorded before validation), testing the *pooled*
 incremental-information coefficient on `C` (plus §2.3.1's controls). The
 per-stratum breakdown (with BH-FDR correction, §2.4) is reported
 *alongside* the pooled result as color/robustness detail, never
@@ -229,15 +329,31 @@ support on their own.
   any validation-stage result is seen. This procedure is the pre-registered
   artifact; the resulting number is a pilot-stage output, not a
   post-hoc-adjustable free parameter.
-- **Robustness requirement for H1 to be reported as supported**: the
-  incremental-information effect must (a) survive FDR correction in at
-  least one horizon and one regime stratum with adequate power, (b) not be
-  attributable to a single adapter pair or single ticker (checked via a
-  leave-one-adapter-out and leave-one-ticker-out sensitivity check), and
-  (c) be directionally consistent (not sign-flipping) across the strata
-  where it is significant. H1 explicitly tolerates *regime-conditional*
-  support (a qualified, not universal, positive result) — see Fallback
-  Claims below.
+- **Single, non-contradictory acceptance rule (rewritten after the fresh
+  blind review, thread `019f7e01-0fe6-7092-ad68-1b1f1f7e3e94`, which found
+  this bullet's original wording — "survive FDR correction in at least one
+  horizon and one regime stratum" — directly contradicted §2.3.2's pooled-
+  test-is-primary rule, an exploitable inconsistency, not a stylistic
+  one)**: **H1 is supported if, and only if, the pooled test (§2.3.2,
+  §2.3.1's controls included) is significant and clears the pilot-computed
+  practical-significance threshold below.** No per-stratum result, however
+  significant individually, can support H1 on its own — this sentence is
+  now the single, unqualified acceptance rule and supersedes any other
+  phrasing anywhere in this deliverable set (see `CLAIM_TO_EXPERIMENT_
+  MATRIX.md`'s matching H1 row and Fallback-table entry, kept in sync).
+  Once, and only once, the pooled test is significant, the following are
+  required **robustness checks on that already-significant pooled result**
+  (not alternative paths to significance): (a) not attributable to a single
+  adapter pair or single ticker (leave-one-adapter-out, leave-one-ticker-out
+  sensitivity checks on the pooled coefficient); (b) directionally
+  consistent (no sign flip) in the majority of individual (regime ×
+  horizon) strata large enough to be individually informative, even though
+  those strata are not BH-FDR-significance-tested for acceptance purposes;
+  (c) the secondary per-stratum breakdown (BH-FDR corrected, reported for
+  color/interpretability) may show the pooled effect is *stronger in some
+  regimes than others* — this is reported as regime-conditional nuance on
+  top of an already-supported H1, per Fallback Claims below, never as a
+  substitute for pooled significance.
 
 ### 2.4.1 Minimum coverage for H1 to remain claim-bearing (added after adversarial review, §8; simplified after a second research-refine-adapted pass, thread `019f7c8c-bf7c-7b23-b596-02cf2bba2264`)
 
@@ -283,7 +399,8 @@ one, now computed once rather than asserted twice.
 |---|---|
 | L2.1/L2.2 (fusion/routing) fail to beat baselines on raw return | H1 alone, if it holds, remains a complete, independent contribution per Session 1's `REFINED_CORE_CLAIM.md` design — report fusion/routing as negative/null decision-layer results, not as invalidating H1 |
 | Only downside-risk reduction holds (H3), not return improvement | Reframe the paper's decision-layer contribution as "a risk-management tool, not an alpha source" — an explicitly legitimate, pre-registered fallback framing, not a downgrade to be hidden |
-| H1 holds only in some regimes, not universally | Report as regime-conditional predictive validity (a qualified, not universal, form of H1) — still counts as support per §2.4's explicit tolerance for regime-conditional results |
+| The pooled test (§2.3.2, the sole acceptance path per §2.4) is significant, but the secondary per-stratum breakdown shows the effect is markedly stronger in some regimes/horizons than others | H1 is supported (the pooled test passed); report the per-stratum heterogeneity as regime-conditional nuance layered on top of an already-supported claim — **not** as a substitute for pooled significance. This row does **not** apply if the pooled test itself is not significant — see the next row |
+| The pooled test is **not** significant, but one or more individual strata are significant before/without FDR correction | **This is not a fallback path — H1 is not supported.** Per §2.4's single acceptance rule (rewritten after the Session 3 fresh blind review), an uncorrected or cherry-picked stratum-level result may never be reported as "H1 supported" under any framing, regime-conditional or otherwise; report the pooled null result honestly under the next row |
 | Calibration (Q2 diagnostic group L1.2) is poor project-wide, but `C`/coherence (L1.3) is still diagnostic | Supports Session 1's Candidate-2 framing that calibration and contradiction are different diagnostic axes — report both findings, do not let poor calibration be read as invalidating the contradiction result |
 | The eligible (TIER-1, see `DATA_SPLIT_PROTOCOL.md`) adapter subset is smaller than the full 26 | Scope every claim explicitly to "N adapters, M paradigms actually used in the historical main experiment" — never claim the full 26-adapter, 6+-paradigm scope if the eligible subset is smaller; see `ADAPTER_REGISTRY_REQUIREMENTS.md` for the eligibility gate |
 | Q4 projects are not fully comparable under one protocol | This is exactly why the Controlled Scientific Track (§4) exists; if even that track cannot produce a clean comparison for a given adapter pair, exclude that pair from the controlled comparison and report it only on the Native Capability Track with an explicit non-comparability caveat — never force an unfair comparison to hit a paper deadline |
@@ -458,9 +575,13 @@ on.
   class firing on a specific tuple at a specific `as_of`).
 - **Sample construction**: all TIER-1-eligible adapter pairs (cross-adapter
   classes) and all TIER-1 adapters individually (intra-adapter classes),
-  over the validation-window decision set (never the final test set for
-  ontology tuning — tuning must freeze on validation only, per §9's
-  causality rules).
+  one row per `(ticker, as_of, horizon)` tuple per §2.3.1's unit-of-
+  analysis fix, over the Calibration/Validation intervals (never the final
+  test set for ontology tuning — the ontology's definition is frozen before
+  any data is touched at all, per §2.2/§2.4, and its one adjustable
+  numeric threshold, if any, is fixed at the pilot stage on Calibration-
+  interval data, per `DATA_SPLIT_PROTOCOL.md` §1.1; corrected here — a
+  prior version of this bullet cited a nonexistent "§9").
 - **Baseline**: confidence-only model of `E` (§2.4's nested-model design
   *is* the baseline, not a separate system).
 - **Method**: §2.4's nested-model incremental-information test, block
@@ -584,9 +705,17 @@ assumed.
   accuracy) and, where a Q4 wrapper is added, on portfolio performance/risk
   (reusing L1.5's engine).
 - **Experimental unit**: one fused decision per `(ticker, as_of, horizon)`.
-- **Sample construction**: Controlled Scientific Track validation set for
-  weight-fitting (calibration weights are fit only on validation, never on
-  test, per §9); final test set for the one-shot evaluation.
+- **Sample construction**: L1.2's calibration curves are already fixed
+  (fit on the Calibration interval, per `DATA_SPLIT_PROTOCOL.md` §1) before
+  this group runs. L2.1's own fusion weights (which *combine* those
+  already-fixed calibration scores with §2.2's contradiction penalty into a
+  weighting formula) are the Layer 2 parameter being fit here, on the
+  Controlled Scientific Track's Validation interval only, never on test
+  (corrected — a prior version of this bullet's wording, "calibration
+  weights are fit only on validation," conflated L1.2's calibration fit
+  with L2.1's own fusion-weight fit and cited a nonexistent "§9"; see
+  `DATA_SPLIT_PROTOCOL.md` §1/§1.1 for the single corrected rule); final
+  test set for the one-shot evaluation.
 - **Baseline**: majority vote, equal-weight vote, raw-self-reported-
   confidence weighting, **TrustTrade-style cross-agent agreement weighting
   (non-negotiable per Session 1)**, **ContestTrade-style outcome-utility
@@ -623,8 +752,11 @@ assumed.
   Q4 policies as the routable candidate set.
 - **Target**: routed decision trajectory, evaluated via L1.5's engine.
 - **Experimental unit**: one routing decision per legal rebalance point.
-- **Sample construction**: router fit on validation only; final test is a
-  single held-out evaluation (§9).
+- **Sample construction**: router fit on the Validation interval only
+  (`DATA_SPLIT_PROTOCOL.md` §1); final test is a single held-out
+  evaluation (corrected — a prior version cited a nonexistent "§9"; the
+  final-test-touched-once rule lives in `DATA_SPLIT_PROTOCOL.md` §1's
+  "Untouched final test" row).
 - **Baseline**: random router, static global-best adapter, round-robin,
   regime-blind learned router, recent-performance router,
   **FineFT-style within-framework VAE-routing baseline retrained on this
@@ -664,15 +796,33 @@ assumed.
   adapter's Q2/Q4 risk adjustment) — a small, deliberately-scoped pair set,
   not a combinatorial sweep across all adapter pairs (cost control, see
   `RISK_AND_FAILURE_PLAN.md`).
-- **Baseline**: each source system's own native Q4 policy (fixed), equal-
-  weight blend.
+- **Baseline / attribution controls (synced from `CLAIM_TO_EXPERIMENT_
+  MATRIX.md`'s H6 row into this main protocol section — Task B4, Session
+  3)**: each source system's own native Q4 policy (fixed), equal-weight
+  blend, **plus four required attribution controls**, not optional:
+  `donor-Q1/Q3-only` (the donor's selection/ranking alone, no borrowed risk
+  module), `recipient-native-policy-only` (the recipient's own unmodified
+  policy), `shuffled-Q1/Q3 placebo` (the donor's Q1/Q3 output randomly
+  permuted across tickers/dates before recombination, breaking any real
+  signal while preserving its marginal distribution), and
+  `risk-module-only with neutral selection` (the recipient's Q2/Q4 risk
+  adjustment applied to a neutral/equal-weight selection instead of the
+  donor's real Q1/Q3 ranking). **"Q4-weak" status for candidate donor
+  systems must be defined ex ante** (e.g. via L1.5's audit) before pairs
+  are chosen, not post-hoc.
 - **Method**: causal recombination under the shared execution harness
   (`Q4_EXPERIMENT_REQUIREMENTS.md`); the Q1/Q3/Q4 decomposition must be
   well-defined and causal, not post-hoc signal stacking (Session 1's
   explicit condition for this to read as principled).
 - **Metric**: L1.5's performance+risk metrics.
 - **Expected evidence**: shadow policies outperform at least one of their
-  two source systems' native policies on a risk-adjusted basis.
+  two source systems' native policies on a risk-adjusted basis, **and**
+  outperform the `risk-module-only` control — **if the shadow policy beats
+  the native baselines but does not beat `risk-module-only`, the paper may
+  not claim the donor's Q1/Q3 information contributed incremental value**
+  (the gain would be indistinguishable from the risk module alone); this is
+  a hard, non-optional attribution requirement, not a nice-to-have
+  ablation.
 - **Failure interpretation**: if shadow recombination looks arbitrary/
   underprincipled, this is a framing failure Session 1's Codex reviewer
   explicitly warned about — the decomposition rule must be published

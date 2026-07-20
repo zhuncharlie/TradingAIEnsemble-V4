@@ -15,15 +15,50 @@ was modified to produce this document.
 |---|---|---|
 | **Train** (upstream) | Where each adapter's *own* model/policy was originally fit — outside this project's control for most adapters (pretrained LLMs, pre-trained factor models, RL policies trained by their own upstream repo). Recorded, not re-run, except where an adapter's own retraining is part of its native operation (e.g. skfolio's `WalkForward` refit, PGPortfolio's `rolling_train()`). | Upstream project code only — this protocol never trains an upstream model. |
 | **Calibration** | Fitting L1.2's calibration mapping (confidence → realized outcome) and any Layer 1 diagnostic threshold (e.g. the "adapter-relative extreme risk" threshold in `EXPERIMENT_PROTOCOL.md` §2.2). | L1.2's calibration curves, the contradiction ontology's adapter-relative thresholds. |
-| **Validation** | Fitting anything that is *itself* part of a Layer 2 method: L2.1's fusion weights, L2.2's router, L2.5's policy selector, L2.6's meta-model; also where H1's practical-significance threshold (`EXPERIMENT_PROTOCOL.md` §2.4) is fixed before test. | Fusion weights, router parameters, meta-model parameters, all pre-registered thresholds get their *numeric value* fixed here (their *definition* is already fixed in §2.2/§2.4, before any data is touched at all). |
+| **Validation** | Fitting anything that is *itself* part of a Layer 2 method: L2.1's fusion weights, L2.2's router, L2.5's policy selector, L2.6's meta-model. **Not** where H1's practical-significance threshold is fixed — that happens earlier, during the pilot stage on Calibration-interval data (§1.1); Validation is where the already-locked threshold is *applied* to the pooled H1 test. | Fusion weights, router parameters, meta-model parameters. Pre-registered thresholds/definitions (H1's ontology, §2.2/§2.4) are fixed before any data is touched at all; their pilot-computed *numeric value* (§1.1) is locked before Validation begins, not fit here. |
 | **Untouched final test** | One-shot evaluation of every claim (H1–H7) after everything above is frozen. | Nothing is fit here. Read-only evaluation only. |
 
-**Hard rule, non-negotiable**: calibrator fit, contradiction-threshold fit,
-router fit, and meta-model fit all happen **on validation only, never on
-test**. This is stated three times across this deliverable set
-(`EXPERIMENT_PROTOCOL.md` §2.4/§9, here, and `RISK_AND_FAILURE_PLAN.md`)
-deliberately, because it is the single most common way a paper's headline
-result silently becomes test-set-tuned.
+**Hard rule, non-negotiable (corrected — Session 3 protocol consistency
+audit, Task B1)**: a prior version of this sentence claimed "calibrator
+fit, contradiction-threshold fit, router fit, and meta-model fit all happen
+on validation only," which directly contradicted the table two lines above
+(which correctly assigns calibrator/threshold fitting to the **Calibration**
+interval, not Validation). The corrected, single rule, matching the table
+exactly: **confidence calibrators, adapter-relative risk thresholds, and
+Layer 1 diagnostic normalization are fit on the Calibration interval only;
+Layer 2 method parameters (fusion weights, router parameters, meta-model
+parameters, policy-selector hyperparameters) are fit on the Validation
+interval only; nothing is fit on the untouched final test interval, ever.**
+This is stated identically in `EXPERIMENT_PROTOCOL.md` §2.4/§9 and
+`RISK_AND_FAILURE_PLAN.md` — if any of those three files' wording still
+implies calibrator fitting happens on Validation rather than Calibration,
+that wording is stale and this paragraph is the corrected source of truth.
+
+### 1.1 How the "pilot stage" relates to these four intervals (added — Task B1)
+
+`EXPERIMENT_DEPENDENCY_MAP.md` defines four **process stages** (pilot →
+screening → full validation → final test) — a different axis from this
+section's four **data intervals** (train/calibration/validation/test).
+These were previously left unreconciled, which is what produced the
+apparent conflict between `EXPERIMENT_PROTOCOL.md` §2.4 ("the [H1 power/
+threshold] procedure... at the pilot stage... before the validation stage
+begins") and this file's old Validation-interval row (which read as if the
+threshold were fixed *during* the Validation interval). **Resolution,
+fixed now**: the pilot *stage* is a small-scale rehearsal that runs
+end-to-end machinery (including H1's power-analysis procedure,
+`EXPERIMENT_PROTOCOL.md` §2.4) on a small subset of the **Calibration
+interval's** data (never Validation, never Test) — chosen because the
+Calibration interval is exactly where this protocol's own threshold-fitting
+already lives (§1's table). The pilot stage's output (the locked
+practical-significance threshold, the locked minimum-coverage floor, the
+locked K for L1.2, the locked generic-disagreement-covariate formula
+choice where any remained open) is then carried forward and applied,
+unchanged, when the full Calibration-interval fitting and Validation-
+interval fitting later run at full scale. In interval terms: **the pilot
+stage never touches Validation or Test data at all** — it is entirely a
+small-scale, early rehearsal on (a subset of) Calibration-interval data,
+temporally and data-wise prior to both the full Calibration-interval fit
+and the Validation-interval fit, not a stage that runs "inside" Validation.
 
 ## 2. Cutoff definitions (schema-native, not invented)
 

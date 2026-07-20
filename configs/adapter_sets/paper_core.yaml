@@ -1,5 +1,23 @@
 # configs/adapter_sets/paper_core.yaml
 #
+# *** DEPRECATED (Session 3, docs/adapter_management/ADAPTER_REGISTRY_MIGRATION_
+# REPORT.md) — kept as a legacy set, NOT deleted, NOT silently changed. ***
+# This file's selection philosophy (reproducibility > methodological diversity >
+# paper relevance > popularity, per ADAPTER_SELECTION_REPORT.md §3, explicitly
+# NOT gated on any star threshold) remains a legitimate, distinct alternative to
+# the new Session-3-era popularity-first taxonomy and is NOT superseded outright —
+# but it should not be assumed equivalent to `controlled_scientific_core.yaml`,
+# which uses a stricter, differently-ordered rule (popularity gate is now a
+# non-negotiable AND-condition, not a lowest-priority tiebreaker) and additionally
+# requires point_in_time_class==R (this file's `finagent`/`tradingagents`/`fingpt`
+# entries are point_in_time_class L, and `deepalpha`/`finclaw`/`universal_
+# portfolios`/`alphaforge` are all below the new 1000-star gate) — 12 of this
+# file's 21 adapters would NOT pass controlled_scientific_core's stricter rule.
+# Use `controlled_scientific_core.yaml` for the new claim-bearing historical main
+# experiment; this file remains available for any future work that specifically
+# wants reproducibility/diversity-first selection over a strict popularity gate.
+# Adapter list preserved exactly as before; only this header is new.
+#
 # Tier: PAPER_CORE — the curated set recommended for the paper's main
 # experiment table (Layer 2 fusion methods M1-M4 and the headline Layer 1
 # diagnostics D1-D5 in docs/experiment_design/EXPERIMENT_PROTOCOL.md).

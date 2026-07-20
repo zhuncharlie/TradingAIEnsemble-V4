@@ -1,0 +1,54 @@
+# configs/adapter_sets/diagnostic_all.yaml
+#
+# Same membership as extended_all.yaml (all 26 production adapters, unfiltered) —
+# this file is the Session-3-era canonical name for Layer 1 diagnostic/audit-scope
+# experiments (docs/experiment_design/EXPERIMENT_PROTOCOL.md §5's L1.1-L1.5, §7's
+# X.1-X.4), matching that document's own "extended_all used for Layer 1 diagnostics"
+# language with a name that says what it's FOR, not just what it contains.
+#
+# extended_all.yaml is kept, unchanged, not deleted or deprecated — both files are
+# intentionally identical in membership; use whichever name reads better in context.
+# If the two ever need to diverge (e.g. a future adapter is added to one set's
+# intended use case but not the other), that divergence must be an explicit,
+# documented decision in docs/adapter_management/ADAPTER_REGISTRY_MIGRATION_REPORT.md,
+# not a silent drift between two files that look interchangeable.
+#
+# Includes every adapter this registry could not, or deliberately did not, integrate
+# further — narrow-scope, currently-BLOCKED/FAILED, or data-quality-caveated
+# adapters are all present, because characterizing the *whole* landscape (including
+# its failures) is exactly L1.1-L1.5's point. Never use this set for a Layer 2
+# claim-bearing headline comparison — use controlled_scientific_core.yaml for that.
+
+schema_version: "1.0.0"
+tier: diagnostic_all
+description: "All 26 production adapters, no filtering. Canonical set for Layer 1 (L1.1-L1.5) and cross-cutting (X.1-X.4) diagnostic/audit experiments."
+identical_to: "extended_all.yaml (see header — intentional, both kept)"
+parent_tier: null
+adapter_count: 26
+adapters:
+  - agentictrading
+  - ai_hedge_fund
+  - alphaforge
+  - alphagen
+  - atlas
+  - deepalpha
+  - deepdow
+  - earnmore
+  - finagent
+  - finbert
+  - finclaw
+  - fingpt
+  - finmem
+  - finrl
+  - finrl_x
+  - finrobot
+  - pgportfolio
+  - prediction_arena
+  - qlib
+  - quantmuse
+  - rdagent
+  - skfolio
+  - trademaster
+  - tradingagents
+  - universal_portfolios
+  - vibe_trading

@@ -22,7 +22,8 @@ Layer 1 basic diagnostics  ---------------------------------------------
                  |
                  v
 Layer 1 feature freeze  (L1.1-L1.5 outputs frozen; no further tuning against
-                          validation once L2 experiments begin, per §9's causality rules)
+                          validation once L2 experiments begin, per
+                          DATA_SPLIT_PROTOCOL.md §1's interval-fitting rule)
                  |
                  v
 Layer 2 simple baselines  (naive aggregation baselines inside L2.1;
@@ -53,7 +54,8 @@ Cross-cutting ablation and robustness (X.1, X.2, X.3, X.4)
         [[ HUMAN CHECKPOINT 3 — see §3 ]]  (explicit approval to touch final test)
                  |
                  v
-Frozen final test  (single evaluation pass, no re-tuning afterward — §9)
+Frozen final test  (single evaluation pass, no re-tuning afterward —
+                    DATA_SPLIT_PROTOCOL.md §1's "Untouched final test" row)
 ```
 
 **Note on L2.5**: it is listed both as its own optional group and as a
@@ -158,7 +160,7 @@ populated by every adapter, not new instrumentation.
 | **Pilot** | L1.1 complete; TIER-1 adapter roster finalized (`ADAPTER_REGISTRY_REQUIREMENTS.md`) | A small (single-digit-ticker, short-window) slice of every MUST-RUN Layer 1 group runs end-to-end without a schema/causality violation; K (L1.2), the practical-significance threshold (§2.4 of `EXPERIMENT_PROTOCOL.md`), and per-group cost estimates are all fixed and recorded **before** the screening stage begins — none of these may be adjusted after seeing screening-stage results |
 | **Screening** | Pilot exit criteria met | Every Layer 1 group (L1.1–L1.5) completes on the full validation-window decision set; Checkpoint 1 passed |
 | **Full validation** | Screening exit criteria met; Layer 1 feature freeze declared | Every MUST-RUN Layer 2 group (L2.1–L2.4) and the required NICE-TO-HAVE baseline machinery (L2.5) complete on validation; cross-cutting ablations (X.1–X.4) complete on validation; Checkpoint 2 passed |
-| **Final test** | Full validation exit criteria met; Checkpoint 3 explicitly granted by a human | A single, one-shot evaluation of the frozen (post-freeze) fusion/routing/intervention configurations on the untouched final test set — **no further tuning after this point, regardless of result** (§9's causality/no-peeking rule) |
+| **Final test** | Full validation exit criteria met; Checkpoint 3 explicitly granted by a human | A single, one-shot evaluation of the frozen (post-freeze) fusion/routing/intervention configurations on the untouched final test set — **no further tuning after this point, regardless of result** (`DATA_SPLIT_PROTOCOL.md` §1's causality/no-peeking rule; corrected here — a prior version cited a nonexistent "§9" of this file) |
 
 ## 7. What this map deliberately does not decide
 

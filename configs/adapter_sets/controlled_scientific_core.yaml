@@ -1,0 +1,69 @@
+# configs/adapter_sets/controlled_scientific_core.yaml
+#
+# The candidate set for the paper's main, claim-bearing historical experiment on the
+# Controlled Scientific Track (docs/experiment_design/EXPERIMENT_PROTOCOL.md §4;
+# docs/experiment_design/DATA_SPLIT_PROTOCOL.md §5's TIER_1).
+#
+# Membership requires ALL of:
+#   1. stars_snapshot >= 1000            (popularity_gate_1000 == true)
+#   2. live_status == PASSED             (not FAILED, not BLOCKED)
+#   3. point_in_time_class == R          (historically replay-capable, not
+#                                          live/current-context-bound)
+#   4. no adapter-specific replay-breaking caveat recorded in notes/execution_class
+#      (excludes vibe_trading: execution_class STEPWISE_UNSUPPORTED — a frozen,
+#      pre-computed decision matrix replayed once, not independently regenerable per
+#      causal step, per Q4_EXPERIMENT_REQUIREMENTS.md's sequential-call requirement)
+#
+# Derivation: mechanical filter on adapter_registry.yaml's controlled_track_eligible == true.
+# Full per-adapter exclusion reasoning: docs/adapter_management/ADAPTER_REGISTRY_MIGRATION_REPORT.md.
+#
+# *** KNOWN, DISCLOSED LIMITATION — READ BEFORE USE ***
+# This set has ZERO Q1 (Action) coverage. Every popular+live-PASSED+historically-
+# replayable adapter that answers Q1 either does not exist, or the Q1-capable
+# adapters are all point_in_time_class L (ai_hedge_fund, finrobot, tradingagents,
+# finbert-for-Q2) or currently non-live (finagent: FAILED, finmem: BLOCKED and
+# below the star threshold). This materially constrains EXPERIMENT_PROTOCOL.md
+# §2.2's "Cross-adapter directional conflict" and "Intra-adapter Q1/Q3 direction
+# mismatch" ontology classes when evaluated on this set alone — see
+# docs/adapter_management/ADAPTER_REGISTRY_MIGRATION_REPORT.md §4 and
+# docs/experiment_design/PILOT_PROTOCOL_DRAFT.md for how the pre-pilot handles this
+# (a flagged, disclosed exception, not a silent one).
+
+schema_version: "1.0.0"
+derived_from: "configs/adapter_registry.yaml (snapshot_date 2026-07-19)"
+selection_rule: "popularity_gate_1000 AND live_status==PASSED AND point_in_time_class==R AND no disqualifying execution-caveat"
+count: 8
+
+q_coverage_of_this_set:
+  q1: []                     # KNOWN GAP — see header
+  q2: [finrl_x]
+  q3: [alphagen, finrl_x, qlib, rdagent]
+  q4: [deepdow, finrl, finrl_x, qlib, skfolio, trademaster]
+
+paradigm_diversity:
+  rl_deep_rl: [alphagen, finrl, trademaster]
+  rl_deep_rl_regime_switching: [finrl_x]
+  deep_learning_portfolio_allocation: [deepdow]
+  gradient_boosted_ml: [qlib]
+  research_loop_automated_hypothesis: [rdagent]
+  classical_optimization: [skfolio]
+
+adapters:
+  - alphagen
+  - deepdow
+  - finrl
+  - finrl_x
+  - qlib
+  - rdagent
+  - skfolio
+  - trademaster
+
+excluded_from_popular_1000_plus:
+  - {name: ai_hedge_fund, reason: "point_in_time_class L — current-context-bound, cannot be honestly backfilled to a historical date"}
+  - {name: finbert, reason: "point_in_time_class L — yfinance current-headlines-only, not a point-in-time news archive"}
+  - {name: fingpt, reason: "live_status FAILED (conda env error) AND point_in_time_class L"}
+  - {name: finrobot, reason: "point_in_time_class L"}
+  - {name: pgportfolio, reason: "live_status BLOCKED (dead Poloniex API HTTP 410 + transient yfinance rate limit) — offline unit tests pass, but not live-runnable today"}
+  - {name: quantmuse, reason: "point_in_time_class L"}
+  - {name: tradingagents, reason: "live_status FAILED (280s LLM-latency timeout, not a capability defect) AND point_in_time_class L"}
+  - {name: vibe_trading, reason: "execution_class STEPWISE_UNSUPPORTED — batch-replayed decision matrix, cannot be independently regenerated per causal rolling step; point_in_time_class is nominally R but with this disqualifying caveat"}
