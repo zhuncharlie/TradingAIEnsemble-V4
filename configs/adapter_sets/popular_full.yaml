@@ -1,0 +1,52 @@
+# configs/adapter_sets/popular_full.yaml
+#
+# Tier: POPULAR_FULL — extended_all minus the one adapter whose known
+# defect would silently corrupt any broad multi-adapter comparison rather
+# than merely underperform in it. Everything else stays, including
+# currently-BLOCKED/FAILED and low-coverage adapters, because their
+# weaknesses show up honestly as bad numbers (reportable) rather than as
+# silently-wrong data (not reportable as a fair comparison).
+#
+# Excluded (1): atlas — bundled dataset is crypto-perpetuals only
+#   (2021-11-06..2024-08-14); on any non-crypto ticker it silently reports
+#   the same BTCUSDT signal mislabeled under the requested ticker name
+#   (self-disclosed by the adapter). Including it in a comparison over the
+#   standard equity/ETF universe would inflate N with 10 copies of one
+#   signal, which is a correctness bug in the comparison, not a
+#   performance weakness of atlas itself. atlas remains fully eligible for
+#   any crypto-scoped comparison and for extended_all's diagnostic use.
+#
+# See docs/adapter_management/ADAPTER_SELECTION_REPORT.md §3 for the full
+# per-adapter reasoning.
+
+schema_version: "1.0.0"
+tier: popular_full
+description: "extended_all minus atlas (crypto-mislabeling on non-crypto tickers — a correctness issue for a broad equity/ETF comparison, not a popularity/quality filter)."
+parent_tier: extended_all
+adapter_count: 25
+adapters:
+  - agentictrading
+  - ai_hedge_fund
+  - alphaforge
+  - alphagen
+  - deepalpha
+  - deepdow
+  - earnmore
+  - finagent
+  - finbert
+  - finclaw
+  - fingpt
+  - finmem
+  - finrl
+  - finrl_x
+  - finrobot
+  - pgportfolio
+  - prediction_arena
+  - qlib
+  - quantmuse
+  - rdagent
+  - skfolio
+  - trademaster
+  - tradingagents
+  - universal_portfolios
+  - vibe_trading

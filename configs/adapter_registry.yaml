@@ -1,0 +1,629 @@
+# configs/adapter_registry.yaml
+#
+# Registry of all 26 production adapters under adapters/*.py.
+# (example_stub_adapter.py excluded — reference stub, not a deliverable.)
+#
+# Provenance rule for every field below: populated only from (a) direct
+# grep of adapters/*.py source (`upstream_repo`, `requires_env`,
+# `questions_answered`), (b) a live GitHub REST API snapshot taken during
+# this design pass (stars/forks/license/pushed_at), or (c) explicit
+# statements inside an adapter's own module docstring (paper citations,
+# category description, cost signal). Nothing here is inferred from
+# general/world knowledge not stated in-repo — see
+# docs/adapter_management/ADAPTER_SELECTION_REPORT.md §0 for the one
+# specific case (`trademaster`) where a plausible-sounding external paper
+# citation was deliberately excluded because it isn't stated in the file.
+#
+# stars_snapshot: live GitHub API pull, this design pass (dated below).
+# live_status: results/unified_harness/unified_harness_summary.json,
+#   run unified_harness_2026_07_18, as_of=2024-01-15, universe AAPL/MSFT/NVDA.
+# point_in_time_class: R (replay-capable, arbitrary historical as_of) or
+#   L (live/current-context-bound, cannot be honestly backfilled to a
+#   historical date without fabricating information context) — per
+#   docs/experiment_design/DATA_SPLIT_PROTOCOL.md §1. This is the closest
+#   existing, already-verified proxy for "point-in-time status" and is
+#   reused here rather than re-derived, per CLAUDE.md's instruction not to
+#   silently duplicate an existing classification.
+# cost_tier: LOW (CPU-only, no paid API, no heavy local training),
+#   MEDIUM (local compute-heavy: GPU/CPU model training or GPU inference,
+#   no recurring paid API cost), HIGH (requires a paid external LLM API
+#   call per invocation — recurring $ cost that scales with usage,
+#   independent of local compute needs).
+
+schema_version: "1.0.0"
+snapshot_date: "2026-07-19"
+snapshot_source: "live GitHub REST API (api.github.com/repos/{owner}/{repo}), this design pass"
+adapter_count: 26
+excluded_from_roster:
+  - name: "Alpha-GFN"
+    reason: "deferred, demo-level — never reached adapter status (ADAPTER_CAPABILITY_RECOVERY.md)"
+  - name: "real NoFx (NoFxAiOS/nofx)"
+    reason: "rejected — requires live brokerage/exchange account credentials, disqualifying per project security policy; QuantMuse substituted instead (see adapters/quantmuse_adapter.py docstring)"
+
+adapters:
+
+  - name: agentictrading
+    github: https://github.com/Open-Finance-Lab/AgenticTrading
+    stars_snapshot: 350
+    forks: 92
+    license: NOASSERTION
+    last_pushed: "2026-07-18"
+    commit: "HEAD of default branch as of snapshot_date (no pinned commit recorded in adapter source)"
+    paper: null
+    q_coverage: [Q4]
+    category: classical_optimization
+    cost_tier: LOW
+    requires_env: agentictrading_real
+    live_status: PASSED
+    point_in_time_class: L
+    latency_sec_observed: 13.7
+    execution_class: STATIC_ONLY
+    notes: >
+      Native coverage rated 极低 (very low) in PROJECT_SCHEMA_AUDIT.md §7 —
+      real mean-variance/tangency weights are produced but most of the
+      upstream project's own surface is unexposed. One-shot allocation only
+      (no per-step trajectory exists upstream); grouped into point-in-time
+      Class L because it has no historical-replay mechanism, not because it
+      depends on live news.
+
+  - name: ai_hedge_fund
+    github: https://github.com/virattt/ai-hedge-fund
+    stars_snapshot: 62273
+    forks: 10958
+    license: MIT
+    last_pushed: "2026-07-18"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q1]
+    category: llm_agent_hybrid_rule_based
+    cost_tier: HIGH
+    requires_env: ai_hedge_fund_real
+    live_status: PASSED
+    point_in_time_class: L
+    latency_sec_observed: 14.2
+    execution_class: null
+    notes: >
+      Only the portfolio_manager stage is a real paid LLM call (DeepSeek);
+      technical_analyst is rule-based, not LLM-driven. Second-highest star
+      count in the roster.
+
+  - name: alphaforge
+    github: https://github.com/DulyHao/AlphaForge
+    stars_snapshot: 402
+    forks: 91
+    license: null
+    last_pushed: "2024-09-01"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: "AAAI 2025 — \"AlphaForge: A Framework to Mine and Dynamically Combine Formulaic Alpha Factors\" (cited in adapter docstring)"
+    q_coverage: [Q3]
+    category: ga_evolutionary_factor_mining
+    cost_tier: MEDIUM
+    requires_env: alphaforge_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 41.3
+    execution_class: null
+    notes: >
+      Wraps real GP-discovery + upstream AlphaPool linear-combination stage;
+      the paper's full dynamic-reweighting stage is not reproduced
+      (disclosed scope reduction, not silent).
+
+  - name: alphagen
+    github: https://github.com/ICT-FinD-Lab/alphagen
+    stars_snapshot: 1159
+    forks: 314
+    license: null
+    last_pushed: "2026-06-04"
+    commit: "HEAD of default branch as of snapshot_date (repo ID 510600247 — org-transferred from RL-MLDM to ICT-FinD-Lab, same continuous history back to 2022-07-05, verified live)"
+    paper: "KDD 2023 — \"Generating Synergistic Formulaic Alpha Collections via Reinforcement Learning\", arXiv:2306.12964 (cited in adapter docstring; repo self-identifies as the paper's own code)"
+    q_coverage: [Q3]
+    category: rl_deep_rl
+    cost_tier: MEDIUM
+    requires_env: alphagen_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 115.1
+    execution_class: null
+    notes: "RL search (MaskablePPO) over an alpha-expression grammar, distinct from GA/GP-based alpha mining (alphaforge, atlas, finclaw)."
+
+  - name: atlas
+    github: https://github.com/Yitong-Guo/Genetic-Algorithm-for-quantitative-alpha-factors-mining
+    stars_snapshot: 35
+    forks: 5
+    license: null
+    last_pushed: "2024-09-03"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q3]
+    category: ga_evolutionary_factor_mining
+    cost_tier: MEDIUM
+    requires_env: atlas_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 37.5
+    execution_class: null
+    notes: >
+      CRITICAL DATA-QUALITY CAVEAT: bundled dataset is crypto-perpetuals
+      only (2021-11-06..2024-08-14). Any non-crypto (equity/ETF) ticker
+      requested causes the adapter to silently report the same BTCUSDT
+      signal mislabeled under the requested ticker (self-disclosed by the
+      adapter in supporting_evidence, not a harness fabrication). Do not
+      treat atlas's per-ticker output as independent observations outside
+      a crypto-only universe — see DATA_SPLIT_PROTOCOL.md §1 for the
+      canonical caveat text.
+
+  - name: deepalpha
+    github: https://github.com/LeoRigasaki/stock-market-prediction-engine
+    stars_snapshot: 10
+    forks: 7
+    license: null
+    last_pushed: "2026-03-11"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q1, Q3]
+    category: gradient_boosted_ml
+    cost_tier: MEDIUM
+    requires_env: deepalpha_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 18.0
+    execution_class: null
+    notes: >
+      Smallest/most obscure repo in the roster (10 stars). Flagged in the
+      pilot study (reports/icaif_experiments/) as the top contradiction
+      offender and a miscalibrated high-confidence adapter (naive
+      confidence-weighted fusion underperformed majority vote, traced to
+      this adapter dominating the weighted average) — re-verification is
+      D2/D4's job under the current protocol, not assumed here.
+
+  - name: deepdow
+    github: https://github.com/jankrepl/deepdow
+    stars_snapshot: 1173
+    forks: 168
+    license: Apache-2.0
+    last_pushed: "2024-01-24"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q4]
+    category: deep_learning_portfolio_allocation
+    cost_tier: MEDIUM
+    requires_env: deepdow_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 42.8
+    execution_class: FROZEN_LEARNED_POLICY
+    notes: "GreatNet architecture from upstream's own tutorial example; narrow-scope by design (single architecture, not a general framework survey)."
+
+  - name: earnmore
+    github: https://github.com/DVampire/EarnMore
+    stars_snapshot: 71
+    forks: 26
+    license: MIT
+    last_pushed: "2024-02-27"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q4]
+    category: rl_deep_rl
+    cost_tier: MEDIUM
+    requires_env: earnmore_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 60.1
+    execution_class: FROZEN_LEARNED_POLICY
+    notes: >
+      Bundled dataset fixed to 2008-09-01..2009-03-01 (crisis-era) — the
+      only adapter in the roster reaching the 2008 GFC window, valuable for
+      Ro3-style event stress testing. Real sector-membership masking is
+      statistical, not absolute (disclosed).
+
+  - name: finagent
+    github: https://github.com/DVampire/FinAgent
+    stars_snapshot: 75
+    forks: 26
+    license: MIT
+    last_pushed: "2024-08-31"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q1, Q4]
+    category: llm_agent_online_adaptive
+    cost_tier: HIGH
+    requires_env: finagent_real
+    live_status: FAILED
+    point_in_time_class: L
+    latency_sec_observed: 280.0
+    execution_class: ONLINE_ADAPTIVE_POLICY
+    notes: >
+      FAILED in the most recent unified_harness run on a 280s timeout
+      (LLM-latency-bound, not a capability failure). Memory/reflection
+      subsystem structurally BLOCKED — needs an embeddings-capable
+      credential not currently available. Single-asset scope only.
+
+  - name: finbert
+    github: https://github.com/ProsusAI/finBERT
+    stars_snapshot: 2187
+    forks: 533
+    license: Apache-2.0
+    last_pushed: "2022-09-09"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q2]
+    category: sentiment_nlp
+    cost_tier: LOW
+    requires_env: finbert_real
+    live_status: PASSED
+    point_in_time_class: L
+    latency_sec_observed: 31.5
+    execution_class: null
+    notes: >
+      CPU-only pretrained-model inference, no training, no paid API — but
+      point_in_time_class is L (not R) because its headline source is
+      yfinance's *current* headlines only, not a point-in-time news
+      archive; pairing today's headlines with a historical decision date
+      would violate causality. Would be promotable to Class R if a
+      point-in-time news source is ever wired in.
+
+  - name: finclaw
+    github: "https://pypi.org/project/finclaw-ai/  (nominal GitHub repo NeuZhou/finclaw is now vaporware/marketing-only — see notes)"
+    stars_snapshot: null
+    forks: null
+    license: AGPL-3.0
+    last_pushed: "2026-04-10 (latest PyPI release 5.6.1, per PyPI upload metadata — not a GitHub pushed_at date)"
+    commit: "finclaw_ai==5.6.1 (PyPI sdist, inspected directly)"
+    paper: null
+    q_coverage: [Q3, Q4]
+    category: ga_evolutionary_factor_mining
+    cost_tier: MEDIUM
+    requires_env: finclaw_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 180.8
+    execution_class: STATIC_ONLY
+    notes: >
+      No GitHub star count available — distributed via PyPI, not GitHub.
+      The project's own GitHub repo (NeuZhou/finclaw) was pivoted into a
+      README-only marketing page on 2026-04-17, one week after the PyPI
+      5.6.1 release this adapter actually wraps (real, 88,606-line,
+      AGPL-3.0-licensed source, inspected directly, not just its rendered
+      PyPI description). 74-field native StrategyDNA is mostly unexposed
+      as Q4 (documented compression loss). One-shot artifact only
+      (STATIC_ONLY, no per-step trajectory).
+
+  - name: fingpt
+    github: https://github.com/AI4Finance-Foundation/FinGPT
+    stars_snapshot: 20912
+    forks: 2969
+    license: MIT
+    last_pushed: "2026-07-18"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q2]
+    category: sentiment_nlp
+    cost_tier: MEDIUM
+    requires_env: fingpt_real
+    live_status: FAILED
+    point_in_time_class: L
+    latency_sec_observed: 89.6
+    execution_class: null
+    notes: >
+      FinGPT v3.1 (ChatGLM2-6B LoRA) — local GPU inference (12GB fp16, no
+      8-bit quantization), no paid API, no training. FAILED in the most
+      recent unified_harness run on a conda-env error — investigate before
+      relying on live status for this adapter. No confidence reported (no
+      logits captured in the current wrapper).
+
+  - name: finmem
+    github: https://github.com/pipiku915/FinMem-LLM-StockTrading
+    stars_snapshot: 927
+    forks: 192
+    license: MIT
+    last_pushed: "2024-08-18"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q1]
+    category: llm_agent_memory_reflection
+    cost_tier: HIGH
+    requires_env: finmem_real
+    live_status: BLOCKED
+    point_in_time_class: L
+    latency_sec_observed: 48.7
+    execution_class: null
+    notes: >
+      Live path structurally BLOCKED — 401 on the OpenAI-compatible
+      embeddings endpoint required by the real memory/reflection subsystem;
+      offline-only currently. Q4 not claimed (upstream Portfolio object has
+      no cash field, so target_weights isn't derivable).
+
+  - name: finrl
+    github: https://github.com/AI4Finance-Foundation/FinRL
+    stars_snapshot: 15767
+    forks: 3438
+    license: MIT
+    last_pushed: "2026-07-13"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q4]
+    category: rl_deep_rl
+    cost_tier: MEDIUM
+    requires_env: finrl_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 62.9
+    execution_class: "FROZEN_LEARNED_POLICY (reclassified for stepwise path; legacy q4_policy() keeps its original ROLLING_OPTIMIZER label)"
+    notes: >
+      No pretrained weights by design — trained fresh each session
+      (TOTAL_TIMESTEPS=3000, scaled down from paper-scale tens/hundreds of
+      thousands, disclosed scope reduction).
+
+  - name: finrl_x
+    github: https://github.com/AI4Finance-Foundation/FinRL-Trading
+    stars_snapshot: 3455
+    forks: 1037
+    license: Apache-2.0
+    last_pushed: "2026-05-02"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q2, Q3, Q4]
+    category: rl_deep_rl_regime_switching
+    cost_tier: MEDIUM
+    requires_env: finrl_x_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 206.4
+    execution_class: "FROZEN_LEARNED_POLICY (reclassified for stepwise path, same reasoning as finrl)"
+    notes: >
+      Only adapter in the roster answering Q2+Q3+Q4 simultaneously.
+      Dynamic universe selection (ML-selected top-25% of 8 tickers) is real
+      but not caller-configurable. Single-core CPU-affinity workaround
+      required to avoid a real SIGSEGV in the training path.
+
+  - name: finrobot
+    github: https://github.com/AI4Finance-Foundation/FinRobot
+    stars_snapshot: 7600
+    forks: 1283
+    license: Apache-2.0
+    last_pushed: "2026-07-07"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q1, Q2]
+    category: llm_agent_multi_agent_debate
+    cost_tier: HIGH
+    requires_env: finrobot_real
+    live_status: PASSED
+    point_in_time_class: L
+    latency_sec_observed: 34.5
+    execution_class: null
+    notes: >
+      <15% field coverage per Q (PROJECT_SCHEMA_AUDIT.md §7) — final
+      analysis often only recoverable from the AutoGen chat transcript, not
+      structured fields. Q1 is DERIVED (best-effort keyword extraction from
+      prose, None if no clear signal), not a native structured output. No
+      Q4 despite the framework's broader scope.
+
+  - name: pgportfolio
+    github: https://github.com/ZhengyaoJiang/PGPortfolio
+    stars_snapshot: 1849
+    forks: 758
+    license: GPL-3.0
+    last_pushed: "2021-10-09"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q4]
+    category: deep_learning_portfolio_allocation
+    cost_tier: MEDIUM
+    requires_env: pgportfolio_real
+    live_status: BLOCKED
+    point_in_time_class: R
+    latency_sec_observed: 280.0
+    execution_class: FROZEN_LEARNED_POLICY
+    notes: >
+      Live path BLOCKED — real Poloniex API is permanently dead (HTTP 410),
+      yfinance substitution used but currently rate-limited (transient,
+      external). Offline/unit stepwise tests pass 11/11 without live data.
+      Crypto-only upstream domain (BTC-USD/ETH-USD substituted).
+
+  - name: prediction_arena
+    github: https://github.com/Metaculus/forecasting-tools
+    stars_snapshot: 76
+    forks: 32
+    license: MIT
+    last_pushed: "2026-07-18"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: "arXiv:2604.07355 — \"Prediction Arena: Benchmarking AI Models on Real-World Prediction Markets\" — CAVEAT: this paper's own code was never released; the adapter instead wraps Metaculus/forecasting-tools + Kalshi as the closest verified real substitute, per the adapter's own documented repo-search. Do not present this as the paper's official code."
+    q_coverage: [Q2]
+    category: forecasting_prediction_market
+    cost_tier: HIGH
+    requires_env: prediction_arena_real
+    live_status: PASSED
+    point_in_time_class: L
+    latency_sec_observed: 29.9
+    execution_class: null
+    notes: "Name matches a real benchmark paper but wraps a different, substitute codebase — see paper field caveat."
+
+  - name: qlib
+    github: https://github.com/microsoft/qlib
+    stars_snapshot: 46410
+    forks: 7391
+    license: MIT
+    last_pushed: "2026-04-22"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q3, Q4]
+    category: gradient_boosted_ml
+    cost_tier: MEDIUM
+    requires_env: qlib_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 61.7
+    execution_class: FROZEN_LEARNED_POLICY
+    notes: >
+      Point-in-time train/test split with no lookahead verified directly
+      (DECISIONS.md, 2026-07-05 entry). Deliberately avoids the
+      qlib==0.0.2.dev20 / baostock dependency chain by feeding real
+      yfinance OHLCV through upstream's own documented external-pipeline
+      path — never triggers the Qlib live-download import.
+
+  - name: quantmuse
+    github: https://github.com/0xemmkty/QuantMuse
+    stars_snapshot: 2793
+    forks: 584
+    license: MIT
+    last_pushed: "2025-07-29"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q2, Q3]
+    category: llm_fusion_quant
+    cost_tier: HIGH
+    requires_env: "nofx_real  (KNOWN INCONSISTENCY: adapter file/class/name were renamed nofx -> quantmuse to match the actual upstream, but the requires_env literal string was not updated in source — not a fabrication, a recorded loose end)"
+    live_status: PASSED
+    point_in_time_class: L
+    latency_sec_observed: 39.4
+    execution_class: null
+    notes: >
+      Originally filed under adapters/nofx_adapter.py targeting a different
+      project (NoFxAiOS/nofx) that was rejected for requiring live
+      brokerage/exchange credentials (disqualifying per project security
+      policy); QuantMuse substituted as the closest real match and the file
+      renamed. Adapter patches a hardcoded gpt-3.5-turbo default in
+      upstream's SentimentAnalyzer to support a configurable model
+      (patches/QuantMuse.diff).
+
+  - name: rdagent
+    github: https://github.com/microsoft/RD-Agent
+    stars_snapshot: 13944
+    forks: 1773
+    license: MIT
+    last_pushed: "2026-07-16"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q3]
+    category: research_loop_automated_hypothesis
+    cost_tier: HIGH
+    requires_env: rdagent_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 98.9
+    execution_class: null
+    notes: >
+      Genuine multi-turn LLM research loop (propose -> implement -> evaluate
+      -> iterate via real subprocess-executed generated code), distinct
+      from every other Q3 mechanism in the roster (GP/GA-based, RL-based,
+      or single-call). max_loop=2 bounded here (upstream unbounded) —
+      disclosed scope reduction for cost/latency.
+
+  - name: skfolio
+    github: https://github.com/skfolio/skfolio
+    stars_snapshot: 2046
+    forks: 214
+    license: BSD-3-Clause
+    last_pushed: "2026-07-15"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q4]
+    category: classical_optimization
+    cost_tier: LOW
+    requires_env: skfolio_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 15.9
+    execution_class: STEPWISE
+    notes: "ROLLING_OPTIMIZER via a real WalkForward cross-validator (test_size=REBALANCE_PERIOD_DAYS); narrow-scope by design (single algorithm family, not a framework survey)."
+
+  - name: trademaster
+    github: https://github.com/TradeMaster-NTU/TradeMaster
+    stars_snapshot: 2933
+    forks: 545
+    license: Apache-2.0
+    last_pushed: "2025-06-04"
+    commit: "1747cc18db3fe2639af12defc80e138c51a625c0 (2025-06-04, per adapter docstring — this is the only adapter in the roster with a pinned vendor commit stated in-file)"
+    paper: null
+    q_coverage: [Q4]
+    category: rl_deep_rl
+    cost_tier: MEDIUM
+    requires_env: trademaster_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 45.4
+    execution_class: FROZEN_LEARNED_POLICY
+    notes: >
+      Wraps exactly ONE real algorithm+task-type pair
+      (portfolio_management/EIIE) out of TradeMaster's much larger
+      multi-paradigm framework (also ships algorithmic_trading,
+      high_frequency_trading, order_execution paradigms, not wrapped here —
+      disclosed, not implied as full coverage). Bundled dataset fixed to
+      real DJ30 2021-01-04..2021-12-31 (NVDA absent, JNJ substituted).
+      CAVEAT: a plausible NeurIPS 2023 / arXiv:2310.08144 paper association
+      for TradeMaster exists in the broader literature but is NOT stated in
+      this adapter's own docstring — deliberately left out of the `paper`
+      field per this registry's provenance rule; see
+      ADAPTER_SELECTION_REPORT.md §0.
+
+  - name: tradingagents
+    github: https://github.com/TauricResearch/TradingAgents
+    stars_snapshot: 93683
+    forks: 18111
+    license: Apache-2.0
+    last_pushed: "2026-07-18"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q1, Q2]
+    category: llm_agent_multi_agent_debate
+    cost_tier: HIGH
+    requires_env: tradingagents_real
+    live_status: FAILED
+    point_in_time_class: L
+    latency_sec_observed: 280.0
+    execution_class: null
+    notes: >
+      Highest star count in the entire 26-adapter roster (93.7k — viral
+      popularity). FAILED in the most recent unified_harness run on a 280s
+      timeout (LLM-latency-bound: real Bull/Bear debate + judge calls), not
+      a capability or correctness issue.
+
+  - name: universal_portfolios
+    github: https://github.com/Marigold/universal-portfolios
+    stars_snapshot: 859
+    forks: 222
+    license: NOASSERTION
+    last_pushed: "2026-07-10"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q4]
+    category: classical_optimization
+    cost_tier: LOW
+    requires_env: universal_portfolios_real
+    live_status: PASSED
+    point_in_time_class: R
+    latency_sec_observed: 17.8
+    execution_class: STEPWISE
+    notes: >
+      Implements classical Cover-style Universal Portfolio theory (a
+      well-established analytical family, not a modern paper-backed
+      release — no specific paper citation is made in the adapter file).
+      Only 2 of ~14 real upstream algorithms wrapped (ONS/OLMAR).
+      ONLINE_ADAPTIVE_POLICY with real online state update (no gradient
+      retraining); fixed 3-ticker universe.
+
+  - name: vibe_trading
+    github: https://github.com/HKUDS/Vibe-Trading
+    stars_snapshot: 25256
+    forks: 4166
+    license: MIT
+    last_pushed: "2026-07-19"
+    commit: "HEAD of default branch as of snapshot_date"
+    paper: null
+    q_coverage: [Q3, Q4]
+    category: llm_agent_code_generation
+    cost_tier: HIGH
+    requires_env: vibe_trading_real
+    live_status: PASSED
+    point_in_time_class: "R (via LEGACY_INTERNAL_LOOP replay only — see execution_class)"
+    latency_sec_observed: 80.1
+    execution_class: STEPWISE_UNSUPPORTED
+    notes: >
+      Single real LLM call generates Python signal-generation code
+      (subprocess-executed), a category distinct from every other
+      llm_agent_* adapter here (which call an LLM per-decision, not to
+      write code once). Real decision matrix is computed once in a
+      monolithic vectorized batch and replayed one decision per harness
+      step (LEGACY_INTERNAL_LOOP) — cannot be independently regenerated
+      per step without reimplementing upstream's engine.

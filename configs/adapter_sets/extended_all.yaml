@@ -1,0 +1,47 @@
+# configs/adapter_sets/extended_all.yaml
+#
+# Tier: EXTENDED_ALL — the maximal, unfiltered set (all 26 production
+# adapters). Intended for Layer 1 diagnostic/audit experiments (D1-D7 in
+# docs/experiment_design/EXPERIMENT_PROTOCOL.md) where the point is to
+# characterize the whole adapter landscape — including narrow-scope,
+# currently-blocked, or data-quality-caveated adapters — not to produce a
+# single clean headline comparison. Do not use this set for a Layer 2
+# fusion-method (M1-M4) headline result without first applying paper_core
+# or popular_full's filtering logic, or the comparison will silently mix
+# in known-corrupting cases (see atlas's entry in adapter_registry.yaml).
+#
+# See docs/adapter_management/ADAPTER_SELECTION_REPORT.md for the full
+# reasoning behind every tier.
+
+schema_version: "1.0.0"
+tier: extended_all
+description: "All 26 production adapters, no filtering. Diagnostic/audit use only."
+parent_tier: null
+adapter_count: 26
+adapters:
+  - agentictrading
+  - ai_hedge_fund
+  - alphaforge
+  - alphagen
+  - atlas
+  - deepalpha
+  - deepdow
+  - earnmore
+  - finagent
+  - finbert
+  - finclaw
+  - fingpt
+  - finmem
+  - finrl
+  - finrl_x
+  - finrobot
+  - pgportfolio
+  - prediction_arena
+  - qlib
+  - quantmuse
+  - rdagent
+  - skfolio
+  - trademaster
+  - tradingagents
+  - universal_portfolios
+  - vibe_trading

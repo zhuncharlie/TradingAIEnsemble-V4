@@ -1,0 +1,69 @@
+# configs/adapter_sets/paper_core.yaml
+#
+# Tier: PAPER_CORE — the curated set recommended for the paper's main
+# experiment table (Layer 2 fusion methods M1-M4 and the headline Layer 1
+# diagnostics D1-D5 in docs/experiment_design/EXPERIMENT_PROTOCOL.md).
+# popular_full minus 4 additional adapters, each excluded for a stated,
+# adapter-specific reason (never "low popularity" alone — see
+# docs/adapter_management/ADAPTER_SELECTION_REPORT.md §3 for full
+# reasoning and the counter-examples where a low-star adapter was KEPT
+# because it fills a methodological-diversity gap: deepalpha (10 stars,
+# kept — it is the pilot study's own calibration-failure case study and
+# the running example D2/M2 are built around), finclaw (no GitHub star
+# signal at all, PyPI-only, kept — the only other GA/evolutionary adapter
+# besides alphaforge once atlas is excluded), universal_portfolios (859
+# stars, kept — the only classical analytical-optimization baseline
+# alongside skfolio's rolling-convex-optimization family).
+#
+# Excluded (4), each for a distinct structural reason, not popularity:
+#   - agentictrading: native field coverage rated 极低 (very low) in
+#     PROJECT_SCHEMA_AUDIT.md §7 — contributes mostly noise to a headline
+#     table despite PASSED live status.
+#   - finmem: live path structurally BLOCKED (401 on the embeddings
+#     endpoint its memory/reflection subsystem requires) — cannot
+#     currently produce a live result at all.
+#   - finrobot: <15% field coverage per Q; Q1 is DERIVED best-effort
+#     keyword extraction from prose, not a native structured output —
+#     tradingagents already covers the multi-agent-debate LLM category
+#     with a stronger signal once its timeout is remediated.
+#   - pgportfolio: crypto-only upstream domain (BTC-USD/ETH-USD
+#     substituted) plus currently BLOCKED (yfinance rate limit); deepdow
+#     already covers the deep-learning-portfolio-allocation category on
+#     the standard equity/ETF universe.
+#
+# Remediation flags (included in paper_core, but currently FAILED in the
+# live harness on a fixable infra issue, not a methodology defect — must
+# be resolved before this adapter's paper_core results can be trusted):
+#   - finagent, tradingagents: FAILED on a 280s harness timeout
+#     (LLM-latency-bound) — raise the timeout budget or accept partial
+#     coverage and report it, do not silently drop.
+#   - fingpt: FAILED on a conda env error in the most recent harness run —
+#     fix the environment before relying on live results.
+
+schema_version: "1.0.0"
+tier: paper_core
+description: "popular_full minus agentictrading, finmem, finrobot, pgportfolio. Recommended set for the paper's main Layer 1 headline diagnostics and Layer 2 fusion-method experiments."
+parent_tier: popular_full
+adapter_count: 21
+adapters:
+  - ai_hedge_fund
+  - alphaforge
+  - alphagen
+  - deepalpha
+  - deepdow
+  - earnmore
+  - finagent            # remediate: FAILED, 280s timeout (infra, not methodology)
+  - finbert
+  - finclaw
+  - fingpt              # remediate: FAILED, conda env error (infra, not methodology)
+  - finrl
+  - finrl_x
+  - prediction_arena
+  - qlib
+  - quantmuse
+  - rdagent
+  - skfolio
+  - trademaster
+  - tradingagents        # remediate: FAILED, 280s timeout (infra, not methodology)
+  - universal_portfolios
+  - vibe_trading
