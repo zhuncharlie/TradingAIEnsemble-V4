@@ -125,3 +125,11 @@ The active task defines the authorized scope, but it never implicitly permits:
 - exposing credentials;
 - breaking provenance;
 - violating time causality.
+<!-- ARIS:BEGIN -->
+## ARIS Skill Scope
+ARIS skills installed in this project: 81 entries.
+Manifest: `.aris/installed-skills.txt` (lists every skill ARIS installed and its upstream target).
+For ARIS workflows, prefer the project-local skills under `.claude/skills/` over global skills.
+Do not modify or delete files inside any skill that is a symlink (symlinks point into `/home/xqinag/aris_repo`).
+Update with: `bash /home/xqinag/aris_repo/tools/install_aris.sh`  (re-runnable; reconciles new/removed skills).
+<!-- ARIS:END -->
