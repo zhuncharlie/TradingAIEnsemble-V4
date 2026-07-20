@@ -1,0 +1,55 @@
+# configs/adapter_sets/popular_1000_plus.yaml
+#
+# Popularity-only set: GitHub stars_snapshot >= 1000, per configs/adapter_registry.yaml
+# (snapshot_date 2026-07-19). Does NOT consider live_status or point_in_time_class —
+# this set answers "is it popular," nothing else. For claim-bearing historical
+# experiments, use controlled_scientific_core (a strict subset of this set), not this
+# file directly.
+#
+# Derivation: mechanical filter on adapter_registry.yaml's popularity_gate_1000 == true.
+# finclaw is correctly excluded (popularity_gate_1000: not_applicable, no GitHub star
+# signal exists — PyPI-distributed) rather than treated as passing the gate, per
+# docs/adapter_management/REGISTRY_GAP_ANALYSIS.md's explicit instruction.
+#
+# Supersedes the old popular_full.yaml, which excluded only `atlas` on a *correctness*
+# basis (crypto-mislabeling) and was never actually gated on a star threshold despite
+# its name — see docs/adapter_management/ADAPTER_REGISTRY_MIGRATION_REPORT.md for the
+# full rename/migration rationale and the old file's disposition (kept as legacy_set,
+# not deleted).
+
+schema_version: "1.0.0"
+derived_from: "configs/adapter_registry.yaml (snapshot_date 2026-07-19)"
+selection_rule: "stars_snapshot >= 1000 (popularity_gate_1000 == true)"
+count: 16
+
+adapters:
+  - ai_hedge_fund      # 62273 stars
+  - alphagen           # 1159 stars
+  - deepdow             # 1173 stars
+  - finbert             # 2187 stars
+  - fingpt              # 20912 stars
+  - finrl               # 15767 stars
+  - finrl_x             # 3455 stars
+  - finrobot            # 7600 stars
+  - pgportfolio         # 1849 stars
+  - qlib                # 46410 stars
+  - quantmuse           # 2793 stars
+  - rdagent             # 13944 stars
+  - skfolio             # 2046 stars
+  - trademaster         # 2933 stars
+  - tradingagents       # 93683 stars
+  - vibe_trading        # 25256 stars
+
+excluded_below_threshold:
+  - {name: agentictrading, stars: 350}
+  - {name: alphaforge, stars: 402}
+  - {name: atlas, stars: 35}
+  - {name: deepalpha, stars: 10}
+  - {name: earnmore, stars: 71}
+  - {name: finagent, stars: 75}
+  - {name: finmem, stars: 927, note: "closest miss — 73 stars under threshold"}
+  - {name: prediction_arena, stars: 76}
+  - {name: universal_portfolios, stars: 859, note: "closest miss — 141 stars under threshold"}
+
+excluded_not_applicable:
+  - {name: finclaw, reason: "PyPI-distributed, no GitHub star signal exists — never treated as passing the >=1000 gate"}

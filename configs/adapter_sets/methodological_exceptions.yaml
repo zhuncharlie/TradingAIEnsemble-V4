@@ -1,0 +1,80 @@
+# configs/adapter_sets/methodological_exceptions.yaml
+#
+# Adapters below the 1000-star popularity gate, retained for specific, named
+# diagnostic/methodological value per the task brief's explicit instruction not to
+# silently delete low-star projects. NOT eligible for the main claim-bearing
+# controlled_scientific_core experiment by default (the popularity gate is a hard
+# requirement there) — usable only for: appendix results, case studies, diagnostic
+# experiments (Layer 1, extended_all/diagnostic_all scope), and robustness-extension
+# ablations. Any use of an adapter from this set in a claim-bearing context must
+# explicitly justify the exception in the resulting write-up, per
+# docs/adapter_management/ADAPTER_REGISTRY_MIGRATION_REPORT.md.
+
+schema_version: "1.0.0"
+derived_from: "configs/adapter_registry.yaml (snapshot_date 2026-07-19); docs/adapter_management/ADAPTER_SELECTION_REPORT.md §3.3 (deepalpha/finclaw/universal_portfolios already identified there)"
+count: 5
+
+adapters:
+  - name: deepalpha
+    stars: 10
+    reason: >
+      Lowest star count in the entire roster, but is the project's own running
+      calibration-failure case study — flagged in ADAPTER_SELECTION_REPORT.md §3.3
+      as the adapter whose naive confidence-weighted fusion underperformed majority
+      vote in a prior pilot study, traced to this adapter dominating the weighted
+      average. Also the only real, historically-replayable (point_in_time_class R,
+      live_status PASSED) Q1-capable adapter available anywhere in this registry —
+      see controlled_scientific_core.yaml's disclosed Q1-coverage gap. Recommended
+      for a flagged, explicit exception in the H1 pre-pilot specifically (see
+      docs/experiment_design/PILOT_PROTOCOL_DRAFT.md) because the pre-pilot is an
+      end-to-end methodology dry run, not itself the claim-bearing historical main
+      experiment.
+
+  - name: atlas
+    stars: 35
+    reason: >
+      Real, distinct GA/GP alpha-mining paradigm representation, but carries a
+      self-disclosed data-quality caveat (silently repeats the same BTCUSDT signal,
+      mislabeled, for any non-crypto ticker requested — see adapter_registry.yaml's
+      notes). Excluded from popular_1000_plus on a correctness basis (this is why
+      the legacy popular_full.yaml already excluded it), not purely popularity.
+      Valuable specifically as the "special calibration/mislabeling failure case"
+      this set's own description calls for — a real, useful negative example for
+      Layer 1's contradiction/coherence diagnostics, not a claim-bearing input.
+
+  - name: finclaw
+    stars: null
+    reason: >
+      No GitHub star signal exists at all (PyPI-distributed, popularity_gate_1000:
+      not_applicable) — cannot be popularity-gated by construction, not merely
+      low-scoring. One of only two remaining ga_evolutionary_factor_mining
+      representatives once atlas is excluded from claim-bearing use (with
+      alphaforge, itself also below the 1000-star threshold). Its real,
+      88,606-line source was directly inspected despite the nominal GitHub repo
+      having pivoted to a marketing-only page — reproducibility was independently
+      verified by reading actual code, not by trusting an absent star count.
+
+  - name: universal_portfolios
+    stars: 859
+    reason: >
+      Closest miss on the popularity threshold (141 stars under). The only
+      classical *analytical* (closed-form Cover-style Universal Portfolio theory,
+      no optimization solver) baseline in the entire roster, complementing
+      skfolio's rolling-convex-optimization approach — a "classical baseline"
+      category needs at least one representative, and no other adapter in the
+      registry offers this specific algorithm family. live_status PASSED,
+      point_in_time_class R — would be TIER_1-eligible today if it crossed the
+      star threshold.
+
+  - name: finmem
+    stars: 927
+    reason: >
+      Second-closest miss on the popularity threshold (73 stars under).
+      live_status BLOCKED (401 on the OpenAI-compatible embeddings endpoint its
+      real memory/reflection subsystem needs) — itself an "important failure
+      case" worth diagnostic tracking (illustrates the credential-dependency risk
+      class documented in docs/experiment_design/RISK_AND_FAILURE_PLAN.md §7).
+      Represents the llm_agent_memory_reflection paradigm, distinct from
+      tradingagents'/finrobot's multi-agent-debate variants. Revisit for
+      controlled_scientific_core if both the star count crosses 1000 and the
+      embeddings credential becomes available.

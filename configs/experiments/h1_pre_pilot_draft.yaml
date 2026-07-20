@@ -1,0 +1,77 @@
+# configs/experiments/h1_pre_pilot_draft.yaml
+#
+# *** DRAFT ONLY. NOT APPROVED FOR EXECUTION. ***
+# This file specifies, it does not authorize, a run. Per
+# docs/experiment_design/PILOT_PROTOCOL_DRAFT.md and this session's own scope
+# limits, no experiment code exists yet for this configuration and none may be
+# written or run without explicit human approval. This is a non-claim-bearing
+# methodology dry run only — see PILOT_PROTOCOL_DRAFT.md's framing section
+# before treating any output of a future run of this config as evidence for H1.
+
+schema_version: "1.0.0"
+status: DRAFT_NOT_APPROVED
+approved_by: null
+approved_date: null
+purpose: "Methodology dry run only — pipeline mechanics, not claim-bearing H1 evidence. See docs/experiment_design/PILOT_PROTOCOL_DRAFT.md and docs/experiment_design/H1_FRESH_REVIEW.md (H1 verdict: REVISE, not PASS)."
+
+ontology_version: "v0.3-draft"   # EXPERIMENT_PROTOCOL.md §2.2, post-Task-A/B fixes; NOT frozen
+
+adapters:
+  aligned_core:               # tuple-aligned, shared universe
+    - qlib
+    - skfolio
+    - finrl_x
+    - deepalpha
+  native_track_only:          # NOT pooled into the aligned tuple set — separate diagnostic
+    - trademaster
+  source_set: "configs/adapter_sets/pilot_core.yaml"
+
+universe:
+  primary: [AAPL, MSFT, NVDA]
+  native_track:
+    trademaster: "real DJ30, 2021-01-04..2021-12-31 (NVDA absent, JNJ substituted) — adapter's own bundled dataset, not overridden"
+  known_risk: "finrl_x's top-25% dynamic ticker selection is not caller-configurable; actual overlap with [AAPL, MSFT, NVDA] must be recorded empirically at run time, not assumed (PILOT_PROTOCOL_DRAFT.md §3)"
+
+horizons: ["1d", "5d"]        # 20d explicitly out of scope for this pilot
+
+windows:
+  calibration: {start: "2023-06-01", end: "2023-11-30"}
+  embargo: {start: "2023-12-01", end: "2023-12-07", trading_days: 5, rule: "== max horizon tested in this pilot (5d), per DATA_SPLIT_PROTOCOL.md §3"}
+  validation: {start: "2023-12-08", end: "2024-03-31"}
+  final_test: null   # explicitly not part of this pilot — see PILOT_PROTOCOL_DRAFT.md §1 framing
+
+data_source:
+  ohlcv: "yfinance (adjusted close — corporate-action handling relies on yfinance's own split/dividend adjustment; not independently re-verified for point-in-time correctness, a disclosed simplification for this dry run only, per PILOT_PROTOCOL_DRAFT.md)"
+  as_of_sequence: "one shared daily trading calendar across the validation window, per DATA_SPLIT_PROTOCOL.md §4"
+
+model:
+  primary_outcome: "Q1/Q3 sign-mismatch only (EXPERIMENT_PROTOCOL.md §2.3's H1 primary E) — Q4 policy-quality variant NOT computed in this pilot"
+  hold_neutral_handling: "excluded from E entirely, per EXPERIMENT_PROTOCOL.md §2.3"
+  unit_of_analysis: "one row per (ticker, as_of, horizon) tuple, per EXPERIMENT_PROTOCOL.md §2.3.1"
+  formula: "E ~ confidence + C + disagreement_entropy + missingness_indicator"
+  adapter_pair_random_effect: false   # deliberately omitted this pilot — see PILOT_PROTOCOL_DRAFT.md §8
+  disagreement_metric: "normalized Shannon entropy (base-2 / log2(3)) of {-1,0,+1}-mapped directional votes, EXPERIMENT_PROTOCOL.md §2.3.1"
+  contradiction_indicator: "binary C only (no severity score), EXPERIMENT_PROTOCOL.md §2.2"
+
+robustness_checks:
+  block_bootstrap: {block_length_trading_days: 5, purpose: "mechanics check only, not a claim-bearing CI"}
+  leave_one_adapter_out: {n_refits: 4, purpose: "coarse sanity check only"}
+  leave_one_ticker_out: {n_refits: 3, purpose: "coarse sanity check only"}
+
+execution:
+  requires_paid_api: false
+  per_call_timeout_sec: 300
+  failure_handling: "DATA_SPLIT_PROTOCOL.md §4 shared missing-output policy — log and exclude the specific tuple, never impute, never invalidate other tuples"
+  estimated_dollar_cost: 0.0
+  estimated_compute_time: "on the order of hours (serial upper bound), dominated by finrl_x (206.4s/call observed) — see PILOT_PROTOCOL_DRAFT.md §10"
+
+output_manifest:
+  schema: "RISK_AND_FAILURE_PLAN.md §1 Category C manifest — one row per (ticker, as_of, adapter), status in {computed, ineligible, failed, excluded_by_predefined_rule}"
+  additional_fields: ["ontology_version", "finrl_x_universe_overlap"]
+
+expected_sample_size: "on the order of a few hundred (ticker, as_of) tuples — see PILOT_PROTOCOL_DRAFT.md §7; explicitly NOT power-analyzed, this is a dry run"
+
+human_approval_required_before:
+  - "writing any experiment code implementing this config"
+  - "running any adapter call under this config"
+  - "reporting any output of a future run as evidence for H1"

@@ -29,10 +29,42 @@
 #   no recurring paid API cost), HIGH (requires a paid external LLM API
 #   call per invocation — recurring $ cost that scales with usage,
 #   independent of local compute needs).
+#
+# --- Fields added in the Session 3 pre-pilot-readiness registry upgrade ---
+# Full derivation ledger, per-field evidence rule, and rationale for every
+# field below this line: docs/adapter_management/REGISTRY_GAP_ANALYSIS.md.
+# Nothing below was invented; every non-null/non-unknown value traces to a
+# cited source file. `commit_status`/`popularity_gate_1000`/`popularity_tier`:
+# mechanical from existing `commit`/`stars_snapshot`. `paper_status`/
+# `paper_verification_source`: structured version of existing `paper` field,
+# same in-file-only provenance rule. `field_provenance`: a pointer into
+# PROJECT_SCHEMA_AUDIT.csv, not a duplicated copy (that CSV's own NATIVE/
+# DERIVED/PARTIAL labels partially predate the later capability-recovery
+# pass documented in ADAPTER_CAPABILITY_RECOVERY.md/NEW_ADAPTER_
+# INTEGRATION.md, so this registry deliberately does not re-assert those
+# labels as current — see the pointer's own `note`). `historical_replay_
+# ready`/`controlled_track_eligible`/`eligibility_tier`/`eligibility_
+# reasons`: mechanical functions of `point_in_time_class`+`live_status`+
+# `popularity_gate_1000`, per DATA_SPLIT_PROTOCOL.md §5's tier definitions.
+# `q4_policy_type` vs `execution_class`: SPLIT from the prior single
+# `execution_class` field, which conflated a CONTRACT.PolicyType enum value
+# with a rolling-execution-support taxonomy (STEPWISE/STATIC_ONLY/
+# STEPWISE_UNSUPPORTED) — see REGISTRY_GAP_ANALYSIS.md §3. Re-derivation of
+# `execution_class`'s new (rolling-support-only) values for the 13 Q4-
+# bearing adapters draws on the real per-step decision counts already
+# recorded in ADAPTER_CAPABILITY_RECOVERY.md/NEW_ADAPTER_INTEGRATION.md
+# (e.g. "24 real decisions, 0 causality violations" for qlib), not
+# re-invented. `supported_horizons`: `unknown` for all 26 — a genuine,
+# disclosed gap (no adapter's evidence states a specific 1d/5d/20d
+# capability), not a guess. `estimated_pilot_cost`: `unknown` for all 26 —
+# no adapter in this roster has ever been run to completion under a metered
+# cost tracker; a placeholder number would be fabrication, not an estimate.
 
-schema_version: "1.0.0"
+schema_version: "1.1.0"
 snapshot_date: "2026-07-19"
 snapshot_source: "live GitHub REST API (api.github.com/repos/{owner}/{repo}), this design pass"
+registry_upgrade_date: "2026-07-20"
+registry_upgrade_source: "docs/adapter_management/REGISTRY_GAP_ANALYSIS.md (Session 3, pre-pilot readiness, Task C) — additive upgrade only, no existing field value changed except the execution_class split documented above"
 adapter_count: 26
 excluded_from_roster:
   - name: "Alpha-GFN"
@@ -49,15 +81,40 @@ adapters:
     license: NOASSERTION
     last_pushed: "2026-07-18"
     commit: "HEAD of default branch as of snapshot_date (no pinned commit recorded in adapter source)"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'agentictrading'", note: "audit snapshot predates capability-recovery pass, which recovered real Q4 weights for this adapter — see notes field, not re-asserted here as NATIVE/DERIVED labels"}
     category: classical_optimization
+    stochasticity_class: DETERMINISTIC
     cost_tier: LOW
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_LIGHT
+    credential_requirements: []
     requires_env: agentictrading_real
     live_status: PASSED
     point_in_time_class: L
-    latency_sec_observed: 13.7
+    historical_replay_ready: false
+    popularity_gate_1000: false
+    popularity_tier: NICHE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["point_in_time_class=L (no historical-replay mechanism, current-context-bound)", "popularity_gate_1000=false (350 stars)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: STATIC_ALLOCATION
     execution_class: STATIC_ONLY
+    state_persistence_required: false
+    latency_sec_observed: 13.7
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Native coverage rated very low (PROJECT_SCHEMA_AUDIT.md §7) — most of upstream's real surface unexposed", "One-shot allocation only, no per-step trajectory exists upstream"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Native coverage rated 极低 (very low) in PROJECT_SCHEMA_AUDIT.md §7 —
       real mean-variance/tangency weights are produced but most of the
@@ -73,15 +130,40 @@ adapters:
     license: MIT
     last_pushed: "2026-07-18"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q1]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'ai-hedge-fund'"}
     category: llm_agent_hybrid_rule_based
+    stochasticity_class: LLM_BASED
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_LIGHT
+    credential_requirements: ["DeepSeek API key (portfolio_manager stage only)"]
     requires_env: ai_hedge_fund_real
     live_status: PASSED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: true
+    popularity_tier: VIRAL
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["point_in_time_class=L (current-context-bound)", "q_coverage has no Q4 (not a Controlled Scientific Track Q4 candidate); Q1-only diagnostic role"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 14.2
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: []
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Only the portfolio_manager stage is a real paid LLM call (DeepSeek);
       technical_analyst is rule-based, not LLM-driven. Second-highest star
@@ -94,15 +176,40 @@ adapters:
     license: null
     last_pushed: "2024-09-01"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: "AAAI 2025 — \"AlphaForge: A Framework to Mine and Dynamically Combine Formulaic Alpha Factors\" (cited in adapter docstring)"
+    paper_status: PROBABLE_IMPLEMENTATION
+    paper_verification_source: "ADAPTER_SELECTION_REPORT.md §1 — AAAI 2025 citation present in-file, but no explicit 'this is the official repo' self-statement found (distinct from alphagen's stronger self-identification)"
     q_coverage: [Q3]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'AlphaForge'"}
     category: ga_evolutionary_factor_mining
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: alphaforge_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: false
+    popularity_tier: NICHE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["popularity_gate_1000=false (402 stars) — the sole disqualifier; live/PIT status both pass"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 41.3
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Paper's full dynamic-reweighting stage not reproduced (disclosed scope reduction)"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Wraps real GP-discovery + upstream AlphaPool linear-combination stage;
       the paper's full dynamic-reweighting stage is not reproduced
@@ -115,15 +222,40 @@ adapters:
     license: null
     last_pushed: "2026-06-04"
     commit: "HEAD of default branch as of snapshot_date (repo ID 510600247 — org-transferred from RL-MLDM to ICT-FinD-Lab, same continuous history back to 2022-07-05, verified live)"
+    commit_status: SNAPSHOT_ONLY
     paper: "KDD 2023 — \"Generating Synergistic Formulaic Alpha Collections via Reinforcement Learning\", arXiv:2306.12964 (cited in adapter docstring; repo self-identifies as the paper's own code)"
+    paper_status: OFFICIAL_IMPLEMENTATION
+    paper_verification_source: "ADAPTER_SELECTION_REPORT.md §1 — repo self-identifies as the KDD 2023 paper's own code, not just a citation"
     q_coverage: [Q3]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'AlphaGen'"}
     category: rl_deep_rl
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: alphagen_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: true
+    eligibility_tier: TIER_1
+    eligibility_reasons: ["point_in_time_class=R, live_status=PASSED, popularity_gate_1000=true (1159 stars) — all three Controlled Scientific Track conditions met"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 115.1
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: []
+    remediation_required: false
+    remediation_status: not_applicable
     notes: "RL search (MaskablePPO) over an alpha-expression grammar, distinct from GA/GP-based alpha mining (alphaforge, atlas, finclaw)."
 
   - name: atlas
@@ -133,15 +265,40 @@ adapters:
     license: null
     last_pushed: "2024-09-03"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q3]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'atlas'"}
     category: ga_evolutionary_factor_mining
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: atlas_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: CAVEAT
+    popularity_gate_1000: false
+    popularity_tier: OBSCURE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["historical_replay_ready=CAVEAT (crypto-mislabeling for non-crypto tickers — see notes)", "popularity_gate_1000=false (35 stars)", "eligible for crypto-scoped studies and extended_all diagnostic use only, per ADAPTER_SELECTION_REPORT.md §3.1"]
+    supported_horizons: unknown
+    supported_universe: [crypto perpetuals only, 2021-11-06..2024-08-14]
+    supported_asset_classes: [crypto]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 37.5
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["CRITICAL: non-crypto ticker requests silently return the same BTCUSDT signal mislabeled — self-disclosed by adapter, not a harness fabrication"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       CRITICAL DATA-QUALITY CAVEAT: bundled dataset is crypto-perpetuals
       only (2021-11-06..2024-08-14). Any non-crypto (equity/ETF) ticker
@@ -159,15 +316,40 @@ adapters:
     license: null
     last_pushed: "2026-03-11"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q1, Q3]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'deepalpha'"}
     category: gradient_boosted_ml
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: deepalpha_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: false
+    popularity_tier: OBSCURE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["popularity_gate_1000=false (10 stars, lowest in roster) — the sole disqualifier; live/PIT both pass", "retained deliberately for L1.2/L1.3 diagnostic role — see ADAPTER_SELECTION_REPORT.md §3.3"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 18.0
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Prior pilot flagged as top contradiction offender and a miscalibrated high-confidence adapter — re-verification is L1.2/L1.3's job under the current protocol, not assumed here"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Smallest/most obscure repo in the roster (10 stars). Flagged in the
       pilot study (reports/icaif_experiments/) as the top contradiction
@@ -183,15 +365,40 @@ adapters:
     license: Apache-2.0
     last_pushed: "2024-01-24"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: SOFTWARE_NO_PAPER
+    paper_verification_source: "category is a general allocation-network library (differential-programming framework), no paper claimed in-file"
     q_coverage: [Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'DeepDow'"}
     category: deep_learning_portfolio_allocation
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: deepdow_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: true
+    eligibility_tier: TIER_1
+    eligibility_reasons: ["point_in_time_class=R, live_status=PASSED, popularity_gate_1000=true (1173 stars)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: FROZEN_LEARNED_POLICY
+    execution_class: STEPWISE
+    state_persistence_required: false
     latency_sec_observed: 42.8
-    execution_class: FROZEN_LEARNED_POLICY
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Narrow-scope by design (single GreatNet architecture, not a general framework survey)"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: "GreatNet architecture from upstream's own tutorial example; narrow-scope by design (single architecture, not a general framework survey)."
 
   - name: earnmore
@@ -201,15 +408,40 @@ adapters:
     license: MIT
     last_pushed: "2024-02-27"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'EarnMore'"}
     category: rl_deep_rl
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: earnmore_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: false
+    popularity_tier: OBSCURE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["popularity_gate_1000=false (71 stars) — sole disqualifier", "retained deliberately for its unique 2008 GFC crisis-window coverage — see ADAPTER_SELECTION_REPORT.md §3.3-adjacent rationale"]
+    supported_horizons: unknown
+    supported_universe: ["sector-masked subset, bundled dataset window 2008-09-01..2009-03-01 (crisis-era)"]
+    supported_asset_classes: [equity]
+    q4_policy_type: FROZEN_LEARNED_POLICY
+    execution_class: STEPWISE
+    state_persistence_required: false
     latency_sec_observed: 60.1
-    execution_class: FROZEN_LEARNED_POLICY
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Bundled dataset fixed to 2008-09-01..2009-03-01 (crisis-era) — not a general-purpose historical window", "Sector-membership masking is statistical, not absolute (disclosed)"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Bundled dataset fixed to 2008-09-01..2009-03-01 (crisis-era) — the
       only adapter in the roster reaching the 2008 GFC window, valuable for
@@ -223,15 +455,40 @@ adapters:
     license: MIT
     last_pushed: "2024-08-31"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q1, Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'FinAgent'"}
     category: llm_agent_online_adaptive
+    stochasticity_class: LLM_BASED
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_LIGHT
+    credential_requirements: ["LLM API key", "OpenAI-compatible embeddings endpoint (currently unavailable — structurally BLOCKED for memory/reflection subsystem)"]
     requires_env: finagent_real
     live_status: FAILED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: false
+    popularity_tier: OBSCURE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["live_status=FAILED (280s timeout, LLM-latency-bound, not a capability failure)", "point_in_time_class=L", "popularity_gate_1000=false (75 stars)", "remediation_required=true, KNOWN_FIX_AVAILABLE"]
+    supported_horizons: unknown
+    supported_universe: ["single-asset scope only"]
+    supported_asset_classes: [equity]
+    q4_policy_type: ONLINE_ADAPTIVE_POLICY
+    execution_class: STEPWISE
+    state_persistence_required: true
     latency_sec_observed: 280.0
-    execution_class: ONLINE_ADAPTIVE_POLICY
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["FAILED on 280s timeout in most recent unified_harness run (infra, not capability)", "Memory/reflection subsystem structurally BLOCKED — needs an embeddings-capable credential not currently available", "Single-asset scope only"]
+    remediation_required: true
+    remediation_status: KNOWN_FIX_AVAILABLE
     notes: >
       FAILED in the most recent unified_harness run on a 280s timeout
       (LLM-latency-bound, not a capability failure). Memory/reflection
@@ -245,15 +502,40 @@ adapters:
     license: Apache-2.0
     last_pushed: "2022-09-09"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q2]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'FinBERT'"}
     category: sentiment_nlp
+    stochasticity_class: DETERMINISTIC
     cost_tier: LOW
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_LIGHT
+    credential_requirements: []
     requires_env: finbert_real
     live_status: PASSED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["point_in_time_class=L specifically because its news source (yfinance current headlines) is not a point-in-time archive — a data-source limitation, not a live_status failure (live_status=PASSED)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 31.5
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Headline source is yfinance's current headlines only, not a point-in-time news archive — pairing with a historical decision date would violate causality", "Would be promotable to Class R if a point-in-time news source is ever wired in"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       CPU-only pretrained-model inference, no training, no paid API — but
       point_in_time_class is L (not R) because its headline source is
@@ -269,15 +551,40 @@ adapters:
     license: AGPL-3.0
     last_pushed: "2026-04-10 (latest PyPI release 5.6.1, per PyPI upload metadata — not a GitHub pushed_at date)"
     commit: "finclaw_ai==5.6.1 (PyPI sdist, inspected directly)"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q3, Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'finclaw'", note: "audit snapshot predates capability-recovery pass, which recovered real Q4 enrichment for this adapter — see notes field"}
     category: ga_evolutionary_factor_mining
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: finclaw_real
     live_status: PASSED
     point_in_time_class: R
-    latency_sec_observed: 180.8
+    historical_replay_ready: true
+    popularity_gate_1000: not_applicable
+    popularity_tier: NOT_APPLICABLE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["popularity_gate_1000=not_applicable (no GitHub stars exist — PyPI-distributed; never treated as passing the >=1000 gate)", "STATIC_ONLY execution (one-shot artifact, no per-step trajectory) is a real tension with 'historical_replay_ready=true' per the literal R+PASSED+no-caveat rule — flagged as a judgment call in REGISTRY_GAP_ANALYSIS.md's implementing report, not silently resolved"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: STATIC_ALLOCATION
     execution_class: STATIC_ONLY
+    state_persistence_required: false
+    latency_sec_observed: 180.8
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["74-field native StrategyDNA mostly unexposed as Q4 (documented compression loss)", "One-shot artifact only — no per-step trajectory", "No GitHub star count available (PyPI-distributed); nominal GitHub repo pivoted to marketing-only page"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       No GitHub star count available — distributed via PyPI, not GitHub.
       The project's own GitHub repo (NeuZhou/finclaw) was pivoted into a
@@ -295,15 +602,40 @@ adapters:
     license: MIT
     last_pushed: "2026-07-18"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q2]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'FinGPT'"}
     category: sentiment_nlp
+    stochasticity_class: LLM_BASED
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: fingpt_real
     live_status: FAILED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: true
+    popularity_tier: VIRAL
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["live_status=FAILED (conda-env error, infra not capability)", "point_in_time_class=L", "remediation_required=true, KNOWN_FIX_AVAILABLE"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 89.6
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["FAILED in most recent unified_harness run on a conda-env error — investigate before relying on live status", "No confidence reported (no logits captured in current wrapper)"]
+    remediation_required: true
+    remediation_status: KNOWN_FIX_AVAILABLE
     notes: >
       FinGPT v3.1 (ChatGLM2-6B LoRA) — local GPU inference (12GB fp16, no
       8-bit quantization), no paid API, no training. FAILED in the most
@@ -318,15 +650,40 @@ adapters:
     license: MIT
     last_pushed: "2024-08-18"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q1]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'FinMem'"}
     category: llm_agent_memory_reflection
+    stochasticity_class: LLM_BASED
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_LIGHT
+    credential_requirements: ["OpenAI-compatible embeddings endpoint (currently 401 — unavailable)", "OpenAI-compatible chat endpoint (model-prefix-gated)"]
     requires_env: finmem_real
     live_status: BLOCKED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: false
+    popularity_tier: NICHE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["live_status=BLOCKED (401 on embeddings endpoint) — offline/schema testing only, per DATA_SPLIT_PROTOCOL.md §5's explicit TIER-2 example for this adapter", "remediation_required=true, BLOCKED_EXTERNAL (needs a credential this project doesn't control)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 48.7
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Live path structurally BLOCKED — 401 on OpenAI-compatible embeddings endpoint required by real memory/reflection subsystem", "Q4 not claimed — upstream Portfolio object has no cash field, target_weights not derivable"]
+    remediation_required: true
+    remediation_status: BLOCKED_EXTERNAL
     notes: >
       Live path structurally BLOCKED — 401 on the OpenAI-compatible
       embeddings endpoint required by the real memory/reflection subsystem;
@@ -340,15 +697,40 @@ adapters:
     license: MIT
     last_pushed: "2026-07-13"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'FinRL'"}
     category: rl_deep_rl
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: finrl_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: true
+    popularity_tier: VIRAL
+    controlled_track_eligible: true
+    eligibility_tier: TIER_1
+    eligibility_reasons: ["point_in_time_class=R, live_status=PASSED, popularity_gate_1000=true (15767 stars)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: "FROZEN_LEARNED_POLICY (legacy q4_policy() label was ROLLING_OPTIMIZER — both recorded, current label is FROZEN_LEARNED_POLICY per existing execution_class text)"
+    execution_class: "STEPWISE — JUDGMENT CALL: per ADAPTER_CAPABILITY_RECOVERY.md item 15, this adapter deliberately returns decisions=None / initial_weights-only per single call, BECAUSE exposing an in-sample multi-day trajectory from one training run would violate causality (the policy trained on the same window it would replay). This registry reads STEPWISE here as 'safe to invoke once per externally-driven rolling-harness step, each a fresh independent as_of call' (consistent with the existing text's own 'reclassified for stepwise path' phrase and 'trained fresh each session'), NOT as 'returns a multi-step trajectory from one call' — the two readings are not the same claim. Flagged explicitly, not silently resolved; see the fork's report to the parent session for the reasoning."
+    state_persistence_required: false
     latency_sec_observed: 62.9
-    execution_class: "FROZEN_LEARNED_POLICY (reclassified for stepwise path; legacy q4_policy() keeps its original ROLLING_OPTIMIZER label)"
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["No pretrained weights by design — trained fresh each session (TOTAL_TIMESTEPS=3000, scaled down from paper-scale, disclosed scope reduction)", "Full in-sample daily trajectory deliberately not exposed (causality-correct design choice, not a gap — see ADAPTER_CAPABILITY_RECOVERY.md item 15)"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       No pretrained weights by design — trained fresh each session
       (TOTAL_TIMESTEPS=3000, scaled down from paper-scale tens/hundreds of
@@ -361,15 +743,40 @@ adapters:
     license: Apache-2.0
     last_pushed: "2026-05-02"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q2, Q3, Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'FinRL-Trading'"}
     category: rl_deep_rl_regime_switching
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: finrl_x_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: true
+    eligibility_tier: TIER_1
+    eligibility_reasons: ["point_in_time_class=R, live_status=PASSED, popularity_gate_1000=true (3455 stars)"]
+    supported_horizons: unknown
+    supported_universe: ["dynamic ML-selected top-25% of a fixed 8-ticker pool — real but not caller-configurable"]
+    supported_asset_classes: [equity]
+    q4_policy_type: "FROZEN_LEARNED_POLICY (same reclassification pattern as finrl)"
+    execution_class: "STEPWISE — same judgment-call reasoning as finrl (see that entry's execution_class note)"
+    state_persistence_required: false
     latency_sec_observed: 206.4
-    execution_class: "FROZEN_LEARNED_POLICY (reclassified for stepwise path, same reasoning as finrl)"
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Dynamic universe selection is real but not caller-configurable", "Single-core CPU-affinity workaround required to avoid a real SIGSEGV in the training path"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Only adapter in the roster answering Q2+Q3+Q4 simultaneously.
       Dynamic universe selection (ML-selected top-25% of 8 tickers) is real
@@ -383,15 +790,40 @@ adapters:
     license: Apache-2.0
     last_pushed: "2026-07-07"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q1, Q2]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'FinRobot'"}
     category: llm_agent_multi_agent_debate
+    stochasticity_class: LLM_BASED
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_LIGHT
+    credential_requirements: ["LLM API key (AutoGen)"]
     requires_env: finrobot_real
     live_status: PASSED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["point_in_time_class=L (current-context-bound)", "<15% field coverage per Q — thin extractable signal despite popular upstream (per ADAPTER_SELECTION_REPORT.md §3.2)", "no Q4 despite framework's broader scope"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 34.5
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["<15% field coverage per Q (PROJECT_SCHEMA_AUDIT.md §7) — final analysis often only recoverable from AutoGen chat transcript, not structured fields", "Q1 is DERIVED (best-effort keyword extraction from prose), not native structured output", "No Q4 despite the framework's broader scope"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       <15% field coverage per Q (PROJECT_SCHEMA_AUDIT.md §7) — final
       analysis often only recoverable from the AutoGen chat transcript, not
@@ -406,15 +838,40 @@ adapters:
     license: GPL-3.0
     last_pushed: "2021-10-09"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'PGPortfolio'"}
     category: deep_learning_portfolio_allocation
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: pgportfolio_real
     live_status: BLOCKED
     point_in_time_class: R
+    historical_replay_ready: false
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["live_status=BLOCKED (Poloniex API permanently dead HTTP 410; yfinance substitute currently rate-limited) — offline/unit stepwise tests pass 11/11, per DATA_SPLIT_PROTOCOL.md §5's explicit TIER-2 example for this adapter", "remediation_required=true, BLOCKED_EXTERNAL"]
+    supported_horizons: unknown
+    supported_universe: ["crypto-only — BTC-USD/ETH-USD substituted for the original Poloniex-only design"]
+    supported_asset_classes: [crypto]
+    q4_policy_type: FROZEN_LEARNED_POLICY
+    execution_class: "STEPWISE (offline: 11/11 unit stepwise tests pass without live data, per existing notes; live-path rolling behavior unverified due to BLOCKED status)"
+    state_persistence_required: false
     latency_sec_observed: 280.0
-    execution_class: FROZEN_LEARNED_POLICY
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Live path BLOCKED — Poloniex API permanently dead (HTTP 410); yfinance substitution currently rate-limited (transient, external)", "Crypto-only upstream domain"]
+    remediation_required: true
+    remediation_status: BLOCKED_EXTERNAL
     notes: >
       Live path BLOCKED — real Poloniex API is permanently dead (HTTP 410),
       yfinance substitution used but currently rate-limited (transient,
@@ -428,15 +885,40 @@ adapters:
     license: MIT
     last_pushed: "2026-07-18"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: "arXiv:2604.07355 — \"Prediction Arena: Benchmarking AI Models on Real-World Prediction Markets\" — CAVEAT: this paper's own code was never released; the adapter instead wraps Metaculus/forecasting-tools + Kalshi as the closest verified real substitute, per the adapter's own documented repo-search. Do not present this as the paper's official code."
+    paper_status: UNOFFICIAL
+    paper_verification_source: "ADAPTER_SELECTION_REPORT.md §1 — paper's own code was never released; adapter is an explicitly-disclosed substitute, confirmed via the adapter's own documented repo-search, not this paper's code"
     q_coverage: [Q2]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'prediction_arena'"}
     category: forecasting_prediction_market
+    stochasticity_class: LLM_BASED
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_LIGHT
+    credential_requirements: ["LLM API key (DeepSeek forecast)", "Kalshi market data access"]
     requires_env: prediction_arena_real
     live_status: PASSED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: false
+    popularity_tier: OBSCURE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["point_in_time_class=L (current-context-bound)", "popularity_gate_1000=false (76 stars)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [prediction_market]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 29.9
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Name matches a real benchmark paper but wraps a different, substitute codebase — see paper field caveat"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: "Name matches a real benchmark paper but wraps a different, substitute codebase — see paper field caveat."
 
   - name: qlib
@@ -446,15 +928,40 @@ adapters:
     license: MIT
     last_pushed: "2026-04-22"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q3, Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'Qlib'", note: "audit snapshot predates capability-recovery pass, which recovered real Q4 (TopkDropoutStrategy) for this adapter — see notes field"}
     category: gradient_boosted_ml
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: qlib_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: true
+    popularity_tier: VIRAL
+    controlled_track_eligible: true
+    eligibility_tier: TIER_1
+    eligibility_reasons: ["point_in_time_class=R, live_status=PASSED, popularity_gate_1000=true (46410 stars) — highest-star TIER_1 adapter in the roster"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: FROZEN_LEARNED_POLICY
+    execution_class: STEPWISE
+    state_persistence_required: false
     latency_sec_observed: 61.7
-    execution_class: FROZEN_LEARNED_POLICY
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: []
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Point-in-time train/test split with no lookahead verified directly
       (DECISIONS.md, 2026-07-05 entry). Deliberately avoids the
@@ -469,15 +976,40 @@ adapters:
     license: MIT
     last_pushed: "2025-07-29"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: SOFTWARE_NO_PAPER
+    paper_verification_source: "category is a multi-factor/sentiment quant toolkit (llm_fusion_quant), no paper claimed in-file"
     q_coverage: [Q2, Q3]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'nofx'", note: "audit's 'nofx' row refers to this adapter's PROJECT_SCHEMA_AUDIT-era name before the quantmuse rename; audit snapshot predates capability-recovery pass, which recovered real Q3 (RSI-14) for this adapter — see notes field"}
     category: llm_fusion_quant
+    stochasticity_class: LLM_BASED
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_LIGHT
+    credential_requirements: ["LLM API key (SentimentAnalyzer, configurable model per patches/QuantMuse.diff)"]
     requires_env: "nofx_real  (KNOWN INCONSISTENCY: adapter file/class/name were renamed nofx -> quantmuse to match the actual upstream, but the requires_env literal string was not updated in source — not a fabrication, a recorded loose end)"
     live_status: PASSED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["point_in_time_class=L (current-context-bound)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 39.4
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["requires_env literal string ('nofx_real') not updated after the nofx->quantmuse rename — a recorded loose end, not a fabrication"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Originally filed under adapters/nofx_adapter.py targeting a different
       project (NoFxAiOS/nofx) that was rejected for requiring live
@@ -494,15 +1026,40 @@ adapters:
     license: MIT
     last_pushed: "2026-07-16"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q3]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'RD-Agent'"}
     category: research_loop_automated_hypothesis
+    stochasticity_class: "LLM_BASED — JUDGMENT CALL: category 'research_loop_automated_hypothesis' is not named in either bucket of REGISTRY_GAP_ANALYSIS.md's stochasticity_class rule. Classified by mechanism (genuine multi-turn LLM research loop driving real subprocess-executed generated code, per notes) rather than forcing it into the RL/GA bucket, consistent with the same mechanism-over-category-label principle already applied to fingpt."
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: ["LLM API key (DeepSeek, real calls confirmed)"]
     requires_env: rdagent_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: true
+    popularity_tier: VIRAL
+    controlled_track_eligible: true
+    eligibility_tier: TIER_1
+    eligibility_reasons: ["point_in_time_class=R, live_status=PASSED, popularity_gate_1000=true (13944 stars)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 98.9
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["max_loop=2 bounded here (upstream unbounded) — disclosed scope reduction for cost/latency"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Genuine multi-turn LLM research loop (propose -> implement -> evaluate
       -> iterate via real subprocess-executed generated code), distinct
@@ -517,15 +1074,40 @@ adapters:
     license: BSD-3-Clause
     last_pushed: "2026-07-15"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched (note: PROJECT_SCHEMA_AUDIT.md's broader project-level audit separately associates arXiv:2507.04176 with skfolio, but this was not confirmed in the adapter's own docstring text, so per this registry's stricter in-file-only provenance rule, paper stays null / UNKNOWN here — flagged, not silently upgraded)"
     q_coverage: [Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'skfolio'"}
     category: classical_optimization
+    stochasticity_class: DETERMINISTIC
     cost_tier: LOW
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_LIGHT
+    credential_requirements: []
     requires_env: skfolio_real
     live_status: PASSED
     point_in_time_class: R
-    latency_sec_observed: 15.9
+    historical_replay_ready: true
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: true
+    eligibility_tier: TIER_1
+    eligibility_reasons: ["point_in_time_class=R, live_status=PASSED, popularity_gate_1000=true (2046 stars)"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: ROLLING_OPTIMIZER
     execution_class: STEPWISE
+    state_persistence_required: false
+    latency_sec_observed: 15.9
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Narrow-scope by design (single algorithm family, not a framework survey)"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: "ROLLING_OPTIMIZER via a real WalkForward cross-validator (test_size=REBALANCE_PERIOD_DAYS); narrow-scope by design (single algorithm family, not a framework survey)."
 
   - name: trademaster
@@ -535,15 +1117,40 @@ adapters:
     license: Apache-2.0
     last_pushed: "2025-06-04"
     commit: "1747cc18db3fe2639af12defc80e138c51a625c0 (2025-06-04, per adapter docstring — this is the only adapter in the roster with a pinned vendor commit stated in-file)"
+    commit_status: PINNED
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "a plausible NeurIPS 2023 / arXiv:2310.08144 paper association exists in the broader literature but is deliberately excluded from `paper`/`paper_status` here — this was a real fabrication incident by an earlier research subagent, caught and disclosed in ADAPTER_SELECTION_REPORT.md §0; do not re-introduce it"
     q_coverage: [Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'TradeMaster'"}
     category: rl_deep_rl
+    stochasticity_class: STOCHASTIC_ML_RL
     cost_tier: MEDIUM
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_OR_GPU_TRAINING
+    credential_requirements: []
     requires_env: trademaster_real
     live_status: PASSED
     point_in_time_class: R
+    historical_replay_ready: true
+    popularity_gate_1000: true
+    popularity_tier: ESTABLISHED
+    controlled_track_eligible: true
+    eligibility_tier: TIER_1
+    eligibility_reasons: ["point_in_time_class=R, live_status=PASSED, popularity_gate_1000=true (2933 stars)", "only TIER_1 adapter with a real PINNED commit SHA"]
+    supported_horizons: unknown
+    supported_universe: ["real DJ30, 2021-01-04..2021-12-31 (NVDA absent, JNJ substituted)"]
+    supported_asset_classes: [equity]
+    q4_policy_type: FROZEN_LEARNED_POLICY
+    execution_class: STEPWISE
+    state_persistence_required: false
     latency_sec_observed: 45.4
-    execution_class: FROZEN_LEARNED_POLICY
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Wraps exactly ONE real algorithm+task-type pair (portfolio_management/EIIE) out of TradeMaster's larger multi-paradigm framework — disclosed, not implied as full coverage", "Bundled dataset fixed to DJ30 2021 (NVDA absent, JNJ substituted) — see supported_universe"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Wraps exactly ONE real algorithm+task-type pair
       (portfolio_management/EIIE) out of TradeMaster's much larger
@@ -564,15 +1171,40 @@ adapters:
     license: Apache-2.0
     last_pushed: "2026-07-18"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q1, Q2]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'TradingAgents'"}
     category: llm_agent_multi_agent_debate
+    stochasticity_class: LLM_BASED
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_LIGHT
+    credential_requirements: ["LLM API key (Bull/Bear debate + judge calls)"]
     requires_env: tradingagents_real
     live_status: FAILED
     point_in_time_class: L
+    historical_replay_ready: false
+    popularity_gate_1000: true
+    popularity_tier: VIRAL
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["live_status=FAILED (280s timeout, LLM-latency-bound, not a capability failure)", "point_in_time_class=L", "remediation_required=true, KNOWN_FIX_AVAILABLE", "highest star count (93683) in the entire roster — do not silently drop from paper_core-equivalent sets without noting the remediation dependency"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: not_applicable
+    execution_class: not_applicable
+    state_persistence_required: not_applicable
     latency_sec_observed: 280.0
-    execution_class: null
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["FAILED on 280s timeout in most recent unified_harness run (real Bull/Bear debate + judge calls, LLM-latency-bound, not a capability/correctness issue)"]
+    remediation_required: true
+    remediation_status: KNOWN_FIX_AVAILABLE
     notes: >
       Highest star count in the entire 26-adapter roster (93.7k — viral
       popularity). FAILED in the most recent unified_harness run on a 280s
@@ -586,15 +1218,40 @@ adapters:
     license: NOASSERTION
     last_pushed: "2026-07-10"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: SOFTWARE_NO_PAPER
+    paper_verification_source: "notes explicitly state 'no specific paper citation is made in the adapter file' — a well-established classical analytical family (Cover-style), not a modern paper-backed release"
     q_coverage: [Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'Universal Portfolios'"}
     category: classical_optimization
+    stochasticity_class: DETERMINISTIC
     cost_tier: LOW
+    requires_paid_api: false
+    api_cost_class: NONE
+    local_compute_class: CPU_LIGHT
+    credential_requirements: []
     requires_env: universal_portfolios_real
     live_status: PASSED
     point_in_time_class: R
-    latency_sec_observed: 17.8
+    historical_replay_ready: true
+    popularity_gate_1000: false
+    popularity_tier: NICHE
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["popularity_gate_1000=false (859 stars) — the sole disqualifier; live/PIT both pass", "retained deliberately as the only classical analytical portfolio baseline in the roster — see ADAPTER_SELECTION_REPORT.md §3.3"]
+    supported_horizons: unknown
+    supported_universe: ["fixed 3-ticker universe"]
+    supported_asset_classes: [equity]
+    q4_policy_type: ONLINE_ADAPTIVE_POLICY
     execution_class: STEPWISE
+    state_persistence_required: true
+    latency_sec_observed: 17.8
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Only 2 of ~14 real upstream algorithms wrapped (ONS/OLMAR)", "Fixed 3-ticker universe, not caller-configurable"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Implements classical Cover-style Universal Portfolio theory (a
       well-established analytical family, not a modern paper-backed
@@ -610,15 +1267,40 @@ adapters:
     license: MIT
     last_pushed: "2026-07-19"
     commit: "HEAD of default branch as of snapshot_date"
+    commit_status: SNAPSHOT_ONLY
     paper: null
+    paper_status: UNKNOWN
+    paper_verification_source: "no in-file citation found, not independently searched"
     q_coverage: [Q3, Q4]
+    field_provenance: {source: "PROJECT_SCHEMA_AUDIT.csv", filter: "project == 'vibe_trading'", note: "audit snapshot predates capability-recovery pass, which recovered the full Q3+Q4 trajectory for this adapter — see notes field"}
     category: llm_agent_code_generation
+    stochasticity_class: LLM_BASED
     cost_tier: HIGH
+    requires_paid_api: true
+    api_cost_class: PER_CALL_LLM
+    local_compute_class: CPU_LIGHT
+    credential_requirements: ["LLM API key (single code-generation call)"]
     requires_env: vibe_trading_real
     live_status: PASSED
     point_in_time_class: "R (via LEGACY_INTERNAL_LOOP replay only — see execution_class)"
-    latency_sec_observed: 80.1
+    historical_replay_ready: CAVEAT
+    popularity_gate_1000: true
+    popularity_tier: VIRAL
+    controlled_track_eligible: false
+    eligibility_tier: TIER_2
+    eligibility_reasons: ["historical_replay_ready=CAVEAT — real decision matrix is computed once in a monolithic batch and replayed one decision per harness step (LEGACY_INTERNAL_LOOP), cannot be independently regenerated per step; extended here from the same evidence-based principle used for atlas's CAVEAT, not the literal 'atlas-only' text in REGISTRY_GAP_ANALYSIS.md — flagged as a judgment call", "popularity_gate_1000=true (25256 stars) alone is not sufficient given the replay caveat"]
+    supported_horizons: unknown
+    supported_universe: null
+    supported_asset_classes: [equity]
+    q4_policy_type: "FROZEN_LEARNED_POLICY — JUDGMENT CALL: closest PolicyType fit for a frozen, pre-computed decision matrix replayed step-by-step; no PolicyType enum member cleanly describes a 'generate code once, replay its batch output' mechanism"
     execution_class: STEPWISE_UNSUPPORTED
+    state_persistence_required: not_applicable
+    latency_sec_observed: 80.1
+    latency_observation_count: 1
+    estimated_pilot_cost: unknown
+    limitations: ["Real decision matrix computed once in a monolithic vectorized batch, replayed one decision per harness step (LEGACY_INTERNAL_LOOP) — cannot be independently regenerated per step without reimplementing upstream's engine"]
+    remediation_required: false
+    remediation_status: not_applicable
     notes: >
       Single real LLM call generates Python signal-generation code
       (subprocess-executed), a category distinct from every other

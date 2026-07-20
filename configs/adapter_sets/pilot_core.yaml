@@ -1,0 +1,93 @@
+# configs/adapter_sets/pilot_core.yaml
+#
+# 4-6 adapters selected for docs/experiment_design/PILOT_PROTOCOL_DRAFT.md's
+# H1-centered pre-pilot — a small-scale, non-claim-bearing methodology dry run
+# (does the end-to-end pipeline work at all?), NOT the claim-bearing historical
+# main experiment (that uses controlled_scientific_core once
+# docs/experiment_design/H1_FRESH_REVIEW.md's REVISE findings are resolved and a
+# human grants Checkpoint 3 — see docs/experiment_design/GO_NO_GO_FOR_PILOT.md).
+#
+# Base selection: drawn from controlled_scientific_core.yaml (popular + live-PASSED
+# + historically-replayable). PLUS one explicit, flagged exception — see below.
+#
+# *** FLAGGED EXCEPTION, NOT A SILENT DEFAULT ***
+# controlled_scientific_core has ZERO Q1 (Action) coverage (see that file's header).
+# The task brief requires pilot_core to cover at least Q1/Q2/Q3. Satisfying this
+# literally from controlled_scientific_core alone is impossible with current
+# registry data. This file therefore adds `deepalpha` (from
+# methodological_exceptions.yaml, 10 stars, below the popularity gate) specifically
+# and only for Q1 coverage in this non-claim-bearing pre-pilot. This is a deliberate,
+# disclosed, human-reviewable exception — not a scope violation of
+# controlled_scientific_core's own popularity rule, which stays intact for the
+# separate claim-bearing main experiment.
+
+schema_version: "1.0.0"
+derived_from: "controlled_scientific_core.yaml (base) + methodological_exceptions.yaml (one flagged addition)"
+count: 5
+count_from_controlled_scientific_core: 4
+count_flagged_exceptions: 1
+
+q_coverage_of_this_set:
+  q1: [deepalpha]                          # flagged exception — see header
+  q2: [finrl_x]
+  q3: [deepalpha, finrl_x, qlib]
+  q4: [finrl_x, qlib, skfolio]
+
+paradigm_diversity:
+  gradient_boosted_ml: [deepalpha, qlib]   # NOTE: same category label, different mechanism — deepalpha included regardless of overlap because it is the sole Q1 source, not for paradigm novelty
+  rl_deep_rl_regime_switching: [finrl_x]
+  classical_optimization: [skfolio]
+distinct_paradigm_count: 3
+
+adapters:
+  - name: qlib
+    role: "Q3+Q4, gradient_boosted_ml — high information retention (PROJECT_SCHEMA_AUDIT.md), MIT license, no API key/GPU dependency, low engineering effort"
+    from: controlled_scientific_core
+    cost_tier: MEDIUM
+    latency_sec_observed: 61.7
+  - name: skfolio
+    role: "Q4, classical_optimization — LOW cost tier, real WalkForward rolling execution, lowest-latency adapter in this set"
+    from: controlled_scientific_core
+    cost_tier: LOW
+    latency_sec_observed: 15.9
+  - name: finrl_x
+    role: "Q2+Q3+Q4 simultaneously — the only adapter in the whole registry answering three Q layers at once; the pre-pilot's richest single source"
+    from: controlled_scientific_core
+    cost_tier: MEDIUM
+    latency_sec_observed: 206.4
+    caveat: >
+      KNOWN RISK, not resolved by this file: finrl_x's dynamic universe selection
+      (ML-selected top-25% of its own fixed 8-ticker pool) is real but NOT
+      caller-configurable (per adapter_registry.yaml notes) — this pre-pilot cannot
+      force finrl_x onto an externally-chosen ticker set. If none of the pre-pilot's
+      target tickers fall inside finrl_x's own selected top-25% on a given as_of,
+      finrl_x contributes no aligned decision for that tuple. This must be checked
+      empirically at the pilot's own sanity stage, not assumed away. Also the
+      highest-latency component of this set (206.4s observed) — a real cost driver
+      for K-repeat stability testing (L1.2).
+  - name: deepalpha
+    role: "Q1+Q3 — FLAGGED EXCEPTION, see file header. Sole Q1 source in this set; also this project's own calibration-failure case study, valuable for L1.2/L1.3 diagnostics specifically"
+    from: methodological_exceptions
+    cost_tier: MEDIUM
+    latency_sec_observed: 18.0
+  - name: trademaster
+    role: "Q4, rl_deep_rl — second, independent RL-based portfolio-management paradigm distinct from finrl_x's hybrid regime-switching approach"
+    from: controlled_scientific_core
+    cost_tier: MEDIUM
+    latency_sec_observed: 45.4
+    caveat: >
+      KNOWN RISK: trademaster's bundled dataset is fixed to real DJ30
+      2021-01-04..2021-12-31 (NVDA absent, JNJ substituted per adapter_registry.yaml
+      notes) — a different universe and window than qlib/skfolio/finrl_x/deepalpha's
+      likely shared AAPL/MSFT/NVDA-style universe (the precedent already established
+      in NEW_ADAPTER_INTEGRATION.md's unified harness run). trademaster's pre-pilot
+      contribution should be treated as a SEPARATE, native-universe robustness
+      diagnostic (Native Capability Track sense, EXPERIMENT_PROTOCOL.md §4), not
+      force-aligned into the same (ticker, as_of, horizon) tuple set the other four
+      adapters share for H1's own pooled test. See PILOT_PROTOCOL_DRAFT.md for how
+      this is handled operationally.
+
+deferred_to_full_controlled_scientific_core_only:
+  - {name: alphagen, reason: "not needed for the minimal pre-pilot's Q1/Q2/Q3 coverage goal; adds cost (115.1s latency) without closing a coverage gap this pilot needs — reserved for the full claim-bearing experiment"}
+  - {name: deepdow, reason: "same reasoning — Q4-only, no unique paradigm the pre-pilot specifically needs beyond what skfolio/trademaster already contribute"}
+  - {name: rdagent, reason: "highest latency in controlled_scientific_core (98.9s) plus real per-call LLM API cost (HIGH cost_tier) — deferred to control pre-pilot compute budget; reserved for the full experiment"}
